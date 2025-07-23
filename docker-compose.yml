@@ -1,0 +1,12 @@
+services:
+  rust:
+    container_name: rust
+    build:
+      context: .
+      dockerfile: src/Dockerfile
+    volumes:
+      - .:/usr/src/app
+    working_dir: /usr/src/app
+    command: bash
+    tty: true
+    stdin_open: true
