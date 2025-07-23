@@ -64,7 +64,12 @@ make exit
 oceanus/
 ├── src/                    # Rustワークスペース
 │   ├── Cargo.toml          # ワークスペース設定
-│   └── Dockerfile          # Rust開発環境用
+│   ├── Dockerfile          # Rust開発環境用
+│   └── dicom-server/       # DICOMサーバー（バイナリクレート）
+│       ├── Cargo.toml
+│       ├── Makefile
+│       └── src/
+│           └── main.rs
 ├── docker-compose.yml      # Docker環境設定
 ├── Makefile
 └── README.md

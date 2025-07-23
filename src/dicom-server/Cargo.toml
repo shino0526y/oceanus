@@ -1,0 +1,5 @@
+[package]
+name = "dicom-server"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
