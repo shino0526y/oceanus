@@ -1,4 +1,5 @@
 PROFILE ?= dev
+MAKEFLAGS += --no-print-directory
 
 .PHONY: help init run run-dicom-server lint format test exit
 
