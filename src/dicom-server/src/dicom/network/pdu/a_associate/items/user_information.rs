@@ -116,7 +116,7 @@ impl TryFrom<&[u8]> for UserInformation {
                     }
                 }
                 _ => {
-                    // TODO: Maximum Length Sub-Item 以外の Sub-Item のパース
+                    // TODO: Maximum Length Sub-Item以外のSub-Itemのパース
                     //     : 以下は暫定の実装。バイト列をそのまま出力する。
                     println!("未対応の Sub-Item (0x{:02X}):", sub_item_type);
                     let sub_item = Item::try_from(&item.data[offset..])?;
