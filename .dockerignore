@@ -20,3 +20,6 @@ Dockerfile
 # OS files
 .DS_Store
 Thumbs.db
+
+# GitHub
+.github/

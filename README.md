@@ -62,9 +62,9 @@ make exit
 
 ```
 oceanus/
-├── src/                    # Rustワークスペース
+├── docker/                 # Dockerイメージのソース
+├── src/                    # Rustワークスペースのルート
 │   ├── Cargo.toml          # ワークスペース設定
-│   ├── Dockerfile          # Rust開発環境用
 │   └── dicom-server/       # DICOMサーバー（バイナリクレート）
 │       ├── Cargo.toml
 │       ├── Makefile
