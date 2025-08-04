@@ -79,29 +79,6 @@ async fn main() -> std::io::Result<()> {
                 .uid()
         );
     }
-    if a_associate_rq
-        .user_information()
-        .asynchronous_operations_window()
-        .is_some()
-    {
-        println!("  Asynchronous Operations Window:",);
-        println!(
-            "    Maximum Operations Invoked: {}",
-            a_associate_rq
-                .user_information()
-                .asynchronous_operations_window()
-                .unwrap()
-                .maximum_number_operations_invoked()
-        );
-        println!(
-            "    Maximum Operations Performed: {}",
-            a_associate_rq
-                .user_information()
-                .asynchronous_operations_window()
-                .unwrap()
-                .maximum_number_operations_performed()
-        );
-    }
 
     println!("コネクションを切断します");
     socket.shutdown().await?;

@@ -4,11 +4,12 @@ use crate::dicom::network::pdu::a_associate::items::{INVALID_ITEM_TYPE_ERROR_MES
 
 pub const ITEM_TYPE: u8 = 0x50;
 
+// Maximum Length Application PDU NotificationとImplementation Identification Notificationに対応しているが、それ以外には対応していない。
+// 対応に迫られたら実装する。
 pub struct UserInformation {
     length: u16,
     maximum_length: Option<sub_items::MaximumLength>,
     implementation_class_uid: Option<sub_items::ImplementationClassUid>,
-    asynchronous_operations_window: Option<sub_items::AsynchronousOperationsWindow>,
     implementation_version_name: Option<sub_items::ImplementationVersionName>,
 }
 
@@ -29,12 +30,6 @@ impl UserInformation {
         self.implementation_class_uid.as_ref()
     }
 
-    pub fn asynchronous_operations_window(
-        &self,
-    ) -> Option<&sub_items::AsynchronousOperationsWindow> {
-        self.asynchronous_operations_window.as_ref()
-    }
-
     pub fn implementation_version_name(&self) -> Option<&sub_items::ImplementationVersionName> {
         self.implementation_version_name.as_ref()
     }
@@ -52,7 +47,6 @@ impl TryFrom<&[u8]> for UserInformation {
         let mut offset = 0;
         let mut maximum_length = Option::None;
         let mut implementation_class_uid = Option::None;
-        let mut asynchronous_operations_window = Option::None;
         let mut implementation_version_name = Option::None;
         while offset < item.data.len() {
             let sub_item_type = item.data[offset];
@@ -87,20 +81,6 @@ impl TryFrom<&[u8]> for UserInformation {
                         Some(implementation_class_uid)
                     }
                 }
-                sub_items::asynchronous_operations_window::ITEM_TYPE => {
-                    asynchronous_operations_window = {
-                        let asynchronous_operations_window =
-                            sub_items::AsynchronousOperationsWindow::try_from(&item.data[offset..])
-                                .map_err(|message| {
-                                    format!(
-                                        "Asynchronous Operations Window Sub-Item のパースに失敗しました: {}",
-                                        message
-                                    )
-                                })?;
-                        offset += asynchronous_operations_window.size();
-                        Some(asynchronous_operations_window)
-                    }
-                }
                 sub_items::implementation_version_name::ITEM_TYPE => {
                     implementation_version_name = {
                         let implementation_version_name =
@@ -116,14 +96,13 @@ impl TryFrom<&[u8]> for UserInformation {
                     }
                 }
                 _ => {
-                    // TODO: Maximum Length Sub-Item以外のSub-Itemのパース
-                    //     : 以下は暫定の実装。バイト列をそのまま出力する。
-                    println!("未対応の Sub-Item (0x{:02X}):", sub_item_type);
+                    // TODO: 対応しないサブアイテムの処理。暫定対応として、バイト列をそのまま出力している。
+                    println!("未対応の Sub-Item (Item-type=0x{:02X}): [", sub_item_type);
                     let sub_item = Item::try_from(&item.data[offset..])?;
                     for i in 0..sub_item.data.len() {
                         print!("0x{:02X} ", sub_item.data[i]);
                     }
-                    println!();
+                    println!("]");
                     offset += 4 + sub_item.data.len();
                 }
             }
@@ -133,7 +112,6 @@ impl TryFrom<&[u8]> for UserInformation {
             length: item.length,
             maximum_length,
             implementation_class_uid,
-            asynchronous_operations_window,
             implementation_version_name,
         })
     }
