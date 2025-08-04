@@ -30,7 +30,7 @@ impl TryFrom<&[u8]> for ImplementationClassUid {
             return Err(INVALID_ITEM_TYPE_ERROR_MESSAGE);
         }
 
-        let uid = std::str::from_utf8(&item.data)
+        let uid = std::str::from_utf8(item.data)
             .map_err(
                 |_| "Implementation-class-uid フィールドを UTF-8 の文字列として解釈できません",
             )?

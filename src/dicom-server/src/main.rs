@@ -23,7 +23,7 @@ async fn main() -> std::io::Result<()> {
     let a_associate_rq = match AAssociateRq::try_from(&buf[0..n]) {
         Ok(req) => req,
         Err(message) => {
-            eprintln!("A-ASSOCIATE-RQ PDU のパースに失敗しました: {}", message);
+            eprintln!("A-ASSOCIATE-RQ PDU のパースに失敗しました: {message}");
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
                 "A-ASSOCIATE-RQ PDU のパースに失敗しました",

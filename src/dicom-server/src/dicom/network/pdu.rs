@@ -1,9 +1,9 @@
 mod a_associate;
 pub mod a_associate_rq;
 
-const INVALID_FIELD_LENGTH_ERROR_MESSAGE: &'static str = "フィールドの長さが不正です";
-const INVALID_PDU_LENGTH_ERROR_MESSAGE: &'static str = "PDU-length が不正です";
-const INVALID_PDU_TYPE_ERROR_MESSAGE: &'static str = "PDU-type が不正です";
+const INVALID_FIELD_LENGTH_ERROR_MESSAGE: &str = "フィールドの長さが不正です";
+const INVALID_PDU_LENGTH_ERROR_MESSAGE: &str = "PDU-length が不正です";
+const INVALID_PDU_TYPE_ERROR_MESSAGE: &str = "PDU-type が不正です";
 
 struct Pdu<'a> {
     pdu_type: u8,

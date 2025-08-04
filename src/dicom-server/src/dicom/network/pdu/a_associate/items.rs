@@ -7,8 +7,8 @@ pub use application_context::ApplicationContext;
 pub use presentation_context::PresentationContext;
 pub use user_information::UserInformation;
 
-const INVALID_ITEM_TYPE_ERROR_MESSAGE: &'static str = "Item-type が不正です";
-const INVALID_ITEM_LENGTH_ERROR_MESSAGE: &'static str = "Item-length が不正です";
+const INVALID_ITEM_TYPE_ERROR_MESSAGE: &str = "Item-type が不正です";
+const INVALID_ITEM_LENGTH_ERROR_MESSAGE: &str = "Item-length が不正です";
 
 pub struct Item<'a> {
     pub item_type: u8,

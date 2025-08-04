@@ -57,10 +57,7 @@ impl TryFrom<&[u8]> for UserInformation {
                             &item.data[offset..],
                         )
                         .map_err(|message| {
-                            format!(
-                                "Maximum Length Sub-Item のパースに失敗しました: {}",
-                                message
-                            )
+                            format!("Maximum Length Sub-Item のパースに失敗しました: {message}")
                         })?;
                         offset += maximum_length.size();
                         Some(maximum_length)
@@ -73,8 +70,7 @@ impl TryFrom<&[u8]> for UserInformation {
                         )
                         .map_err(|message| {
                             format!(
-                                "Implementation Class UID Sub-Item のパースに失敗しました: {}",
-                                message
+                                "Implementation Class UID Sub-Item のパースに失敗しました: {message}"
                             )
                         })?;
                         offset += implementation_class_uid.size();
@@ -87,8 +83,7 @@ impl TryFrom<&[u8]> for UserInformation {
                             sub_items::ImplementationVersionName::try_from(&item.data[offset..])
                                 .map_err(|message| {
                                     format!(
-                                        "Implementation Version Name Sub-Item のパースに失敗しました: {}",
-                                        message
+                                        "Implementation Version Name Sub-Item のパースに失敗しました: {message}"
                                     )
                                 })?;
                         offset += implementation_version_name.size();
@@ -97,7 +92,7 @@ impl TryFrom<&[u8]> for UserInformation {
                 }
                 _ => {
                     // TODO: 対応しないサブアイテムの処理。暫定対応として、バイト列をそのまま出力している。
-                    println!("未対応の Sub-Item (Item-type=0x{:02X}): [", sub_item_type);
+                    println!("未対応の Sub-Item (Item-type=0x{sub_item_type:02X}): [");
                     let sub_item = Item::try_from(&item.data[offset..])?;
                     for i in 0..sub_item.data.len() {
                         print!("0x{:02X} ", sub_item.data[i]);

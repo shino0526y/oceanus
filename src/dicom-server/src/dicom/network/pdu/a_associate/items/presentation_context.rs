@@ -47,10 +47,7 @@ impl TryFrom<&[u8]> for PresentationContext {
         let mut offset = 4;
         let abstract_syntax =
             sub_items::AbstractSyntax::try_from(&item.data[offset..]).map_err(|message| {
-                format!(
-                    "Abstract Syntax Sub-Item のパースに失敗しました: {}",
-                    message
-                )
+                format!("Abstract Syntax Sub-Item のパースに失敗しました: {message}")
             })?;
         offset += abstract_syntax.size();
 
@@ -58,10 +55,7 @@ impl TryFrom<&[u8]> for PresentationContext {
         while offset < item.data.len() {
             let transfer_syntax = sub_items::TransferSyntax::try_from(&item.data[offset..])
                 .map_err(|message| {
-                    format!(
-                        "Transfer Syntax Sub-Item のパースに失敗しました: {}",
-                        message
-                    )
+                    format!("Transfer Syntax Sub-Item のパースに失敗しました: {message}")
                 })?;
             offset += transfer_syntax.size();
             transfer_syntaxes.push(transfer_syntax);

@@ -79,10 +79,7 @@ impl TryFrom<&[u8]> for AAssociateRq {
         let mut offset = 68;
         let application_context =
             ApplicationContext::try_from(&pdu.data[offset..]).map_err(|message| {
-                format!(
-                    "Application Context Item のパースに失敗しました: {}",
-                    message
-                )
+                format!("Application Context Item のパースに失敗しました: {message}")
             })?;
         offset += application_context.size();
 
@@ -94,10 +91,7 @@ impl TryFrom<&[u8]> for AAssociateRq {
                 a_associate::items::presentation_context::ITEM_TYPE => {
                     let presentation_context = PresentationContext::try_from(&pdu.data[offset..])
                         .map_err(|message| {
-                        format!(
-                            "Presentation Context Item のパースに失敗しました: {}",
-                            message
-                        )
+                        format!("Presentation Context Item のパースに失敗しました: {message}")
                     })?;
                     offset += presentation_context.size();
                     presentation_contexts.push(presentation_context);
@@ -105,15 +99,14 @@ impl TryFrom<&[u8]> for AAssociateRq {
                 a_associate::items::user_information::ITEM_TYPE => {
                     user_information = Some(
                         UserInformation::try_from(&pdu.data[offset..]).map_err(|message| {
-                            format!("User Information Item のパースに失敗しました: {}", message)
+                            format!("User Information Item のパースに失敗しました: {message}")
                         })?,
                     );
                     break;
                 }
                 _ => {
                     return Err(format!(
-                        "Presentation Context Item もしくは User Information Item のパースを試みようとした際に予期しない Item-type (0x{:02X}) を持つ Item が出現しました",
-                        item_type
+                        "Presentation Context Item もしくは User Information Item のパースを試みようとした際に予期しない Item-type (0x{item_type:02X}) を持つ Item が出現しました"
                     ));
                 }
             }

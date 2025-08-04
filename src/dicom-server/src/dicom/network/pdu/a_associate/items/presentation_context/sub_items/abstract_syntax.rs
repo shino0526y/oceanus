@@ -30,7 +30,7 @@ impl TryFrom<&[u8]> for AbstractSyntax {
             return Err(INVALID_ITEM_TYPE_ERROR_MESSAGE);
         }
 
-        let name = std::str::from_utf8(&item.data)
+        let name = std::str::from_utf8(item.data)
             .map_err(|_| "Abstract-syntax-name フィールドを UTF-8 の文字列として解釈できません")?
             .trim_end_matches('\0')
             .to_string();
