@@ -13,7 +13,7 @@ impl MaximumLength {
         8
     }
 
-    pub fn length(&self) -> u32 {
+    pub fn length(&self) -> u16 {
         4
     }
 
