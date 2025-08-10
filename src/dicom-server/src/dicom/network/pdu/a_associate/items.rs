@@ -4,13 +4,12 @@ pub mod user_information;
 
 use crate::dicom::network::pdu::INVALID_FIELD_LENGTH_ERROR_MESSAGE;
 pub use application_context::ApplicationContext;
-pub use presentation_context::PresentationContext;
 pub use user_information::UserInformation;
 
-const INVALID_ITEM_TYPE_ERROR_MESSAGE: &str = "Item-type が不正です";
+pub(crate) const INVALID_ITEM_TYPE_ERROR_MESSAGE: &str = "Item-type が不正です";
 const INVALID_ITEM_LENGTH_ERROR_MESSAGE: &str = "Item-length が不正です";
 
-pub struct Item<'a> {
+pub(crate) struct Item<'a> {
     pub item_type: u8,
     pub length: u16,
     pub data: &'a [u8],

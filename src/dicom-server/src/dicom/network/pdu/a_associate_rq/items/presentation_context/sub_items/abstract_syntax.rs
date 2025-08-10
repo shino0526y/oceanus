@@ -1,6 +1,6 @@
 use crate::dicom::network::pdu::a_associate::items::{INVALID_ITEM_TYPE_ERROR_MESSAGE, Item};
 
-pub const ITEM_TYPE: u8 = 0x30;
+pub(crate) const ITEM_TYPE: u8 = 0x30;
 
 pub struct AbstractSyntax {
     length: u16,

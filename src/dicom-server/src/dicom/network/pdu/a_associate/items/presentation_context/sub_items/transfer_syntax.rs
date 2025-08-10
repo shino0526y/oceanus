@@ -1,6 +1,6 @@
 use crate::dicom::network::pdu::a_associate::items::{INVALID_ITEM_TYPE_ERROR_MESSAGE, Item};
 
-pub const ITEM_TYPE: u8 = 0x40;
+pub(crate) const ITEM_TYPE: u8 = 0x40;
 
 pub struct TransferSyntax {
     length: u16,
@@ -18,6 +18,36 @@ impl TransferSyntax {
 
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn new<T: Into<String>>(name: T) -> Result<Self, &'static str> {
+        let name = name.into();
+        if name.is_empty() {
+            return Err("Transfer-syntax-name が空です");
+        }
+
+        let mut length = name.len() as u16;
+        if name.len() % 2 != 0 {
+            length += 1;
+        }
+
+        Ok(Self { length, name })
+    }
+}
+
+impl From<TransferSyntax> for Vec<u8> {
+    fn from(val: TransferSyntax) -> Self {
+        let mut bytes = Vec::with_capacity(val.size());
+
+        bytes.push(ITEM_TYPE);
+        bytes.push(0); // Reserved
+        bytes.extend(val.length.to_be_bytes());
+        bytes.extend(val.name.as_bytes());
+        if val.name.len() % 2 != 0 {
+            bytes.push(b'\0');
+        }
+
+        bytes
     }
 }
 

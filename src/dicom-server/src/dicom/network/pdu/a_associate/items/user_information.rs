@@ -2,13 +2,14 @@ pub mod sub_items;
 
 use crate::dicom::network::pdu::a_associate::items::{INVALID_ITEM_TYPE_ERROR_MESSAGE, Item};
 
-pub const ITEM_TYPE: u8 = 0x50;
+pub(crate) const ITEM_TYPE: u8 = 0x50;
 
 // Maximum Length Application PDU NotificationとImplementation Identification Notificationに対応しているが、それ以外には対応していない。
 // 対応に迫られたら実装する。
 pub struct UserInformation {
     length: u16,
     maximum_length: Option<sub_items::MaximumLength>,
+    // TODO: Implementation Class UIDは必須であるため、Optionではなく必須のフィールドとして定義する
     implementation_class_uid: Option<sub_items::ImplementationClassUid>,
     implementation_version_name: Option<sub_items::ImplementationVersionName>,
 }
@@ -32,6 +33,29 @@ impl UserInformation {
 
     pub fn implementation_version_name(&self) -> Option<&sub_items::ImplementationVersionName> {
         self.implementation_version_name.as_ref()
+    }
+
+    pub fn new(
+        maximum_length: Option<sub_items::MaximumLength>,
+        implementation_class_uid: sub_items::ImplementationClassUid,
+        implementation_version_name: Option<sub_items::ImplementationVersionName>,
+    ) -> Self {
+        let length = (maximum_length
+            .as_ref()
+            .map_or(0, |maximum_length| maximum_length.size())
+            + implementation_class_uid.size()
+            + implementation_version_name
+                .as_ref()
+                .map_or(0, |implementation_version_name| {
+                    implementation_version_name.size()
+                })) as u16;
+
+        Self {
+            length,
+            maximum_length,
+            implementation_class_uid: Some(implementation_class_uid),
+            implementation_version_name,
+        }
     }
 }
 
@@ -109,5 +133,29 @@ impl TryFrom<&[u8]> for UserInformation {
             implementation_class_uid,
             implementation_version_name,
         })
+    }
+}
+
+impl From<UserInformation> for Vec<u8> {
+    fn from(val: UserInformation) -> Vec<u8> {
+        let mut bytes = Vec::with_capacity(val.size());
+
+        bytes.push(ITEM_TYPE);
+        bytes.push(0); // Reserved
+        bytes.extend(val.length.to_be_bytes());
+
+        if let Some(maximum_length) = val.maximum_length {
+            bytes.append(&mut maximum_length.into());
+        }
+
+        if let Some(implementation_class_uid) = val.implementation_class_uid {
+            bytes.append(&mut implementation_class_uid.into());
+        }
+
+        if let Some(implementation_version_name) = val.implementation_version_name {
+            bytes.append(&mut implementation_version_name.into());
+        }
+
+        bytes
     }
 }

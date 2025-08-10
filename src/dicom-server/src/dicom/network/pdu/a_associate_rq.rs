@@ -1,10 +1,13 @@
+pub mod items;
+
 use crate::dicom::network::pdu::{
     self, INVALID_PDU_TYPE_ERROR_MESSAGE,
     a_associate::{
         self,
-        items::{ApplicationContext, PresentationContext, UserInformation},
+        items::{ApplicationContext, UserInformation},
     },
 };
+use items::PresentationContext;
 use std::vec;
 
 const PDU_TYPE: u8 = 0x01;
@@ -88,7 +91,7 @@ impl TryFrom<&[u8]> for AAssociateRq {
         while offset < pdu.data.len() {
             let item_type = pdu.data[offset];
             match item_type {
-                a_associate::items::presentation_context::ITEM_TYPE => {
+                items::presentation_context::ITEM_TYPE => {
                     let presentation_context = PresentationContext::try_from(&pdu.data[offset..])
                         .map_err(|message| {
                         format!("Presentation Context Item のパースに失敗しました: {message}")

@@ -1,6 +1,6 @@
 use crate::dicom::network::pdu::a_associate::items::{INVALID_ITEM_TYPE_ERROR_MESSAGE, Item};
 
-pub const ITEM_TYPE: u8 = 0x10;
+pub(crate) const ITEM_TYPE: u8 = 0x10;
 
 pub struct ApplicationContext {
     length: u16,
@@ -18,6 +18,32 @@ impl ApplicationContext {
 
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn new<T: Into<String>>(name: T) -> Self {
+        let name = name.into();
+        let mut length = name.len() as u16;
+        if name.len() % 2 != 0 {
+            length += 1;
+        }
+
+        ApplicationContext { length, name }
+    }
+}
+
+impl From<ApplicationContext> for Vec<u8> {
+    fn from(val: ApplicationContext) -> Self {
+        let mut bytes = Vec::with_capacity(val.size());
+
+        bytes.push(ITEM_TYPE);
+        bytes.push(0); // Reserved
+        bytes.extend(val.length.to_be_bytes());
+        bytes.extend(val.name.as_bytes());
+        if val.name.len() % 2 != 0 {
+            bytes.push(b'\0');
+        }
+
+        bytes
     }
 }
 

@@ -1,6 +1,6 @@
 use crate::dicom::network::pdu::a_associate::items::{INVALID_ITEM_TYPE_ERROR_MESSAGE, Item};
 
-pub const ITEM_TYPE: u8 = 0x52;
+pub(crate) const ITEM_TYPE: u8 = 0x52;
 
 pub struct ImplementationClassUid {
     length: u16,
@@ -18,6 +18,36 @@ impl ImplementationClassUid {
 
     pub fn uid(&self) -> &str {
         &self.uid
+    }
+
+    pub fn new<T: Into<String>>(uid: T) -> Result<Self, &'static str> {
+        let uid = uid.into();
+        if uid.is_empty() {
+            return Err("Implementation-class-uid が空です");
+        }
+
+        let mut length = uid.len() as u16;
+        if uid.len() % 2 != 0 {
+            length += 1;
+        }
+
+        Ok(Self { length, uid })
+    }
+}
+
+impl From<ImplementationClassUid> for Vec<u8> {
+    fn from(val: ImplementationClassUid) -> Self {
+        let mut bytes = Vec::with_capacity(val.size());
+
+        bytes.push(ITEM_TYPE);
+        bytes.push(0); // Reserved
+        bytes.extend(val.length.to_be_bytes());
+        bytes.extend(val.uid.as_bytes());
+        if val.uid.len() % 2 != 0 {
+            bytes.push(b'\0');
+        }
+
+        bytes
     }
 }
 
