@@ -75,12 +75,10 @@ async fn main() -> std::io::Result<()> {
             user_information.maximum_length().unwrap().maximum_length()
         );
     }
-    if user_information.implementation_class_uid().is_some() {
-        println!(
-            "  Implementation Class UID: {}",
-            user_information.implementation_class_uid().unwrap().uid()
-        );
-    }
+    println!(
+        "  Implementation Class UID: {}",
+        user_information.implementation_class_uid().uid()
+    );
     println!("--------------------");
     if called_ae_title != SERVER_AE_TITLE {
         // TODO: A_ASSOCIATE_RJを送信する

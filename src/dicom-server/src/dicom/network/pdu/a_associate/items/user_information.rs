@@ -9,8 +9,7 @@ pub(crate) const ITEM_TYPE: u8 = 0x50;
 pub struct UserInformation {
     length: u16,
     maximum_length: Option<sub_items::MaximumLength>,
-    // TODO: Implementation Class UIDは必須であるため、Optionではなく必須のフィールドとして定義する
-    implementation_class_uid: Option<sub_items::ImplementationClassUid>,
+    implementation_class_uid: sub_items::ImplementationClassUid,
     implementation_version_name: Option<sub_items::ImplementationVersionName>,
 }
 
@@ -27,8 +26,8 @@ impl UserInformation {
         self.maximum_length.as_ref()
     }
 
-    pub fn implementation_class_uid(&self) -> Option<&sub_items::ImplementationClassUid> {
-        self.implementation_class_uid.as_ref()
+    pub fn implementation_class_uid(&self) -> &sub_items::ImplementationClassUid {
+        &self.implementation_class_uid
     }
 
     pub fn implementation_version_name(&self) -> Option<&sub_items::ImplementationVersionName> {
@@ -53,7 +52,7 @@ impl UserInformation {
         Self {
             length,
             maximum_length,
-            implementation_class_uid: Some(implementation_class_uid),
+            implementation_class_uid,
             implementation_version_name,
         }
     }
@@ -127,6 +126,11 @@ impl TryFrom<&[u8]> for UserInformation {
             }
         }
 
+        if implementation_class_uid.is_none() {
+            return Err("Implementation Class UID Sub-Item が存在しません".to_string());
+        }
+        let implementation_class_uid = implementation_class_uid.unwrap();
+
         Ok(UserInformation {
             length: item.length,
             maximum_length,
@@ -148,9 +152,7 @@ impl From<UserInformation> for Vec<u8> {
             bytes.append(&mut maximum_length.into());
         }
 
-        if let Some(implementation_class_uid) = val.implementation_class_uid {
-            bytes.append(&mut implementation_class_uid.into());
-        }
+        bytes.append(&mut val.implementation_class_uid.into());
 
         if let Some(implementation_version_name) = val.implementation_version_name {
             bytes.append(&mut implementation_version_name.into());
