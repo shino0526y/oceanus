@@ -1,13 +1,11 @@
 use dicom_server::dicom::network::{
     CommandSet,
-    pdu::{
+    upper_layer_protocol::pdu::{
         AAssociateAc, AAssociateRq, PDataTf,
-        a_associate_ac::items::{
+        a_associate_ac::{
             ApplicationContext, PresentationContext, UserInformation,
-            presentation_context::{ResultReason, sub_items::TransferSyntax},
-            user_information::sub_items::{
-                ImplementationClassUid, ImplementationVersionName, MaximumLength,
-            },
+            presentation_context::{ResultReason, TransferSyntax},
+            user_information::{ImplementationClassUid, ImplementationVersionName, MaximumLength},
         },
     },
 };

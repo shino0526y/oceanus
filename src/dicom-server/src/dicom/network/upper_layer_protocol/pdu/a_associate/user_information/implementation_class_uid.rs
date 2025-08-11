@@ -1,4 +1,6 @@
-use crate::dicom::network::pdu::a_associate::items::{INVALID_ITEM_TYPE_ERROR_MESSAGE, Item};
+use crate::dicom::network::upper_layer_protocol::pdu::a_associate::{
+    INVALID_ITEM_TYPE_ERROR_MESSAGE, Item,
+};
 
 pub(crate) const ITEM_TYPE: u8 = 0x52;
 

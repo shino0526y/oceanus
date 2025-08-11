@@ -1,13 +1,15 @@
-use crate::dicom::network::pdu::a_associate::items::{INVALID_ITEM_TYPE_ERROR_MESSAGE, Item};
+use crate::dicom::network::upper_layer_protocol::pdu::a_associate::{
+    INVALID_ITEM_TYPE_ERROR_MESSAGE, Item,
+};
 
-pub(crate) const ITEM_TYPE: u8 = 0x40;
+pub(crate) const ITEM_TYPE: u8 = 0x55;
 
-pub struct TransferSyntax {
+pub struct ImplementationVersionName {
     length: u16,
     name: String,
 }
 
-impl TransferSyntax {
+impl ImplementationVersionName {
     pub fn size(&self) -> usize {
         4 + self.length as usize
     }
@@ -22,27 +24,32 @@ impl TransferSyntax {
 
     pub fn new<T: Into<String>>(name: T) -> Result<Self, &'static str> {
         let name = name.into();
-        if name.is_empty() {
-            return Err("Transfer-syntax-name が空です");
+        if name.is_empty() || name.len() > 16 {
+            return Err(
+                "Implementation-version-name は 1 文字以上 16 文字以下でなければなりません",
+            );
+        }
+        if !name.is_ascii() {
+            return Err(
+                "Implementation-version-name は ISO 646:1990 (basic G0 set) でエンコーディングされている必要があります",
+            );
         }
 
-        let mut length = name.len() as u16;
-        if name.len() % 2 != 0 {
-            length += 1;
-        }
+        let length = name.len() as u16;
 
         Ok(Self { length, name })
     }
 }
 
-impl From<TransferSyntax> for Vec<u8> {
-    fn from(val: TransferSyntax) -> Self {
+impl From<ImplementationVersionName> for Vec<u8> {
+    fn from(val: ImplementationVersionName) -> Self {
         let mut bytes = Vec::with_capacity(val.size());
 
         bytes.push(ITEM_TYPE);
         bytes.push(0); // Reserved
         bytes.extend(val.length.to_be_bytes());
         bytes.extend(val.name.as_bytes());
+
         if val.name.len() % 2 != 0 {
             bytes.push(b'\0');
         }
@@ -51,7 +58,7 @@ impl From<TransferSyntax> for Vec<u8> {
     }
 }
 
-impl TryFrom<&[u8]> for TransferSyntax {
+impl TryFrom<&[u8]> for ImplementationVersionName {
     type Error = &'static str;
 
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
@@ -61,11 +68,12 @@ impl TryFrom<&[u8]> for TransferSyntax {
         }
 
         let name = std::str::from_utf8(item.data)
-            .map_err(|_| "Transfer-syntax-name(s) フィールドを UTF-8 の文字列として解釈できません")?
-            .trim_end_matches('\0')
+            .map_err(
+                |_| "Implementation-version-name フィールドを UTF-8 の文字列として解釈できません",
+            )?
             .to_string();
 
-        Ok(TransferSyntax {
+        Ok(ImplementationVersionName {
             length: item.length,
             name,
         })

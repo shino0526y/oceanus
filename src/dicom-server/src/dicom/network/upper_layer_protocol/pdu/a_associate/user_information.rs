@@ -1,6 +1,13 @@
-pub mod sub_items;
+pub mod implementation_class_uid;
+pub mod implementation_version_name;
+pub mod maximum_length;
 
-use crate::dicom::network::pdu::a_associate::items::{INVALID_ITEM_TYPE_ERROR_MESSAGE, Item};
+use crate::dicom::network::upper_layer_protocol::pdu::a_associate::{
+    INVALID_ITEM_TYPE_ERROR_MESSAGE, Item,
+};
+pub use implementation_class_uid::ImplementationClassUid;
+pub use implementation_version_name::ImplementationVersionName;
+pub use maximum_length::MaximumLength;
 
 pub(crate) const ITEM_TYPE: u8 = 0x50;
 
@@ -8,9 +15,9 @@ pub(crate) const ITEM_TYPE: u8 = 0x50;
 // 対応に迫られたら実装する。
 pub struct UserInformation {
     length: u16,
-    maximum_length: Option<sub_items::MaximumLength>,
-    implementation_class_uid: sub_items::ImplementationClassUid,
-    implementation_version_name: Option<sub_items::ImplementationVersionName>,
+    maximum_length: Option<MaximumLength>,
+    implementation_class_uid: ImplementationClassUid,
+    implementation_version_name: Option<ImplementationVersionName>,
 }
 
 impl UserInformation {
@@ -22,22 +29,22 @@ impl UserInformation {
         self.length
     }
 
-    pub fn maximum_length(&self) -> Option<&sub_items::MaximumLength> {
+    pub fn maximum_length(&self) -> Option<&MaximumLength> {
         self.maximum_length.as_ref()
     }
 
-    pub fn implementation_class_uid(&self) -> &sub_items::ImplementationClassUid {
+    pub fn implementation_class_uid(&self) -> &ImplementationClassUid {
         &self.implementation_class_uid
     }
 
-    pub fn implementation_version_name(&self) -> Option<&sub_items::ImplementationVersionName> {
+    pub fn implementation_version_name(&self) -> Option<&ImplementationVersionName> {
         self.implementation_version_name.as_ref()
     }
 
     pub fn new(
-        maximum_length: Option<sub_items::MaximumLength>,
-        implementation_class_uid: sub_items::ImplementationClassUid,
-        implementation_version_name: Option<sub_items::ImplementationVersionName>,
+        maximum_length: Option<MaximumLength>,
+        implementation_class_uid: ImplementationClassUid,
+        implementation_version_name: Option<ImplementationVersionName>,
     ) -> Self {
         let length = (maximum_length
             .as_ref()
@@ -74,21 +81,19 @@ impl TryFrom<&[u8]> for UserInformation {
         while offset < item.data.len() {
             let sub_item_type = item.data[offset];
             match sub_item_type {
-                sub_items::maximum_length::ITEM_TYPE => {
+                maximum_length::ITEM_TYPE => {
                     maximum_length = {
-                        let maximum_length = sub_items::MaximumLength::try_from(
-                            &item.data[offset..],
-                        )
-                        .map_err(|message| {
-                            format!("Maximum Length Sub-Item のパースに失敗しました: {message}")
-                        })?;
+                        let maximum_length = MaximumLength::try_from(&item.data[offset..])
+                            .map_err(|message| {
+                                format!("Maximum Length Sub-Item のパースに失敗しました: {message}")
+                            })?;
                         offset += maximum_length.size();
                         Some(maximum_length)
                     }
                 }
-                sub_items::implementation_class_uid::ITEM_TYPE => {
+                implementation_class_uid::ITEM_TYPE => {
                     implementation_class_uid = {
-                        let implementation_class_uid = sub_items::ImplementationClassUid::try_from(
+                        let implementation_class_uid = ImplementationClassUid::try_from(
                             &item.data[offset..],
                         )
                         .map_err(|message| {
@@ -100,10 +105,10 @@ impl TryFrom<&[u8]> for UserInformation {
                         Some(implementation_class_uid)
                     }
                 }
-                sub_items::implementation_version_name::ITEM_TYPE => {
+                implementation_version_name::ITEM_TYPE => {
                     implementation_version_name = {
                         let implementation_version_name =
-                            sub_items::ImplementationVersionName::try_from(&item.data[offset..])
+                            ImplementationVersionName::try_from(&item.data[offset..])
                                 .map_err(|message| {
                                     format!(
                                         "Implementation Version Name Sub-Item のパースに失敗しました: {message}"

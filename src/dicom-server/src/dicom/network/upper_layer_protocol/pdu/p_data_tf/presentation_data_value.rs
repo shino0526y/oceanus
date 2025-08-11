@@ -1,4 +1,4 @@
-use crate::dicom::network::pdu::INVALID_FIELD_LENGTH_ERROR_MESSAGE;
+use crate::dicom::network::upper_layer_protocol::pdu::INVALID_FIELD_LENGTH_ERROR_MESSAGE;
 
 pub struct PresentationDataValue {
     length: u32,

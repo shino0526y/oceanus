@@ -1,4 +1,4 @@
-use crate::dicom::network::pdu::a_associate::items::{
+use crate::dicom::network::upper_layer_protocol::pdu::a_associate::{
     INVALID_ITEM_LENGTH_ERROR_MESSAGE, INVALID_ITEM_TYPE_ERROR_MESSAGE, Item,
 };
 

@@ -1,4 +1,4 @@
-pub mod sub_items;
+pub use crate::dicom::network::upper_layer_protocol::pdu::a_associate::presentation_context::transfer_syntax::TransferSyntax;
 
 pub(crate) const ITEM_TYPE: u8 = 0x21;
 
@@ -15,7 +15,7 @@ pub struct PresentationContext {
     length: u16,
     context_id: u8,
     result_reason: ResultReason,
-    transfer_syntax: sub_items::TransferSyntax,
+    transfer_syntax: TransferSyntax,
 }
 
 impl PresentationContext {
@@ -35,14 +35,14 @@ impl PresentationContext {
         self.result_reason
     }
 
-    pub fn transfer_syntax(&self) -> &sub_items::TransferSyntax {
+    pub fn transfer_syntax(&self) -> &TransferSyntax {
         &self.transfer_syntax
     }
 
     pub fn new(
         context_id: u8,
         result_reason: ResultReason,
-        transfer_syntax: sub_items::TransferSyntax,
+        transfer_syntax: TransferSyntax,
     ) -> Self {
         let length = 1 // Presentation-context-ID
             + 1 // Reserved

@@ -1,14 +1,18 @@
-pub mod sub_items;
+pub mod abstract_syntax;
 
-use crate::dicom::network::pdu::a_associate::items::{INVALID_ITEM_TYPE_ERROR_MESSAGE, Item};
+pub use crate::dicom::network::upper_layer_protocol::pdu::a_associate::presentation_context::transfer_syntax::{self, TransferSyntax};
+pub use abstract_syntax::AbstractSyntax;
+use crate::dicom::network::upper_layer_protocol::pdu::a_associate::{
+    INVALID_ITEM_TYPE_ERROR_MESSAGE, Item,
+};
 
 pub(crate) const ITEM_TYPE: u8 = 0x20;
 
 pub struct PresentationContext {
     length: u16,
     context_id: u8,
-    abstract_syntax: sub_items::AbstractSyntax,
-    transfer_syntaxes: Vec<sub_items::TransferSyntax>,
+    abstract_syntax: AbstractSyntax,
+    transfer_syntaxes: Vec<TransferSyntax>,
 }
 
 impl PresentationContext {
@@ -24,11 +28,11 @@ impl PresentationContext {
         self.context_id
     }
 
-    pub fn abstract_syntax(&self) -> &sub_items::AbstractSyntax {
+    pub fn abstract_syntax(&self) -> &AbstractSyntax {
         &self.abstract_syntax
     }
 
-    pub fn transfer_syntaxes(&self) -> &[sub_items::TransferSyntax] {
+    pub fn transfer_syntaxes(&self) -> &[TransferSyntax] {
         &self.transfer_syntaxes
     }
 }
@@ -46,15 +50,15 @@ impl TryFrom<&[u8]> for PresentationContext {
 
         let mut offset = 4;
         let abstract_syntax =
-            sub_items::AbstractSyntax::try_from(&item.data[offset..]).map_err(|message| {
+            AbstractSyntax::try_from(&item.data[offset..]).map_err(|message| {
                 format!("Abstract Syntax Sub-Item のパースに失敗しました: {message}")
             })?;
         offset += abstract_syntax.size();
 
         let mut transfer_syntaxes = vec![];
         while offset < item.data.len() {
-            let transfer_syntax = sub_items::TransferSyntax::try_from(&item.data[offset..])
-                .map_err(|message| {
+            let transfer_syntax =
+                TransferSyntax::try_from(&item.data[offset..]).map_err(|message| {
                     format!("Transfer Syntax Sub-Item のパースに失敗しました: {message}")
                 })?;
             offset += transfer_syntax.size();

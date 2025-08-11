@@ -1,6 +1,6 @@
 pub mod presentation_data_value;
 
-use crate::dicom::network::pdu::{self, INVALID_PDU_TYPE_ERROR_MESSAGE};
+use crate::dicom::network::upper_layer_protocol::pdu::{self, INVALID_PDU_TYPE_ERROR_MESSAGE};
 pub use presentation_data_value::PresentationDataValue;
 
 const PDU_TYPE: u8 = 0x04;

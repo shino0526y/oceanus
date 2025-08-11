@@ -1,14 +1,10 @@
-pub mod items;
+pub mod presentation_context;
 
-use crate::dicom::network::pdu::{
-    self, INVALID_PDU_TYPE_ERROR_MESSAGE,
-    a_associate::{
-        self,
-        items::{ApplicationContext, UserInformation},
-    },
+pub use crate::dicom::network::upper_layer_protocol::pdu::a_associate::*;
+use crate::dicom::network::upper_layer_protocol::pdu::{
+    self, INVALID_PDU_TYPE_ERROR_MESSAGE, a_associate,
 };
-use items::PresentationContext;
-use std::vec;
+pub use presentation_context::PresentationContext;
 
 const PDU_TYPE: u8 = 0x01;
 
@@ -91,7 +87,7 @@ impl TryFrom<&[u8]> for AAssociateRq {
         while offset < pdu.data.len() {
             let item_type = pdu.data[offset];
             match item_type {
-                items::presentation_context::ITEM_TYPE => {
+                presentation_context::ITEM_TYPE => {
                     let presentation_context = PresentationContext::try_from(&pdu.data[offset..])
                         .map_err(|message| {
                         format!("Presentation Context Item のパースに失敗しました: {message}")
@@ -99,7 +95,7 @@ impl TryFrom<&[u8]> for AAssociateRq {
                     offset += presentation_context.size();
                     presentation_contexts.push(presentation_context);
                 }
-                a_associate::items::user_information::ITEM_TYPE => {
+                a_associate::user_information::ITEM_TYPE => {
                     user_information = Some(
                         UserInformation::try_from(&pdu.data[offset..]).map_err(|message| {
                             format!("User Information Item のパースに失敗しました: {message}")

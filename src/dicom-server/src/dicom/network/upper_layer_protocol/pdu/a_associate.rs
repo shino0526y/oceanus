@@ -2,7 +2,7 @@ pub mod application_context;
 pub mod presentation_context;
 pub mod user_information;
 
-use crate::dicom::network::pdu::INVALID_FIELD_LENGTH_ERROR_MESSAGE;
+use crate::dicom::network::upper_layer_protocol::pdu::INVALID_FIELD_LENGTH_ERROR_MESSAGE;
 pub use application_context::ApplicationContext;
 pub use user_information::UserInformation;
 
