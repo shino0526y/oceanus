@@ -1,10 +1,13 @@
-use dicom_server::dicom::network::pdu::{
-    AAssociateAc, AAssociateRq,
-    a_associate_ac::items::{
-        ApplicationContext, PresentationContext, UserInformation,
-        presentation_context::{ResultReason, sub_items::TransferSyntax},
-        user_information::sub_items::{
-            ImplementationClassUid, ImplementationVersionName, MaximumLength,
+use dicom_server::dicom::network::{
+    CommandSet,
+    pdu::{
+        AAssociateAc, AAssociateRq, PDataTf,
+        a_associate_ac::items::{
+            ApplicationContext, PresentationContext, UserInformation,
+            presentation_context::{ResultReason, sub_items::TransferSyntax},
+            user_information::sub_items::{
+                ImplementationClassUid, ImplementationVersionName, MaximumLength,
+            },
         },
     },
 };
@@ -120,6 +123,44 @@ async fn main() -> std::io::Result<()> {
         let bytes: Vec<u8> = a_associate_ac.into();
         socket.write_all(&bytes).await?;
     }
+
+    let mut buf = [0u8; BUFFER_SIZE];
+    let n = socket.read(&mut buf).await?;
+
+    let p_data_tf = match PDataTf::try_from(&buf[0..n]) {
+        Ok(req) => req,
+        Err(e) => {
+            eprintln!("P-DATA-TF PDU のパースに失敗しました: {e}");
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "P-DATA-TF PDU のパースに失敗しました",
+            ));
+        }
+    };
+    println!("P-DATA-TF PDU を受信しました");
+    let buffer = p_data_tf
+        .presentation_data_values()
+        .iter()
+        .flat_map(|pdv| pdv.data().to_vec())
+        .collect::<Vec<_>>();
+    let command_set = CommandSet::try_from(buffer.as_ref()).map_err(|e| {
+        eprintln!("コマンドセットのパースに失敗しました: {e}");
+        std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "コマンドセットのパースに失敗しました",
+        )
+    })?;
+    println!("  コマンド:");
+    command_set.iter().for_each(|command| {
+        let tag = command.tag().to_string();
+        let value_field = command
+            .value_field()
+            .into_iter()
+            .map(|b| format!("0x{:02X}", b))
+            .collect::<Vec<_>>()
+            .join(", ");
+        println!("    {} [{}]", tag, value_field);
+    });
 
     println!("コネクションを切断します");
     socket.shutdown().await?;

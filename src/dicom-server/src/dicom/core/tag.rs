@@ -1,0 +1,31 @@
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Tag(u16, u16);
+
+impl Tag {
+    #[inline(always)]
+    pub fn group(self) -> u16 {
+        self.0
+    }
+
+    #[inline(always)]
+    pub fn element(self) -> u16 {
+        self.1
+    }
+
+    #[inline(always)]
+    pub fn new(group: u16, element: u16) -> Self {
+        Tag(group, element)
+    }
+}
+
+impl std::fmt::Debug for Tag {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Tag({:#06x?}, {:#06x?})", self.0, self.1)
+    }
+}
+
+impl std::fmt::Display for Tag {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "({:04X},{:04X})", self.0, self.1)
+    }
+}
