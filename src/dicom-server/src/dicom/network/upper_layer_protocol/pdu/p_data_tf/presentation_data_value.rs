@@ -39,6 +39,27 @@ impl PresentationDataValue {
     pub fn is_last(&self) -> bool {
         self.message_control_header & 0b00000010 == 2
     }
+
+    pub fn new(presentation_context_id: u8, is_command: bool, is_last: bool, data: &[u8]) -> Self {
+        let length = data.len() as u32
+            + 1 // Presentation Context ID
+            + 1; // Message Control Header
+        let mut message_control_header = 0;
+        if is_command {
+            message_control_header |= 0b00000001;
+        }
+        if is_last {
+            message_control_header |= 0b00000010;
+        }
+        let data = data.to_vec();
+
+        PresentationDataValue {
+            length,
+            presentation_context_id,
+            message_control_header,
+            data,
+        }
+    }
 }
 
 impl TryFrom<&[u8]> for PresentationDataValue {
@@ -64,5 +85,18 @@ impl TryFrom<&[u8]> for PresentationDataValue {
             message_control_header,
             data,
         })
+    }
+}
+
+impl From<&PresentationDataValue> for Vec<u8> {
+    fn from(val: &PresentationDataValue) -> Self {
+        let mut bytes = Vec::with_capacity(val.size());
+
+        bytes.extend(val.length().to_be_bytes());
+        bytes.push(val.presentation_context_id());
+        bytes.push(val.message_control_header());
+        bytes.extend(val.data());
+
+        bytes
     }
 }

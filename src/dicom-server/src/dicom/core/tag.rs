@@ -29,3 +29,14 @@ impl std::fmt::Display for Tag {
         write!(f, "({:04X},{:04X})", self.0, self.1)
     }
 }
+
+impl From<Tag> for Vec<u8> {
+    fn from(tag: Tag) -> Self {
+        let mut bytes = Vec::with_capacity(4);
+
+        bytes.extend(tag.group().to_le_bytes());
+        bytes.extend(tag.element().to_le_bytes());
+
+        bytes
+    }
+}

@@ -7,7 +7,8 @@ use std::{ops::Index, slice::Iter};
 const INVALID_BUFFER_LENGTH_ERROR_MESSAGE: &str = "バッファの長さが不正です";
 
 pub struct CommandSet {
-    commands: Vec<Command>,
+    pub(crate) size: usize,
+    pub(crate) commands: Vec<Command>,
 }
 
 impl CommandSet {
@@ -19,6 +20,11 @@ impl CommandSet {
     #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.commands.is_empty()
+    }
+
+    #[inline(always)]
+    pub fn size(&self) -> usize {
+        self.size
     }
 
     #[inline(always)]
@@ -77,14 +83,26 @@ impl TryFrom<&[u8]> for CommandSet {
 
             let command = Command {
                 tag: Tag::new(tag_group, tag_element),
-                value_length,
                 value_field,
             };
 
             offset += command.size();
             commands.push(command);
         }
+        let size = bytes.len();
 
-        Ok(CommandSet { commands })
+        Ok(CommandSet { size, commands })
+    }
+}
+
+impl From<&CommandSet> for Vec<u8> {
+    fn from(val: &CommandSet) -> Self {
+        let mut bytes = Vec::with_capacity(val.size());
+
+        for command in &val.commands {
+            bytes.append(&mut command.into());
+        }
+
+        bytes
     }
 }

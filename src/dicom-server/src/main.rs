@@ -1,11 +1,22 @@
 use dicom_server::dicom::network::{
     CommandSet,
-    upper_layer_protocol::pdu::{
-        AAssociateAc, AAssociateRq, PDataTf,
-        a_associate_ac::{
-            ApplicationContext, PresentationContext, UserInformation,
-            presentation_context::{ResultReason, TransferSyntax},
-            user_information::{ImplementationClassUid, ImplementationVersionName, MaximumLength},
+    dimse::c_echo::{
+        c_echo_rq::CEchoRq,
+        c_echo_rsp::{CEchoRsp, Status},
+    },
+    upper_layer_protocol::{
+        pdu::{
+            AAssociateAc, AAssociateRq, PDataTf,
+            a_associate_ac::{
+                ApplicationContext, PresentationContext, UserInformation,
+                presentation_context::{ResultReason, TransferSyntax},
+                user_information::{
+                    ImplementationClassUid, ImplementationVersionName, MaximumLength,
+                },
+            },
+        },
+        utils::command_set_converter::{
+            command_set_to_p_data_tf_pdus, p_data_tf_pdus_to_command_set,
         },
     },
 };
@@ -70,11 +81,10 @@ async fn main() -> std::io::Result<()> {
         }
     }
     println!("User Information: ");
+    let mut maximum_length = 0;
     if user_information.maximum_length().is_some() {
-        println!(
-            "  Maximum PDU Length: {}",
-            user_information.maximum_length().unwrap().maximum_length()
-        );
+        maximum_length = user_information.maximum_length().unwrap().maximum_length();
+        println!("  Maximum PDU Length: {maximum_length}");
     }
     println!(
         "  Implementation Class UID: {}",
@@ -125,6 +135,7 @@ async fn main() -> std::io::Result<()> {
     let mut buf = [0u8; BUFFER_SIZE];
     let n = socket.read(&mut buf).await?;
 
+    // TODO: 複数のP-DATA-TF PDUを受信する可能性があるため、ループで処理する
     let p_data_tf = match PDataTf::try_from(&buf[0..n]) {
         Ok(req) => req,
         Err(e) => {
@@ -136,29 +147,39 @@ async fn main() -> std::io::Result<()> {
         }
     };
     println!("P-DATA-TF PDU を受信しました");
-    let buffer = p_data_tf
-        .presentation_data_values()
-        .iter()
-        .flat_map(|pdv| pdv.data().to_vec())
-        .collect::<Vec<_>>();
-    let command_set = CommandSet::try_from(buffer.as_ref()).map_err(|e| {
-        eprintln!("コマンドセットのパースに失敗しました: {e}");
-        std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            "コマンドセットのパースに失敗しました",
-        )
-    })?;
-    println!("  コマンド:");
-    command_set.iter().for_each(|command| {
-        let tag = command.tag().to_string();
-        let value_field = command
-            .value_field()
-            .iter()
-            .map(|b| format!("0x{b:02X}"))
-            .collect::<Vec<_>>()
-            .join(", ");
-        println!("    {tag} [{value_field}]");
-    });
+
+    let presentation_context_id = p_data_tf.presentation_data_values()[0].presentation_context_id();
+    let c_echo_rq = {
+        let command_set = p_data_tf_pdus_to_command_set(&[p_data_tf]).map_err(|e| {
+            eprintln!("{e}");
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "コマンドセットのパースに失敗しました",
+            )
+        })?;
+
+        CEchoRq::try_from(command_set).map_err(|e| {
+            eprintln!("C-ECHO-RQ のパースに失敗しました: {e}");
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "C-ECHO-RQ のパースに失敗しました",
+            )
+        })?
+    };
+
+    // TODO: エラー処理
+    //     : エラー内容に応じて適切なステータスでC-ECHO-RSPを生成し、クライアントに送信する
+    let c_echo_rsp = CEchoRsp::new(c_echo_rq.message_id(), Status::Success);
+    println!("C-ECHO-RSP を送信します");
+    {
+        let command_set: CommandSet = c_echo_rsp.into();
+        let p_data_tf_pdus =
+            command_set_to_p_data_tf_pdus(&command_set, presentation_context_id, maximum_length);
+        for p_data_tf in p_data_tf_pdus {
+            let bytes: Vec<u8> = (&p_data_tf).into();
+            socket.write_all(&bytes).await?;
+        }
+    }
 
     println!("コネクションを切断します");
     socket.shutdown().await?;

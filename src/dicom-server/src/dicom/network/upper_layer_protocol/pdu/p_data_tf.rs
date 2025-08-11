@@ -22,6 +22,18 @@ impl PDataTf {
     pub fn presentation_data_values(&self) -> &[PresentationDataValue] {
         &self.presentation_data_values
     }
+
+    pub fn new(presentation_data_values: Vec<PresentationDataValue>) -> Self {
+        let length = presentation_data_values
+            .iter()
+            .map(|pdv| pdv.size() as u32)
+            .sum();
+
+        PDataTf {
+            length,
+            presentation_data_values,
+        }
+    }
 }
 
 impl TryFrom<&[u8]> for PDataTf {
@@ -46,5 +58,20 @@ impl TryFrom<&[u8]> for PDataTf {
             length: pdu.length,
             presentation_data_values,
         })
+    }
+}
+
+impl From<&PDataTf> for Vec<u8> {
+    fn from(val: &PDataTf) -> Self {
+        let mut bytes = Vec::with_capacity(val.size());
+
+        bytes.push(PDU_TYPE);
+        bytes.push(0); // Reserved
+        bytes.extend(val.length().to_be_bytes());
+        val.presentation_data_values().iter().for_each(|pdv| {
+            bytes.append(&mut pdv.into());
+        });
+
+        bytes
     }
 }
