@@ -153,11 +153,11 @@ async fn main() -> std::io::Result<()> {
         let tag = command.tag().to_string();
         let value_field = command
             .value_field()
-            .into_iter()
-            .map(|b| format!("0x{:02X}", b))
+            .iter()
+            .map(|b| format!("0x{b:02X}"))
             .collect::<Vec<_>>()
             .join(", ");
-        println!("    {} [{}]", tag, value_field);
+        println!("    {tag} [{value_field}]");
     });
 
     println!("コネクションを切断します");
