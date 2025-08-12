@@ -57,7 +57,7 @@ async fn main() -> std::io::Result<()> {
         match AAssociateRq::read_from_stream(&mut buf_reader, pdu_length).await {
             Ok(req) => req,
             Err(e) => {
-                panic!("A-ASSOCIATE-RQ PDU のパースに失敗しました: {:?}", e);
+                panic!("A-ASSOCIATE-RQ PDU のパースに失敗しました: {e:?}");
             }
         }
     };
@@ -151,7 +151,7 @@ async fn main() -> std::io::Result<()> {
         match PDataTf::read_from_stream(&mut buf_reader, pdu_length).await {
             Ok(req) => req,
             Err(e) => {
-                panic!("P-DATA-TF PDU のパースに失敗しました: {:?}", e);
+                panic!("P-DATA-TF PDU のパースに失敗しました: {e:?}");
             }
         }
     };
