@@ -70,10 +70,6 @@ impl From<ImplementationVersionName> for Vec<u8> {
         bytes.extend(val.length.to_be_bytes());
         bytes.extend(val.name.as_bytes());
 
-        if val.name.len() % 2 != 0 {
-            bytes.push(b'\0');
-        }
-
         bytes
     }
 }
