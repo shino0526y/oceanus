@@ -1,4 +1,7 @@
-use crate::dicom::network::upper_layer_protocol::pdu::INVALID_FIELD_LENGTH_ERROR_MESSAGE;
+use crate::dicom::{
+    errors::StreamParseError,
+    network::upper_layer_protocol::pdu::a_associate::INVALID_ITEM_LENGTH_ERROR_MESSAGE,
+};
 
 pub struct PresentationDataValue {
     length: u32,
@@ -53,33 +56,33 @@ impl PresentationDataValue {
         }
         let data = data.to_vec();
 
-        PresentationDataValue {
+        Self {
             length,
             presentation_context_id,
             message_control_header,
             data,
         }
     }
-}
 
-impl TryFrom<&[u8]> for PresentationDataValue {
-    type Error = &'static str;
+    pub async fn read_from_stream(
+        buf_reader: &mut tokio::io::BufReader<impl tokio::io::AsyncRead + Unpin>,
+        length: u32,
+    ) -> Result<Self, StreamParseError> {
+        use tokio::io::AsyncReadExt;
 
-    fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
-        if bytes.len() <= 6 {
-            return Err(INVALID_FIELD_LENGTH_ERROR_MESSAGE);
+        const SIZE_OF_PRESENTATION_CONTEXT_ID: usize = 1;
+        const SIZE_OF_MESSAGE_CONTROL_HEADER: usize = 1;
+        if (length as usize) < SIZE_OF_PRESENTATION_CONTEXT_ID + SIZE_OF_MESSAGE_CONTROL_HEADER {
+            return Err(StreamParseError::InvalidFormat {
+                message: INVALID_ITEM_LENGTH_ERROR_MESSAGE.to_string(),
+            });
         }
 
-        let length = u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
-        if bytes.len() < (4 + length as usize) {
-            return Err("Item-length が不正です");
-        }
-
-        let presentation_context_id = bytes[4];
-        let message_control_header = bytes[5];
-        let data = bytes[6..(4 + length as usize)].to_vec();
-
-        Ok(PresentationDataValue {
+        let presentation_context_id = buf_reader.read_u8().await?;
+        let message_control_header = buf_reader.read_u8().await?;
+        let mut data = vec![0; (length - 2) as usize];
+        buf_reader.read_exact(&mut data).await?;
+        Ok(Self {
             length,
             presentation_context_id,
             message_control_header,

@@ -1,5 +1,6 @@
-use crate::dicom::network::upper_layer_protocol::pdu::a_associate::{
-    INVALID_ITEM_LENGTH_ERROR_MESSAGE, INVALID_ITEM_TYPE_ERROR_MESSAGE, Item,
+use crate::dicom::{
+    errors::StreamParseError,
+    network::upper_layer_protocol::pdu::a_associate::INVALID_ITEM_LENGTH_ERROR_MESSAGE,
 };
 
 pub(crate) const ITEM_TYPE: u8 = 0x51;
@@ -24,6 +25,23 @@ impl MaximumLength {
     pub fn new(maximum_length: u32) -> Self {
         Self { maximum_length }
     }
+
+    pub async fn read_from_stream(
+        buf_reader: &mut tokio::io::BufReader<impl tokio::io::AsyncRead + Unpin>,
+        length: u16,
+    ) -> Result<Self, StreamParseError> {
+        use tokio::io::AsyncReadExt;
+
+        if length != 4 {
+            return Err(StreamParseError::InvalidFormat {
+                message: INVALID_ITEM_LENGTH_ERROR_MESSAGE.to_string(),
+            });
+        }
+
+        let maximum_length = buf_reader.read_u32().await?;
+
+        Ok(Self { maximum_length })
+    }
 }
 
 impl From<MaximumLength> for Vec<u8> {
@@ -36,24 +54,5 @@ impl From<MaximumLength> for Vec<u8> {
         bytes.extend(val.maximum_length.to_be_bytes());
 
         bytes
-    }
-}
-
-impl TryFrom<&[u8]> for MaximumLength {
-    type Error = &'static str;
-
-    fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
-        let item = Item::try_from(bytes)?;
-        if item.item_type != ITEM_TYPE {
-            return Err(INVALID_ITEM_TYPE_ERROR_MESSAGE);
-        }
-        if item.length != 4 {
-            return Err(INVALID_ITEM_LENGTH_ERROR_MESSAGE);
-        }
-
-        let maximum_length =
-            u32::from_be_bytes([item.data[0], item.data[1], item.data[2], item.data[3]]);
-
-        Ok(MaximumLength { maximum_length })
     }
 }

@@ -2,8 +2,9 @@ pub mod implementation_class_uid;
 pub mod implementation_version_name;
 pub mod maximum_length;
 
-use crate::dicom::network::upper_layer_protocol::pdu::a_associate::{
-    INVALID_ITEM_TYPE_ERROR_MESSAGE, Item,
+use crate::dicom::{
+    errors::StreamParseError,
+    network::upper_layer_protocol::pdu::a_associate::INVALID_ITEM_LENGTH_ERROR_MESSAGE,
 };
 pub use implementation_class_uid::ImplementationClassUid;
 pub use implementation_version_name::ImplementationVersionName;
@@ -63,81 +64,111 @@ impl UserInformation {
             implementation_version_name,
         }
     }
-}
 
-impl TryFrom<&[u8]> for UserInformation {
-    type Error = String;
-
-    fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
-        let item = Item::try_from(bytes)?;
-        if item.item_type != ITEM_TYPE {
-            return Err(INVALID_ITEM_TYPE_ERROR_MESSAGE.to_string());
-        }
+    pub async fn read_from_stream(
+        buf_reader: &mut tokio::io::BufReader<impl tokio::io::AsyncRead + Unpin>,
+        length: u16,
+    ) -> Result<Self, StreamParseError> {
+        use tokio::io::AsyncReadExt;
 
         let mut offset = 0;
         let mut maximum_length = Option::None;
         let mut implementation_class_uid = Option::None;
         let mut implementation_version_name = Option::None;
-        while offset < item.data.len() {
-            let sub_item_type = item.data[offset];
+        while offset < length as usize {
+            if offset + 4 > length as usize
+            // オフセット + Sub-Itemヘッダ（Item-type, Reserved, Item-length）の長さ > 全体の長さ
+            {
+                return Err(StreamParseError::InvalidFormat {
+                    message: INVALID_ITEM_LENGTH_ERROR_MESSAGE.to_string(),
+                });
+            }
+
+            let sub_item_type = buf_reader.read_u8().await?;
+            offset += 1;
+            buf_reader.read_u8().await?; // Reserved
+            offset += 1;
+            let sub_item_length = buf_reader.read_u16().await?;
+            offset += 2;
+
             match sub_item_type {
                 maximum_length::ITEM_TYPE => {
                     maximum_length = {
-                        let maximum_length = MaximumLength::try_from(&item.data[offset..])
-                            .map_err(|message| {
-                                format!("Maximum Length Sub-Item のパースに失敗しました: {message}")
-                            })?;
-                        offset += maximum_length.size();
+                        let maximum_length =
+                            MaximumLength::read_from_stream(buf_reader, sub_item_length)
+                                .await
+                                .map_err(|e| StreamParseError::InvalidFormat {
+                                    message: format!(
+                                        "Maximum Length Sub-Item のパースに失敗しました: {e}"
+                                    ),
+                                })?;
+                        offset += maximum_length.length() as usize;
+
                         Some(maximum_length)
                     }
                 }
                 implementation_class_uid::ITEM_TYPE => {
                     implementation_class_uid = {
-                        let implementation_class_uid = ImplementationClassUid::try_from(
-                            &item.data[offset..],
+                        let implementation_class_uid = ImplementationClassUid::read_from_stream(
+                            buf_reader,
+                            sub_item_length,
                         )
-                        .map_err(|message| {
-                            format!(
-                                "Implementation Class UID Sub-Item のパースに失敗しました: {message}"
-                            )
+                        .await
+                        .map_err(|e| StreamParseError::InvalidFormat {
+                            message: format!(
+                                "Implementation Class UID Sub-Item のパースに失敗しました: {e}"
+                            ),
                         })?;
-                        offset += implementation_class_uid.size();
+                        offset += implementation_class_uid.length() as usize;
+
                         Some(implementation_class_uid)
                     }
                 }
                 implementation_version_name::ITEM_TYPE => {
                     implementation_version_name = {
                         let implementation_version_name =
-                            ImplementationVersionName::try_from(&item.data[offset..])
-                                .map_err(|message| {
-                                    format!(
-                                        "Implementation Version Name Sub-Item のパースに失敗しました: {message}"
-                                    )
+                            ImplementationVersionName::read_from_stream(buf_reader, sub_item_length).await.map_err(|e| {
+                                    StreamParseError::InvalidFormat {
+                                        message: format!(
+                                            "Implementation Version Name Sub-Item のパースに失敗しました: {e}"
+                                        ),
+                                    }
                                 })?;
-                        offset += implementation_version_name.size();
+                        offset += implementation_version_name.length() as usize;
+
                         Some(implementation_version_name)
                     }
                 }
                 _ => {
                     // TODO: 対応しないサブアイテムの処理。暫定対応として、バイト列をそのまま出力している。
-                    println!("未対応の Sub-Item (Item-type=0x{sub_item_type:02X}): [");
-                    let sub_item = Item::try_from(&item.data[offset..])?;
-                    for i in 0..sub_item.data.len() {
-                        print!("0x{:02X} ", sub_item.data[i]);
+                    let mut buf = vec![0; sub_item_length as usize];
+                    buf_reader.read_exact(&mut buf).await?;
+                    offset += buf.len();
+
+                    print!("未対応の Sub-Item (Item-type=0x{sub_item_type:02X}): [");
+                    for b in buf {
+                        print!("0x{b:02X}, ");
                     }
                     println!("]");
-                    offset += 4 + sub_item.data.len();
                 }
             }
         }
 
-        if implementation_class_uid.is_none() {
-            return Err("Implementation Class UID Sub-Item が存在しません".to_string());
+        if offset != length as usize {
+            return Err(StreamParseError::InvalidFormat {
+                message: format!(
+                    "Item-length ({length}) と実際の読み取りバイト数 ({offset}) が一致しません"
+                ),
+            });
         }
-        let implementation_class_uid = implementation_class_uid.unwrap();
 
-        Ok(UserInformation {
-            length: item.length,
+        let implementation_class_uid =
+            implementation_class_uid.ok_or_else(|| StreamParseError::InvalidFormat {
+                message: "Implementation Class UID Sub-Item が存在しません".to_string(),
+            })?;
+
+        Ok(Self {
+            length,
             maximum_length,
             implementation_class_uid,
             implementation_version_name,

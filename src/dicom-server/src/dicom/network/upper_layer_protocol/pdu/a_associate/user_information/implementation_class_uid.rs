@@ -1,6 +1,4 @@
-use crate::dicom::network::upper_layer_protocol::pdu::a_associate::{
-    INVALID_ITEM_TYPE_ERROR_MESSAGE, Item,
-};
+use crate::dicom::errors::StreamParseError;
 
 pub(crate) const ITEM_TYPE: u8 = 0x52;
 
@@ -35,6 +33,29 @@ impl ImplementationClassUid {
 
         Ok(Self { length, uid })
     }
+
+    pub async fn read_from_stream(
+        buf_reader: &mut tokio::io::BufReader<impl tokio::io::AsyncRead + Unpin>,
+        length: u16,
+    ) -> Result<Self, StreamParseError> {
+        use tokio::io::AsyncReadExt;
+
+        let uid = {
+            let mut buf = vec![0u8; length as usize];
+            buf_reader.read_exact(&mut buf).await?;
+
+            std::str::from_utf8(&buf)
+                .map_err(|_| StreamParseError::InvalidFormat {
+                    message:
+                        "Implementation-class-uid フィールドを UTF-8 の文字列として解釈できません"
+                            .to_string(),
+                })?
+                .trim_end_matches('\0')
+                .to_string()
+        };
+
+        Ok(Self { length, uid })
+    }
 }
 
 impl From<ImplementationClassUid> for Vec<u8> {
@@ -50,28 +71,5 @@ impl From<ImplementationClassUid> for Vec<u8> {
         }
 
         bytes
-    }
-}
-
-impl TryFrom<&[u8]> for ImplementationClassUid {
-    type Error = &'static str;
-
-    fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
-        let item = Item::try_from(bytes)?;
-        if item.item_type != ITEM_TYPE {
-            return Err(INVALID_ITEM_TYPE_ERROR_MESSAGE);
-        }
-
-        let uid = std::str::from_utf8(item.data)
-            .map_err(
-                |_| "Implementation-class-uid フィールドを UTF-8 の文字列として解釈できません",
-            )?
-            .trim_end_matches('\0')
-            .to_string();
-
-        Ok(ImplementationClassUid {
-            length: item.length,
-            uid,
-        })
     }
 }

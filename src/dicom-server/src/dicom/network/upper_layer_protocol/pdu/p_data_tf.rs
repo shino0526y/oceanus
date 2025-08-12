@@ -1,9 +1,11 @@
 pub mod presentation_data_value;
 
-use crate::dicom::network::upper_layer_protocol::pdu::{self, INVALID_PDU_TYPE_ERROR_MESSAGE};
+use crate::dicom::{
+    errors::StreamParseError, network::upper_layer_protocol::pdu::INVALID_PDU_LENGTH_ERROR_MESSAGE,
+};
 pub use presentation_data_value::PresentationDataValue;
 
-const PDU_TYPE: u8 = 0x04;
+pub const PDU_TYPE: u8 = 0x04;
 
 pub struct PDataTf {
     length: u32,
@@ -29,33 +31,53 @@ impl PDataTf {
             .map(|pdv| pdv.size() as u32)
             .sum();
 
-        PDataTf {
+        Self {
             length,
             presentation_data_values,
         }
     }
-}
 
-impl TryFrom<&[u8]> for PDataTf {
-    type Error = String;
+    pub async fn read_from_stream(
+        buf_reader: &mut tokio::io::BufReader<impl tokio::io::AsyncRead + Unpin>,
+        length: u32,
+    ) -> Result<Self, StreamParseError> {
+        use tokio::io::AsyncReadExt;
 
-    fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
-        let pdu = pdu::Pdu::try_from(bytes)?;
-        if pdu.pdu_type != PDU_TYPE {
-            return Err(INVALID_PDU_TYPE_ERROR_MESSAGE.to_string());
-        }
-
-        let mut presentation_data_values = Vec::new();
         let mut offset = 0;
-        while offset < pdu.data.len() {
-            let pdv = PresentationDataValue::try_from(&pdu.data[offset..])
-                .map_err(|e| format!("Presentation Data Value Item のパースに失敗しました: {e}"))?;
-            offset += pdv.size();
+        let mut presentation_data_values = vec![];
+        while offset + 4 < length as usize {
+            // オフセット + PDVの最小サイズ が全体の長さを超えない範囲でループ
+
+            let pdv_length = buf_reader.read_u32().await?;
+            offset += 4;
+
+            if offset + pdv_length as usize > length as usize {
+                // オフセット + PDVの長さ が全体の長さを超える場合
+                return Err(StreamParseError::InvalidFormat {
+                    message: INVALID_PDU_LENGTH_ERROR_MESSAGE.to_string(),
+                });
+            }
+
+            let pdv = PresentationDataValue::read_from_stream(buf_reader, pdv_length)
+                .await
+                .map_err(|e| StreamParseError::InvalidFormat {
+                    message: format!("Presentation Data Value Item のパースに失敗しました: {e}"),
+                })?;
+            offset += pdv.length() as usize;
+
             presentation_data_values.push(pdv);
         }
 
-        Ok(PDataTf {
-            length: pdu.length,
+        if offset != length as usize {
+            return Err(StreamParseError::InvalidFormat {
+                message: format!(
+                    "PDU-length ({length}) と実際の読み取りバイト数 ({offset}) が一致しません"
+                ),
+            });
+        }
+
+        Ok(Self {
+            length,
             presentation_data_values,
         })
     }

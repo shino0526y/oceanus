@@ -2,9 +2,9 @@ pub mod abstract_syntax;
 
 pub use crate::dicom::network::upper_layer_protocol::pdu::a_associate::presentation_context::transfer_syntax::{self, TransferSyntax};
 pub use abstract_syntax::AbstractSyntax;
-use crate::dicom::network::upper_layer_protocol::pdu::a_associate::{
-    INVALID_ITEM_TYPE_ERROR_MESSAGE, Item,
-};
+use crate::dicom::{errors::StreamParseError, network::upper_layer_protocol::pdu::a_associate::{
+    INVALID_ITEM_LENGTH_ERROR_MESSAGE, INVALID_ITEM_TYPE_ERROR_MESSAGE
+}};
 
 pub(crate) const ITEM_TYPE: u8 = 0x20;
 
@@ -35,38 +35,94 @@ impl PresentationContext {
     pub fn transfer_syntaxes(&self) -> &[TransferSyntax] {
         &self.transfer_syntaxes
     }
-}
 
-impl TryFrom<&[u8]> for PresentationContext {
-    type Error = String;
+    pub async fn read_from_stream(
+        buf_reader: &mut tokio::io::BufReader<impl tokio::io::AsyncRead + Unpin>,
+        length: u16,
+    ) -> Result<Self, StreamParseError> {
+        use tokio::io::AsyncReadExt;
 
-    fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
-        let item = Item::try_from(bytes)?;
-        if item.item_type != ITEM_TYPE {
-            return Err(INVALID_ITEM_TYPE_ERROR_MESSAGE.to_string());
+        if length < 4 + 4
+        // Abstract Syntax Sub-Itemまでのフィールドの長さ + Abstract Syntax Sub-Item のヘッダ（Item-type, Reserved, Item-length）の長さ
+        {
+            return Err(StreamParseError::InvalidFormat {
+                message: INVALID_ITEM_LENGTH_ERROR_MESSAGE.to_string(),
+            });
         }
 
-        let context_id = item.data[0];
+        let mut offset = 0;
 
-        let mut offset = 4;
-        let abstract_syntax =
-            AbstractSyntax::try_from(&item.data[offset..]).map_err(|message| {
-                format!("Abstract Syntax Sub-Item のパースに失敗しました: {message}")
-            })?;
-        offset += abstract_syntax.size();
+        let context_id = buf_reader.read_u8().await?;
+        offset += 1;
+        buf_reader.read_u8().await?; // Reserved
+        offset += 1;
+        buf_reader.read_u8().await?; // Reserved
+        offset += 1;
+        buf_reader.read_u8().await?; // Reserved
+        offset += 1;
 
-        let mut transfer_syntaxes = vec![];
-        while offset < item.data.len() {
-            let transfer_syntax =
-                TransferSyntax::try_from(&item.data[offset..]).map_err(|message| {
-                    format!("Transfer Syntax Sub-Item のパースに失敗しました: {message}")
+        let abstract_syntax = {
+            let sub_item_type = buf_reader.read_u8().await?;
+            if sub_item_type != abstract_syntax::ITEM_TYPE {
+                return Err(StreamParseError::InvalidFormat {
+                    message: INVALID_ITEM_TYPE_ERROR_MESSAGE.to_string(),
+                });
+            }
+            offset += 1;
+            buf_reader.read_u8().await?; // Reserved
+            offset += 1;
+            let sub_item_length = buf_reader.read_u16().await?;
+            offset += 2;
+
+            let abstract_syntax = AbstractSyntax::read_from_stream(buf_reader, sub_item_length)
+                .await
+                .map_err(|e| StreamParseError::InvalidFormat {
+                    message: format!("Abstract Syntax Sub-Item のパースに失敗しました: {e}"),
                 })?;
-            offset += transfer_syntax.size();
+            offset += abstract_syntax.length() as usize;
+
+            abstract_syntax
+        };
+        let mut transfer_syntaxes = vec![];
+        while offset < length as usize {
+            if offset + 4 > length as usize {
+                return Err(StreamParseError::InvalidFormat {
+                    message: INVALID_ITEM_LENGTH_ERROR_MESSAGE.to_string(),
+                });
+            }
+
+            let sub_item_type = buf_reader.read_u8().await?;
+            if sub_item_type != transfer_syntax::ITEM_TYPE {
+                return Err(StreamParseError::InvalidFormat {
+                    message: INVALID_ITEM_TYPE_ERROR_MESSAGE.to_string(),
+                });
+            }
+            offset += 1;
+            buf_reader.read_u8().await?; // Reserved
+            offset += 1;
+            let sub_item_length = buf_reader.read_u16().await?;
+            offset += 2;
+
+            let transfer_syntax = TransferSyntax::read_from_stream(buf_reader, sub_item_length)
+                .await
+                .map_err(|e| StreamParseError::InvalidFormat {
+                    message: format!("Transfer Syntax Sub-Item のパースに失敗しました: {e}"),
+                })?;
+            offset += transfer_syntax.length() as usize;
+
             transfer_syntaxes.push(transfer_syntax);
         }
 
-        Ok(PresentationContext {
-            length: item.length,
+        if offset != length as usize {
+            return Err(StreamParseError::InvalidFormat {
+                message: format!(
+                    "Item-length ({length}) と実際の読み取りバイト数 ({offset}) が一致しません"
+                ),
+            });
+        }
+
+        Ok(Self {
+            length,
             context_id,
             abstract_syntax,
             transfer_syntaxes,

@@ -1,12 +1,13 @@
 pub mod presentation_context;
 
 pub use crate::dicom::network::upper_layer_protocol::pdu::a_associate::*;
-use crate::dicom::network::upper_layer_protocol::pdu::{
-    self, INVALID_PDU_TYPE_ERROR_MESSAGE, a_associate,
+use crate::dicom::{
+    errors::StreamParseError,
+    network::upper_layer_protocol::pdu::{INVALID_PDU_LENGTH_ERROR_MESSAGE, a_associate},
 };
 pub use presentation_context::PresentationContext;
 
-const PDU_TYPE: u8 = 0x01;
+pub const PDU_TYPE: u8 = 0x01;
 
 pub struct AAssociateRq {
     length: u32,
@@ -50,82 +51,167 @@ impl AAssociateRq {
     pub fn user_information(&self) -> &UserInformation {
         &self.user_information
     }
-}
 
-impl TryFrom<&[u8]> for AAssociateRq {
-    type Error = String;
+    pub async fn read_from_stream(
+        buf_reader: &mut tokio::io::BufReader<impl tokio::io::AsyncRead + Unpin>,
+        length: u32,
+    ) -> Result<Self, StreamParseError> {
+        use tokio::io::AsyncReadExt;
 
-    fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
-        let pdu = pdu::Pdu::try_from(bytes)?;
-        if pdu.pdu_type != PDU_TYPE {
-            return Err(INVALID_PDU_TYPE_ERROR_MESSAGE.to_string());
+        if length < 68 + 4
+        // Application Context Itemまでのフィールドの長さ + Application Context Itemのヘッダ（Item-type, Reserved, Item-length）の長さ
+        {
+            return Err(StreamParseError::InvalidFormat {
+                message: INVALID_PDU_LENGTH_ERROR_MESSAGE.to_string(),
+            });
         }
 
-        let version = u16::from_be_bytes([pdu.data[0], pdu.data[1]]);
-        let called_ae_title = std::str::from_utf8(&pdu.data[4..19])
-            .map_err(|_| {
-                "Called-AE-title フィールドを UTF-8 の文字列として解釈できません".to_string()
-            })?
-            .trim_end_matches(' ')
-            .to_string();
-        let calling_ae_title = std::str::from_utf8(&pdu.data[20..35])
-            .map_err(|_| {
-                "Calling-AE-title フィールドを UTF-8 の文字列として解釈できません".to_string()
-            })?
-            .trim_end_matches(' ')
-            .to_string();
+        let mut offset = 0;
 
-        let mut offset = 68;
-        let application_context =
-            ApplicationContext::try_from(&pdu.data[offset..]).map_err(|message| {
-                format!("Application Context Item のパースに失敗しました: {message}")
-            })?;
-        offset += application_context.size();
+        let version = buf_reader.read_u16().await?;
+        offset += 2;
+        buf_reader.read_u16().await?; // Reserved
+        offset += 2;
+        let called_ae_title = {
+            let mut buf = [0u8; 16];
+            buf_reader.read_exact(&mut buf).await?;
+            std::str::from_utf8(&buf)
+                .map_err(|_| StreamParseError::InvalidFormat {
+                    message: "Called-AE-title フィールドを UTF-8 の文字列として解釈できません"
+                        .to_string(),
+                })?
+                .trim_end_matches(' ')
+                .trim_start_matches(' ')
+                .to_string()
+        };
+        offset += 16;
+        let calling_ae_title = {
+            let mut buf = [0u8; 16];
+            buf_reader.read_exact(&mut buf).await?;
+            std::str::from_utf8(&buf)
+                .map_err(|_| StreamParseError::InvalidFormat {
+                    message: "Calling-AE-title フィールドを UTF-8 の文字列として解釈できません"
+                        .to_string(),
+                })?
+                .trim_end_matches(' ')
+                .trim_start_matches(' ')
+                .to_string()
+        };
+        offset += 16;
+        {
+            let mut buf = [0u8; 32];
+            buf_reader.read_exact(&mut buf).await?; // Reserved
+        };
+        offset += 32;
 
+        let application_context = {
+            let item_type = buf_reader.read_u8().await?;
+            if item_type != a_associate::application_context::ITEM_TYPE {
+                return Err(StreamParseError::InvalidFormat {
+                    message: "Application Context Item が存在しません".to_string(),
+                });
+            }
+            offset += 1;
+            buf_reader.read_u8().await?; // Reserved
+            offset += 1;
+            let item_length = buf_reader.read_u16().await?;
+            offset += 2;
+
+            if offset + item_length as usize > length as usize {
+                return Err(StreamParseError::InvalidFormat {
+                    message: INVALID_PDU_LENGTH_ERROR_MESSAGE.to_string(),
+                });
+            }
+
+            let application_context = ApplicationContext::read_from_stream(buf_reader, item_length)
+                .await
+                .map_err(|e| StreamParseError::InvalidFormat {
+                    message: format!("Application Context Item のパースに失敗しました: {e}"),
+                })?;
+            offset += application_context.length() as usize;
+
+            application_context
+        };
         let mut presentation_contexts = vec![];
-        let mut user_information = Option::None;
-        while offset < pdu.data.len() {
-            let item_type = pdu.data[offset];
+        let mut user_information = None;
+        while offset + 4 < length as usize {
+            let item_type = buf_reader.read_u8().await?;
+            offset += 1;
+            buf_reader.read_u8().await?; // Reserved
+            offset += 1;
+            let item_length = buf_reader.read_u16().await?;
+            offset += 2;
+
+            if offset + item_length as usize > length as usize {
+                return Err(StreamParseError::InvalidFormat {
+                    message: INVALID_PDU_LENGTH_ERROR_MESSAGE.to_string(),
+                });
+            }
+
             match item_type {
                 presentation_context::ITEM_TYPE => {
-                    let presentation_context = PresentationContext::try_from(&pdu.data[offset..])
-                        .map_err(|message| {
-                        format!("Presentation Context Item のパースに失敗しました: {message}")
-                    })?;
-                    offset += presentation_context.size();
+                    let presentation_context =
+                        PresentationContext::read_from_stream(buf_reader, item_length)
+                            .await
+                            .map_err(|e| StreamParseError::InvalidFormat {
+                                message: format!(
+                                    "Presentation Context Item のパースに失敗しました: {e}"
+                                ),
+                            })?;
+                    offset += presentation_context.length() as usize;
+
                     presentation_contexts.push(presentation_context);
                 }
-                a_associate::user_information::ITEM_TYPE => {
-                    user_information = Some(
-                        UserInformation::try_from(&pdu.data[offset..]).map_err(|message| {
-                            format!("User Information Item のパースに失敗しました: {message}")
-                        })?,
-                    );
+                user_information::ITEM_TYPE => {
+                    if presentation_contexts.is_empty() {
+                        return Err(StreamParseError::InvalidFormat {
+                            message: "Presentation Context Item が存在しません".to_string(),
+                        });
+                    }
+
+                    let temp_user_information =
+                        UserInformation::read_from_stream(buf_reader, item_length)
+                            .await
+                            .map_err(|e| StreamParseError::InvalidFormat {
+                                message: format!(
+                                    "User Information Item のパースに失敗しました: {e}"
+                                ),
+                            })?;
+                    offset += temp_user_information.length() as usize;
+
+                    user_information = Some(temp_user_information);
                     break;
                 }
                 _ => {
-                    return Err(format!(
-                        "Presentation Context Item もしくは User Information Item のパースを試みようとした際に予期しない Item-type (0x{item_type:02X}) を持つ Item が出現しました"
-                    ));
+                    return Err(StreamParseError::InvalidFormat {
+                        message: format!(
+                            "Presentation Context Item もしくは User Information Item のパースを試みようとした際に予期しない Item-type (0x{item_type:02X}) を持つ Item が出現しました"
+                        ),
+                    });
                 }
             }
         }
 
-        if presentation_contexts.is_empty() {
-            return Err("Presentation Context Item が存在しません".to_string());
-        }
-        if user_information.is_none() {
-            return Err("User Information Item が存在しません".to_string());
+        if offset != length as usize {
+            return Err(StreamParseError::InvalidFormat {
+                message: format!(
+                    "PDU-length ({length}) と実際の読み取りバイト数 ({offset}) が一致しません"
+                ),
+            });
         }
 
-        Ok(AAssociateRq {
-            length: pdu.length,
+        let user_information = user_information.ok_or_else(|| StreamParseError::InvalidFormat {
+            message: "User Information Item が存在しません".to_string(),
+        })?;
+
+        Ok(Self {
+            length,
             version,
             called_ae_title,
             calling_ae_title,
             application_context,
             presentation_contexts,
-            user_information: user_information.unwrap(),
+            user_information,
         })
     }
 }

@@ -14,6 +14,7 @@ use dicom_server::dicom::network::{
                     ImplementationClassUid, ImplementationVersionName, MaximumLength,
                 },
             },
+            a_associate_rq, p_data_tf,
         },
         utils::command_set_converter::{
             command_set_to_p_data_tf_pdus, p_data_tf_pdus_to_command_set,
@@ -25,7 +26,6 @@ use tokio::{
     net::TcpListener,
 };
 
-const BUFFER_SIZE: usize = 4096;
 const SERVER_AE_TITLE: &str = "SERVER";
 const IMPLEMENTATION_CLASS_UID: &str = "1.2.826.0.1.3680043.2.1396.999";
 const IMPLEMENTATION_VERSION_NAME: &str = "Oceanus";
@@ -43,17 +43,22 @@ async fn main() -> std::io::Result<()> {
         addr.port()
     );
 
-    let mut buf = [0u8; BUFFER_SIZE];
-    let n = socket.read(&mut buf).await?;
+    let a_associate_rq = {
+        let mut buf_reader = tokio::io::BufReader::new(&mut socket);
 
-    let a_associate_rq = match AAssociateRq::try_from(&buf[0..n]) {
-        Ok(req) => req,
-        Err(message) => {
-            eprintln!("A-ASSOCIATE-RQ PDU のパースに失敗しました: {message}");
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "A-ASSOCIATE-RQ PDU のパースに失敗しました",
-            ));
+        let pdu_type = buf_reader.read_u8().await?;
+        if pdu_type != a_associate_rq::PDU_TYPE {
+            // TODO: A-ASSOCIATE-RQ以外のPDUいきなり来た時のエラー処理を実装
+            panic!("A-ASSOCIATE-RQ 以外の PDU が受信されました");
+        }
+        buf_reader.read_u8().await?; // Reserved
+        let pdu_length = buf_reader.read_u32().await?;
+
+        match AAssociateRq::read_from_stream(&mut buf_reader, pdu_length).await {
+            Ok(req) => req,
+            Err(e) => {
+                panic!("A-ASSOCIATE-RQ PDU のパースに失敗しました: {:?}", e);
+            }
         }
     };
 
@@ -132,39 +137,35 @@ async fn main() -> std::io::Result<()> {
         socket.write_all(&bytes).await?;
     }
 
-    let mut buf = [0u8; BUFFER_SIZE];
-    let n = socket.read(&mut buf).await?;
+    let p_data_tf = {
+        let mut buf_reader = tokio::io::BufReader::new(&mut socket);
 
-    // TODO: 複数のP-DATA-TF PDUを受信する可能性があるため、ループで処理する
-    let p_data_tf = match PDataTf::try_from(&buf[0..n]) {
-        Ok(req) => req,
-        Err(e) => {
-            eprintln!("P-DATA-TF PDU のパースに失敗しました: {e}");
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "P-DATA-TF PDU のパースに失敗しました",
-            ));
+        let pdu_type = buf_reader.read_u8().await?;
+        if pdu_type != p_data_tf::PDU_TYPE {
+            // TODO: P-DATA-TF以外のPDUがいきなり来た時のエラー処理を実装
+            panic!("P-DATA-TF 以外の PDU が受信されました");
+        }
+        buf_reader.read_u8().await?; // Reserved
+        let pdu_length = buf_reader.read_u32().await?;
+
+        match PDataTf::read_from_stream(&mut buf_reader, pdu_length).await {
+            Ok(req) => req,
+            Err(e) => {
+                panic!("P-DATA-TF PDU のパースに失敗しました: {:?}", e);
+            }
         }
     };
     println!("P-DATA-TF PDU を受信しました");
 
     let presentation_context_id = p_data_tf.presentation_data_values()[0].presentation_context_id();
     let c_echo_rq = {
-        let command_set = p_data_tf_pdus_to_command_set(&[p_data_tf]).map_err(|e| {
-            eprintln!("{e}");
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "コマンドセットのパースに失敗しました",
-            )
-        })?;
+        let command_set = p_data_tf_pdus_to_command_set(&[p_data_tf]).unwrap_or_else(|e| {
+            panic!("コマンドセットのパースに失敗しました: {e}");
+        });
 
-        CEchoRq::try_from(command_set).map_err(|e| {
-            eprintln!("C-ECHO-RQ のパースに失敗しました: {e}");
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "C-ECHO-RQ のパースに失敗しました",
-            )
-        })?
+        CEchoRq::try_from(command_set).unwrap_or_else(|e| {
+            panic!("C-ECHO-RQ のパースに失敗しました: {e}");
+        })
     };
 
     // TODO: エラー処理
