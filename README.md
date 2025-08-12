@@ -52,7 +52,13 @@ make format
 make test
 ```
 
-### 4. 環境の停止
+### 4. ビルド成果物の削除
+
+```bash
+make clean
+```
+
+### 5. 環境の停止
 
 ```bash
 make exit

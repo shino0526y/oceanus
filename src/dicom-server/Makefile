@@ -1,6 +1,6 @@
 PROFILE ?= dev
 
-.PHONY: help run lint format test
+.PHONY: help run lint format test clean
 
 help:
 	@echo "使用可能なコマンド一覧:"
@@ -8,6 +8,7 @@ help:
 	@echo "  make lint - コードを静的解析する"
 	@echo "  make format - コードをフォーマットする"
 	@echo "  make test - テストを実行する"
+	@echo "  make clean - ビルド成果物を削除する"
 	@echo "  make help - このヘルプメッセージを表示する"
 
 run:
@@ -21,3 +22,6 @@ format:
 
 test:
 	@docker exec -it rust sh -c "cd src/dicom-server && cargo test"
+
+clean:
+	@docker exec -it rust sh -c "cd src/dicom-server && cargo clean"

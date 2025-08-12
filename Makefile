@@ -1,7 +1,7 @@
 PROFILE ?= dev
 MAKEFLAGS += --no-print-directory
 
-.PHONY: help init run run-dicom-server lint format test exit
+.PHONY: help init run run-dicom-server lint format test clean exit
 
 help:
 	@echo "使用可能なコマンド一覧:"
@@ -11,6 +11,7 @@ help:
 	@echo "  make lint - コードを静的解析する"
 	@echo "  make format - コードをフォーマットする"
 	@echo "  make test - テストを実行する"
+	@echo "  make clean - ビルド成果物を削除する"
 	@echo "  make exit - 環境を停止する"
 	@echo "  make help - このヘルプメッセージを表示する"
 
@@ -31,6 +32,9 @@ format:
 
 test:
 	@docker exec -it rust sh -c "cd src && cargo test"
+
+clean:
+	@docker exec -it rust sh -c "cd src && cargo clean"
 
 exit:
 	@docker compose down
