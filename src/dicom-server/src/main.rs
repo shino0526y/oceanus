@@ -6,7 +6,7 @@ use dicom_server::dicom::network::{
     },
     upper_layer_protocol::{
         pdu::{
-            AAssociateAc, AAssociateRq, PDataTf,
+            AAssociateAc, AAssociateRq, AReleaseRp, AReleaseRq, PDataTf,
             a_associate_ac::{
                 ApplicationContext, PresentationContext, UserInformation,
                 presentation_context::{ResultReason, TransferSyntax},
@@ -14,7 +14,7 @@ use dicom_server::dicom::network::{
                     ImplementationClassUid, ImplementationVersionName, MaximumLength,
                 },
             },
-            a_associate_rq, p_data_tf,
+            a_associate_rq, a_release_rq, p_data_tf,
         },
         utils::command_set_converter::{
             command_set_to_p_data_tf_pdus, p_data_tf_pdus_to_command_set,
@@ -180,6 +180,33 @@ async fn main() -> std::io::Result<()> {
             let bytes: Vec<u8> = (&p_data_tf).into();
             socket.write_all(&bytes).await?;
         }
+    }
+
+    // A-RELEASE-RQ PDUの受信
+    {
+        let mut buf_reader = tokio::io::BufReader::new(&mut socket);
+
+        let pdu_type = buf_reader.read_u8().await?;
+        if pdu_type != a_release_rq::PDU_TYPE {
+            // TODO: A-RELEASE-RQ以外のPDUがいきなり来た時のエラー処理を実装
+            panic!("A-RELEASE-RQ 以外の PDU が受信されました");
+        }
+        buf_reader.read_u8().await?; // Reserved
+        let pdu_length = buf_reader.read_u32().await?;
+
+        match AReleaseRq::read_from_stream(&mut buf_reader, pdu_length).await {
+            Ok(req) => req,
+            Err(e) => {
+                panic!("A-RELEASE-RQ PDU のパースに失敗しました: {e:?}");
+            }
+        }
+    };
+
+    let a_release_rp = AReleaseRp::new();
+    println!("A-RELEASE-RP を送信します");
+    {
+        let bytes: Vec<u8> = a_release_rp.into();
+        socket.write_all(&bytes).await?;
     }
 
     println!("コネクションを切断します");
