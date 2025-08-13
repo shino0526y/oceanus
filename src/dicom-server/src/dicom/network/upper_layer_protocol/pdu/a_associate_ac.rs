@@ -3,7 +3,7 @@ pub mod presentation_context;
 pub use crate::dicom::network::upper_layer_protocol::pdu::a_associate::*;
 pub use presentation_context::PresentationContext;
 
-const PDU_TYPE: u8 = 0x02;
+pub(crate) const PDU_TYPE: u8 = 0x02;
 
 pub struct AAssociateAc {
     length: u32,

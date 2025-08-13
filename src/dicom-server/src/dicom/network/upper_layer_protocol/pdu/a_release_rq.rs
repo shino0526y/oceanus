@@ -2,7 +2,7 @@ use crate::dicom::{
     errors::StreamParseError, network::upper_layer_protocol::pdu::INVALID_PDU_LENGTH_ERROR_MESSAGE,
 };
 
-pub const PDU_TYPE: u8 = 0x05;
+pub(crate) const PDU_TYPE: u8 = 0x05;
 
 pub struct AReleaseRq();
 

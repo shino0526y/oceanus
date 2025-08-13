@@ -1,4 +1,4 @@
-const PDU_TYPE: u8 = 0x06;
+pub(crate) const PDU_TYPE: u8 = 0x06;
 
 pub struct AReleaseRp();
 

@@ -5,7 +5,7 @@ use crate::dicom::{
 };
 pub use presentation_data_value::PresentationDataValue;
 
-pub const PDU_TYPE: u8 = 0x04;
+pub(crate) const PDU_TYPE: u8 = 0x04;
 
 pub struct PDataTf {
     length: u32,

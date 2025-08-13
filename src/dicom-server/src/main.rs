@@ -6,7 +6,7 @@ use dicom_server::dicom::network::{
     },
     upper_layer_protocol::{
         pdu::{
-            AAssociateAc, AAssociateRq, AReleaseRp, AReleaseRq, PDataTf,
+            AAbort, AAssociateAc, AAssociateRq, AReleaseRp, AReleaseRq, PDataTf, PduType, a_abort,
             a_associate_ac::{
                 ApplicationContext, PresentationContext, UserInformation,
                 presentation_context::{ResultReason, TransferSyntax},
@@ -14,7 +14,6 @@ use dicom_server::dicom::network::{
                     ImplementationClassUid, ImplementationVersionName, MaximumLength,
                 },
             },
-            a_associate_rq, a_release_rq, p_data_tf,
         },
         utils::command_set_converter::{
             command_set_to_p_data_tf_pdus, p_data_tf_pdus_to_command_set,
@@ -23,7 +22,7 @@ use dicom_server::dicom::network::{
 };
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
-    net::TcpListener,
+    net::{TcpListener, TcpStream},
 };
 
 const SERVER_AE_TITLE: &str = "SERVER";
@@ -46,9 +45,11 @@ async fn main() -> std::io::Result<()> {
     let a_associate_rq = {
         let mut buf_reader = tokio::io::BufReader::new(&mut socket);
 
-        let pdu_type = buf_reader.read_u8().await?;
-        if pdu_type != a_associate_rq::PDU_TYPE {
-            // TODO: A-ASSOCIATE-RQ以外のPDUいきなり来た時のエラー処理を実装
+        let pdu_type = PduType::try_from(buf_reader.read_u8().await?).unwrap_or_else(|e| {
+            panic!("PDU タイプの変換に失敗しました: {e}");
+        });
+        if pdu_type != PduType::AAssociateRq {
+            buf_reader.into_inner().shutdown().await?;
             panic!("A-ASSOCIATE-RQ 以外の PDU が受信されました");
         }
         buf_reader.read_u8().await?; // Reserved
@@ -64,45 +65,17 @@ async fn main() -> std::io::Result<()> {
 
     let called_ae_title = a_associate_rq.called_ae_title();
     let calling_ae_title = a_associate_rq.calling_ae_title();
-    let application_context = a_associate_rq.application_context();
-    let presentation_contexts = a_associate_rq.presentation_contexts();
-    let user_information = a_associate_rq.user_information();
 
     println!("Calling AE Title: {calling_ae_title}");
     println!("Called AE Title: {called_ae_title}");
-    println!("Version: {}", a_associate_rq.version());
-    println!("--------------------");
-    println!("Application Context: {}", application_context.name());
-    println!("Presentation Contexts: {}", presentation_contexts.len());
-    for pc in presentation_contexts {
-        println!(
-            "  Context ID: {}, Abstract Syntax: {}, Transfer Syntaxes: {}",
-            pc.context_id(),
-            pc.abstract_syntax().name(),
-            pc.transfer_syntaxes().len()
-        );
-        for ts in pc.transfer_syntaxes() {
-            println!("    Transfer Syntax: {}", ts.name());
-        }
-    }
-    println!("User Information: ");
-    let mut maximum_length = 0;
-    if user_information.maximum_length().is_some() {
-        maximum_length = user_information.maximum_length().unwrap().maximum_length();
-        println!("  Maximum PDU Length: {maximum_length}");
-    }
-    println!(
-        "  Implementation Class UID: {}",
-        user_information.implementation_class_uid().uid()
-    );
-    println!("--------------------");
     if called_ae_title != SERVER_AE_TITLE {
         // TODO: A_ASSOCIATE_RJを送信する
         panic!("サーバーの AE タイトルとクライアントの AE タイトルが一致しません");
     }
 
     let application_context = ApplicationContext::new("1.2.840.10008.3.1.1.1.1");
-    let presentation_contexts = presentation_contexts
+    let presentation_contexts = a_associate_rq
+        .presentation_contexts()
         .iter()
         .map(|presentation_context| {
             PresentationContext::new(
@@ -140,18 +113,27 @@ async fn main() -> std::io::Result<()> {
     let p_data_tf = {
         let mut buf_reader = tokio::io::BufReader::new(&mut socket);
 
-        let pdu_type = buf_reader.read_u8().await?;
-        if pdu_type != p_data_tf::PDU_TYPE {
-            // TODO: P-DATA-TF以外のPDUがいきなり来た時のエラー処理を実装
-            panic!("P-DATA-TF 以外の PDU が受信されました");
-        }
-        buf_reader.read_u8().await?; // Reserved
-        let pdu_length = buf_reader.read_u32().await?;
+        let pdu_type = PduType::try_from(buf_reader.read_u8().await?).unwrap_or_else(|e| {
+            panic!("PDU タイプの変換に失敗しました: {e}");
+        });
+        match pdu_type {
+            PduType::PDataTf => {
+                buf_reader.read_u8().await?; // Reserved
+                let pdu_length = buf_reader.read_u32().await?;
 
-        match PDataTf::read_from_stream(&mut buf_reader, pdu_length).await {
-            Ok(req) => req,
-            Err(e) => {
-                panic!("P-DATA-TF PDU のパースに失敗しました: {e:?}");
+                PDataTf::read_from_stream(&mut buf_reader, pdu_length)
+                    .await
+                    .unwrap_or_else(|e| {
+                        panic!("P-DATA-TF PDU のパースに失敗しました: {e}");
+                    })
+            }
+            PduType::AAbort => {
+                handle_abort(buf_reader).await?;
+                panic!("A-ABORT PDU が受信されました");
+            }
+            _ => {
+                abort(&mut socket, a_abort::Reason::UnexpectedPdu).await?;
+                panic!("P-DATA-TF 以外の PDU が受信されました");
             }
         }
     };
@@ -169,10 +151,14 @@ async fn main() -> std::io::Result<()> {
     };
 
     // TODO: エラー処理
-    //     : エラー内容に応じて適切なステータスでC-ECHO-RSPを生成し、クライアントに送信する
     let c_echo_rsp = CEchoRsp::new(c_echo_rq.message_id(), Status::Success);
     println!("C-ECHO-RSP を送信します");
     {
+        let maximum_length = a_associate_rq
+            .user_information()
+            .maximum_length()
+            .map_or(0, |maximum_length| maximum_length.maximum_length());
+
         let command_set: CommandSet = c_echo_rsp.into();
         let p_data_tf_pdus =
             command_set_to_p_data_tf_pdus(&command_set, presentation_context_id, maximum_length);
@@ -186,18 +172,28 @@ async fn main() -> std::io::Result<()> {
     {
         let mut buf_reader = tokio::io::BufReader::new(&mut socket);
 
-        let pdu_type = buf_reader.read_u8().await?;
-        if pdu_type != a_release_rq::PDU_TYPE {
-            // TODO: A-RELEASE-RQ以外のPDUがいきなり来た時のエラー処理を実装
-            panic!("A-RELEASE-RQ 以外の PDU が受信されました");
-        }
-        buf_reader.read_u8().await?; // Reserved
-        let pdu_length = buf_reader.read_u32().await?;
+        let pdu_type = PduType::try_from(buf_reader.read_u8().await?).unwrap_or_else(|e| {
+            panic!("PDU タイプの変換に失敗しました: {e}");
+        });
+        match pdu_type {
+            PduType::AReleaseRq => {
+                buf_reader.read_u8().await?; // Reserved
+                let pdu_length = buf_reader.read_u32().await?;
 
-        match AReleaseRq::read_from_stream(&mut buf_reader, pdu_length).await {
-            Ok(req) => req,
-            Err(e) => {
-                panic!("A-RELEASE-RQ PDU のパースに失敗しました: {e:?}");
+                match AReleaseRq::read_from_stream(&mut buf_reader, pdu_length).await {
+                    Ok(req) => req,
+                    Err(e) => {
+                        panic!("A-RELEASE-RQ PDU のパースに失敗しました: {e:?}");
+                    }
+                }
+            }
+            PduType::AAbort => {
+                handle_abort(buf_reader).await?;
+                panic!("A-ABORT PDU が受信されました");
+            }
+            _ => {
+                abort(&mut socket, a_abort::Reason::UnexpectedPdu).await?;
+                panic!("A-RELEASE-RQ 以外の PDU が受信されました");
             }
         }
     };
@@ -209,7 +205,44 @@ async fn main() -> std::io::Result<()> {
         socket.write_all(&bytes).await?;
     }
 
-    println!("コネクションを切断します");
+    socket.shutdown().await?;
+
+    Ok(())
+}
+
+/// A-ABORT PDU を受信し、処理する
+///
+/// 具体的には以下を行う。
+/// - ログの出力
+/// - 通信の切断
+async fn handle_abort(mut buf_reader: tokio::io::BufReader<&mut TcpStream>) -> std::io::Result<()> {
+    buf_reader.read_u8().await?; // Reserved
+    let pdu_length = buf_reader.read_u32().await?;
+
+    match AAbort::read_from_stream(&mut buf_reader, pdu_length).await {
+        Ok(a_abort) => {
+            eprintln!(
+                "A-ABORT PDU を受信しました (source={:02X}, reason={:02X})",
+                a_abort.source() as u8,
+                a_abort.reason() as u8
+            );
+        }
+        Err(e) => {
+            eprintln!("A-ABORT PDU のパースに失敗しました: {e}");
+        }
+    };
+
+    buf_reader.into_inner().shutdown().await?;
+
+    Ok(())
+}
+
+/// A-ABORT PDU を送信し、通信を切断する
+async fn abort(socket: &mut tokio::net::TcpStream, reason: a_abort::Reason) -> std::io::Result<()> {
+    let a_abort = AAbort::new(a_abort::Source::Provider, reason);
+
+    let bytes: Vec<u8> = a_abort.into();
+    socket.write_all(&bytes).await?;
     socket.shutdown().await?;
 
     Ok(())

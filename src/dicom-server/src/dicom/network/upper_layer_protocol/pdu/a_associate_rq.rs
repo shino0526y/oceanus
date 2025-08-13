@@ -7,7 +7,7 @@ use crate::dicom::{
 };
 pub use presentation_context::PresentationContext;
 
-pub const PDU_TYPE: u8 = 0x01;
+pub(crate) const PDU_TYPE: u8 = 0x01;
 
 pub struct AAssociateRq {
     length: u32,
