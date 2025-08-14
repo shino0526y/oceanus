@@ -12,16 +12,16 @@ help:
 	@echo "  make help - このヘルプメッセージを表示する"
 
 run:
-	@docker exec -it rust sh -c "cd src/dicom-server && cargo run --bin dicom-server --profile ${PROFILE}"
+	@cargo run --bin dicom-server --profile ${PROFILE}
 
 lint:
-	@docker exec -it rust sh -c "cd src/dicom-server && cargo clippy"
+	@cargo clippy
 
 format:
-	@docker exec -it rust sh -c "cd src/dicom-server && cargo fmt"
+	@cargo fmt
 
 test:
-	@docker exec -it rust sh -c "cd src/dicom-server && cargo test"
+	@cargo test
 
 clean:
-	@docker exec -it rust sh -c "cd src/dicom-server && cargo clean"
+	@cargo clean

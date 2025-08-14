@@ -1,24 +1,15 @@
 # Oceanus
 
-Rustで実装されたPACSです。
+Rust で実装された PACS です。
 
 ## 必要な環境
 
-- Docker
-- Docker Compose
+- Rust (1.85.0 以上)
 - Make
 
 ## 使い方
 
-### 1. 開発環境の初期化
-
-```bash
-make init
-```
-
-このコマンドでDockerが起動し、開発や実行に必要な環境が整います。
-
-### 2. アプリケーションの実行
+### 1. アプリケーションの実行
 
 #### 開発モード
 
@@ -32,7 +23,7 @@ make run
 make run PROFILE=release
 ```
 
-### 3. 開発ツール
+### 2. 開発ツール
 
 #### コードの静的解析
 
@@ -52,23 +43,16 @@ make format
 make test
 ```
 
-### 4. ビルド成果物の削除
+### 3. ビルド成果物の削除
 
 ```bash
 make clean
-```
-
-### 5. 環境の停止
-
-```bash
-make exit
 ```
 
 ## プロジェクト構成
 
 ```
 oceanus/
-├── docker/                 # Dockerイメージのソース
 ├── src/                    # Rustワークスペースのルート
 │   ├── Cargo.toml          # ワークスペース設定
 │   └── dicom-server/       # DICOMサーバー（バイナリクレート）
@@ -76,7 +60,6 @@ oceanus/
 │       ├── Makefile
 │       └── src/
 │           └── main.rs
-├── docker-compose.yml      # Docker環境設定
 ├── Makefile
 └── README.md
 ```
