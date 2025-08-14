@@ -17,7 +17,7 @@ run:
 	@make run-dicom-server PROFILE=${PROFILE}
 
 run-dicom-server:
-	@sh -c "cd src/dicom-server && make run PROFILE=${PROFILE}"
+	@cd src/dicom-server && make run PROFILE=${PROFILE}
 
 lint:
 	@cargo clippy
