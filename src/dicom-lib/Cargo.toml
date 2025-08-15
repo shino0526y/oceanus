@@ -1,5 +1,5 @@
 [package]
-name = "dicom-server"
+name = "dicom-lib"
 version.workspace = true
 authors.workspace = true
 edition.workspace = true
@@ -7,4 +7,3 @@ edition.workspace = true
 [dependencies]
 thiserror.workspace = true
 tokio.workspace = true
-dicom-lib.workspace = true

@@ -55,6 +55,7 @@ make clean
 oceanus/
 ├── src/                    # Rustワークスペースのルート
 │   ├── Cargo.toml          # ワークスペース設定
+│   │── dicom-lib/          # DICOMライブラリ
 │   └── dicom-server/       # DICOMサーバー（バイナリクレート）
 │       ├── Cargo.toml
 │       ├── Makefile

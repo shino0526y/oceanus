@@ -1,4 +1,4 @@
-use dicom_server::dicom::network::{
+use dicom_lib::network::{
     CommandSet,
     dimse::c_echo::{
         c_echo_rq::CEchoRq,
