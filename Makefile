@@ -20,13 +20,13 @@ run-dicom-server:
 	@cd src/dicom-server && make run PROFILE=${PROFILE}
 
 lint:
-	@cargo clippy
+	@cd src && cargo clippy
 
 format:
-	@cargo fmt
+	@cd src && cargo fmt
 
 test:
-	@cargo test
+	@cd src && cargo test
 
 clean:
-	@cargo clean
+	@cd src && cargo clean
