@@ -145,7 +145,7 @@ impl UserInformation {
                     offset += buf.len();
 
                     tracing::debug!(
-                        "未対応のSub-Itemが存在します (type=0x{sub_item_type:02X} buffer=[{}])",
+                        "未対応のSub-Itemが存在します (Item-type=0x{sub_item_type:02X} バイト列=[{}])",
                         buf.iter()
                             .map(|b| format!("0x{b:02X}"))
                             .collect::<Vec<_>>()
