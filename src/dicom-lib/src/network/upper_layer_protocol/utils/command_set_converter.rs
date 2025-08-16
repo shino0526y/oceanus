@@ -28,7 +28,7 @@ pub fn command_set_to_p_data_tf_pdus(
     let max_chunk_size = if maximum_length == 0 {
         data.len()
     } else {
-        maximum_length as usize - 6 // Presentation Data Value Item の実データ以外のサイズが6バイト
+        maximum_length as usize - 6 // Presentation Data Value Itemの実データ以外のサイズが6バイト
     };
     let mut offset = 0;
     while offset < data.len() {

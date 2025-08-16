@@ -4,7 +4,7 @@ pub enum StreamParseError {
     InvalidFormat { message: String },
     #[error("データの終端に予期せず到達しました")]
     UnexpectedEndOfBuffer,
-    #[error("I/O エラーが発生しました")]
+    #[error("I/Oエラーが発生しました")]
     IoError(std::io::Error),
 }
 

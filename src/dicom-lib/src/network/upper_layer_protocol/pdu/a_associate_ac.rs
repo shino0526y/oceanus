@@ -57,24 +57,24 @@ impl AAssociateAc {
         user_information: UserInformation,
     ) -> Result<Self, &'static str> {
         if version != 1 {
-            return Err("Protocol-version は 1 でなければなりません");
+            return Err("Protocol-versionは1でなければなりません");
         }
         let called_ae_title = called_ae_title.into();
         if called_ae_title.is_empty() || called_ae_title.len() > 16 {
-            return Err("Called-AE-title は 1 文字以上 16 文字以下でなければなりません");
+            return Err("Called-AE-titleは1文字以上16文字以下でなければなりません");
         }
         if !called_ae_title.is_ascii() {
             return Err(
-                "Called-AE-title は ISO 646:1990 (basic G0 set) でエンコーディングされている必要があります",
+                "Called-AE-titleはISO 646:1990 (basic G0 set)でエンコーディングされている必要があります",
             );
         }
         let calling_ae_title = calling_ae_title.into();
         if calling_ae_title.is_empty() || calling_ae_title.len() > 16 {
-            return Err("Calling-AE-title は 1 文字以上 16 文字以下でなければなりません");
+            return Err("Calling-AE-titleは1文字以上16文字以下でなければなりません");
         }
         if !calling_ae_title.is_ascii() {
             return Err(
-                "Calling-AE-title は ISO 646:1990 (basic G0 set) でエンコーディングされている必要があります",
+                "Calling-AE-titleはISO 646:1990 (basic G0 set)でエンコーディングされている必要があります",
             );
         }
 

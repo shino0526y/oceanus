@@ -21,7 +21,7 @@ impl TryFrom<u8> for Reason {
             4 => Ok(Reason::UnrecognizedPduParameter),
             5 => Ok(Reason::UnexpectedPduParameter),
             6 => Ok(Reason::InvalidPduParameterValue),
-            _ => Err(format!("未定義の Reason/Diag. です (reason=0x{val:02X})")),
+            _ => Err(format!("未定義のReason/Diag.です (Reason=0x{val:02X})")),
         }
     }
 }

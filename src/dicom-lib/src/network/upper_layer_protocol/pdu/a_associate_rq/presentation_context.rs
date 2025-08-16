@@ -42,9 +42,8 @@ impl PresentationContext {
     ) -> Result<Self, StreamParseError> {
         use tokio::io::AsyncReadExt;
 
-        if length < 4 + 4
-        // Abstract Syntax Sub-Itemまでのフィールドの長さ + Abstract Syntax Sub-Item のヘッダ（Item-type, Reserved, Item-length）の長さ
-        {
+        if length < 4 + 4 {
+            // Abstract Syntax Sub-Itemまでのフィールドの長さ + Abstract Syntax Sub-Itemのヘッダ（Item-type, Reserved, Item-length）の長さ が全体の長さを超えている場合
             return Err(StreamParseError::InvalidFormat {
                 message: INVALID_ITEM_LENGTH_ERROR_MESSAGE.to_string(),
             });
@@ -77,7 +76,7 @@ impl PresentationContext {
             let abstract_syntax = AbstractSyntax::read_from_stream(buf_reader, sub_item_length)
                 .await
                 .map_err(|e| StreamParseError::InvalidFormat {
-                    message: format!("Abstract Syntax Sub-Item のパースに失敗しました: {e}"),
+                    message: format!("Abstract Syntax Sub-Itemのパースに失敗しました: {e}"),
                 })?;
             offset += abstract_syntax.length() as usize;
 
@@ -106,7 +105,7 @@ impl PresentationContext {
             let transfer_syntax = TransferSyntax::read_from_stream(buf_reader, sub_item_length)
                 .await
                 .map_err(|e| StreamParseError::InvalidFormat {
-                    message: format!("Transfer Syntax Sub-Item のパースに失敗しました: {e}"),
+                    message: format!("Transfer Syntax Sub-Itemのパースに失敗しました: {e}"),
                 })?;
             offset += transfer_syntax.length() as usize;
 
@@ -116,7 +115,7 @@ impl PresentationContext {
         if offset != length as usize {
             return Err(StreamParseError::InvalidFormat {
                 message: format!(
-                    "Item-length ({length}) と実際の読み取りバイト数 ({offset}) が一致しません"
+                    "Item-lengthと実際の読み取りバイト数が一致しません (Item-length={length} 読み取りバイト数={offset})"
                 ),
             });
         }

@@ -31,7 +31,7 @@ impl AbstractSyntax {
             buf_reader.read_exact(&mut buf).await?;
             std::str::from_utf8(&buf)
                 .map_err(|_| StreamParseError::InvalidFormat {
-                    message: "Abstract-syntax-name フィールドを UTF-8 の文字列として解釈できません"
+                    message: "Abstract-syntax-nameフィールドをUTF-8の文字列として解釈できません"
                         .to_string(),
                 })?
                 .trim_end_matches('\0')

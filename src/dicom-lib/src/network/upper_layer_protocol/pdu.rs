@@ -13,7 +13,7 @@ pub use a_release_rp::AReleaseRp;
 pub use a_release_rq::AReleaseRq;
 pub use p_data_tf::PDataTf;
 
-pub(crate) const INVALID_PDU_LENGTH_ERROR_MESSAGE: &str = "PDU-length が不正です";
+pub(crate) const INVALID_PDU_LENGTH_ERROR_MESSAGE: &str = "PDU-lengthが不正です";
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum PduType {
@@ -38,7 +38,7 @@ impl TryFrom<u8> for PduType {
             a_release_rq::PDU_TYPE => Ok(PduType::AReleaseRq),
             a_release_rp::PDU_TYPE => Ok(PduType::AReleaseRp),
             a_abort::PDU_TYPE => Ok(PduType::AAbort),
-            _ => Err("PDU タイプが不正です"),
+            _ => Err("PDU-typeが不正です"),
         }
     }
 }

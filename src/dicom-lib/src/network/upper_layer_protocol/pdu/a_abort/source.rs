@@ -13,7 +13,7 @@ impl TryFrom<u8> for Source {
             0 => Ok(Source::User),
             1 => Ok(Source::Reserved),
             2 => Ok(Source::Provider),
-            _ => Err(format!("未定義の Source です (source=0x{val:02X})")),
+            _ => Err(format!("未定義のSourceです (Source=0x{val:02X})")),
         }
     }
 }

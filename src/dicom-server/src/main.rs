@@ -63,7 +63,7 @@ async fn main() -> std::io::Result<()> {
         .init();
 
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{PORT}")).await?;
-    tracing::info!("サーバーが起動しました (port={PORT})");
+    tracing::info!("サーバーが起動しました (ポート番号={PORT})");
 
     loop {
         let (socket, addr) = listener.accept().await?;
@@ -76,7 +76,7 @@ async fn main() -> std::io::Result<()> {
                 .instrument(tracing::span!(
                     tracing::Level::INFO,
                     "connection",
-                    id = connection_id
+                    ID = connection_id
                 ))
                 .await;
         });
@@ -87,7 +87,7 @@ async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::So
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
     tracing::info!(
-        "コネクションを確立しました (ip=\"{}\" port={})",
+        "コネクションを確立しました (IPアドレス=\"{}\" ポート番号={})",
         addr.ip(),
         addr.port()
     );
@@ -96,11 +96,11 @@ async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::So
         let mut buf_reader = tokio::io::BufReader::new(&mut socket);
 
         let pdu_type = PduType::try_from(buf_reader.read_u8().await.unwrap()).unwrap_or_else(|e| {
-            panic!("PDU タイプの変換に失敗しました: {e}");
+            panic!("PDUタイプの変換に失敗しました: {e}");
         });
         if pdu_type != PduType::AAssociateRq {
             buf_reader.get_mut().shutdown().await.unwrap();
-            panic!("A-ASSOCIATE-RQ 以外の PDU を受信しました");
+            panic!("A-ASSOCIATE-RQ以外のPDUを受信しました");
         }
         buf_reader.read_u8().await.unwrap(); // Reserved
         let pdu_length = buf_reader.read_u32().await.unwrap();
@@ -108,19 +108,19 @@ async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::So
         match AAssociateRq::read_from_stream(&mut buf_reader, pdu_length).await {
             Ok(req) => req,
             Err(e) => {
-                panic!("A-ASSOCIATE-RQ のパースに失敗しました: {e:?}");
+                panic!("A-ASSOCIATE-RQのパースに失敗しました: {e:?}");
             }
         }
     };
     let called_ae_title = a_associate_rq.called_ae_title();
     let calling_ae_title = a_associate_rq.calling_ae_title();
     tracing::info!(
-        "A-ASSOCIATE-RQ を受信しました (from=\"{calling_ae_title}\" to=\"{called_ae_title}\")"
+        "A-ASSOCIATE-RQを受信しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\")"
     );
 
     if called_ae_title != SERVER_AE_TITLE {
         // TODO: A_ASSOCIATE_RJを送信する
-        panic!("サーバーの AE タイトルとクライアントの AE タイトルが一致しません");
+        panic!("サーバーのAEタイトルとクライアントのAEタイトルが一致しません");
     }
 
     let application_context = ApplicationContext::new("1.2.840.10008.3.1.1.1.1");
@@ -154,7 +154,7 @@ async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::So
     )
     .unwrap();
 
-    tracing::info!("A-ASSOCIATE-AC を送信します");
+    tracing::info!("A-ASSOCIATE-ACを送信します");
     {
         let bytes: Vec<u8> = a_associate_ac.into();
         socket.write_all(&bytes).await.unwrap();
@@ -164,7 +164,7 @@ async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::So
         let mut buf_reader = tokio::io::BufReader::new(&mut socket);
 
         let pdu_type = PduType::try_from(buf_reader.read_u8().await.unwrap()).unwrap_or_else(|e| {
-            panic!("PDU タイプの変換に失敗しました: {e}");
+            panic!("PDUタイプの変換に失敗しました: {e}");
         });
         match pdu_type {
             PduType::PDataTf => {
@@ -174,22 +174,22 @@ async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::So
                 PDataTf::read_from_stream(&mut buf_reader, pdu_length)
                     .await
                     .unwrap_or_else(|e| {
-                        panic!("P-DATA-TF のパースに失敗しました: {e}");
+                        panic!("P-DATA-TFのパースに失敗しました: {e}");
                     })
             }
             PduType::AAbort => {
                 handle_abort(buf_reader).await.unwrap();
-                panic!("A-ABORT を受信しました");
+                panic!("A-ABORTを受信しました");
             }
             _ => {
                 abort(&mut socket, a_abort::Reason::UnexpectedPdu)
                     .await
                     .unwrap();
-                panic!("P-DATA-TF 以外の PDU を受信しました");
+                panic!("P-DATA-TF以外のPDUを受信しました");
             }
         }
     };
-    tracing::info!("P-DATA-TF を受信しました");
+    tracing::info!("P-DATA-TFを受信しました");
 
     let presentation_context_id = p_data_tf.presentation_data_values()[0].presentation_context_id();
     let c_echo_rq = {
@@ -198,13 +198,13 @@ async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::So
         });
 
         CEchoRq::try_from(command_set).unwrap_or_else(|e| {
-            panic!("C-ECHO-RQ のパースに失敗しました: {e}");
+            panic!("C-ECHO-RQのパースに失敗しました: {e}");
         })
     };
 
     // TODO: エラー処理
     let c_echo_rsp = CEchoRsp::new(c_echo_rq.message_id(), Status::Success);
-    tracing::info!("C-ECHO-RSP を送信します");
+    tracing::info!("C-ECHO-RSPを送信します");
     {
         let maximum_length = a_associate_rq
             .user_information()
@@ -225,7 +225,7 @@ async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::So
         let mut buf_reader = tokio::io::BufReader::new(&mut socket);
 
         let pdu_type = PduType::try_from(buf_reader.read_u8().await.unwrap()).unwrap_or_else(|e| {
-            panic!("PDU タイプの変換に失敗しました: {e}");
+            panic!("PDUタイプの変換に失敗しました: {e}");
         });
         match pdu_type {
             PduType::AReleaseRq => {
@@ -235,25 +235,25 @@ async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::So
                 match AReleaseRq::read_from_stream(&mut buf_reader, pdu_length).await {
                     Ok(req) => req,
                     Err(e) => {
-                        panic!("A-RELEASE-RQ のパースに失敗しました: {e:?}");
+                        panic!("A-RELEASE-RQのパースに失敗しました: {e:?}");
                     }
                 }
             }
             PduType::AAbort => {
                 handle_abort(buf_reader).await.unwrap();
-                panic!("A-ABORT を受信しました");
+                panic!("A-ABORTを受信しました");
             }
             _ => {
                 abort(&mut socket, a_abort::Reason::UnexpectedPdu)
                     .await
                     .unwrap();
-                panic!("A-RELEASE-RQ 以外の PDU を受信しました");
+                panic!("A-RELEASE-RQ以外のPDUを受信しました");
             }
         }
     };
 
     let a_release_rp = AReleaseRp::new();
-    tracing::info!("A-RELEASE-RP を送信します");
+    tracing::info!("A-RELEASE-RPを送信します");
     {
         let bytes: Vec<u8> = a_release_rp.into();
         socket.write_all(&bytes).await.unwrap();
@@ -262,7 +262,7 @@ async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::So
     tracing::info!("{DISCONNECTION_MESSAGE}");
 }
 
-/// A-ABORT を受信し、処理する
+/// A-ABORTを受信し、処理する
 ///
 /// 具体的には以下を行う。
 /// - ログの出力
@@ -278,13 +278,13 @@ async fn handle_abort(
     match AAbort::read_from_stream(&mut buf_reader, pdu_length).await {
         Ok(a_abort) => {
             tracing::info!(
-                "A-ABORT を受信しました (source={:02X}, reason={:02X})",
+                "A-ABORTを受信しました (Source={:02X} Reason={:02X})",
                 a_abort.source() as u8,
                 a_abort.reason() as u8
             );
         }
         Err(e) => {
-            tracing::error!("A-ABORT のパースに失敗しました: {e}");
+            tracing::error!("A-ABORTのパースに失敗しました: {e}");
         }
     };
 
@@ -293,7 +293,7 @@ async fn handle_abort(
     Ok(())
 }
 
-/// A-ABORT を送信し、通信を切断する
+/// A-ABORTを送信し、通信を切断する
 async fn abort(socket: &mut tokio::net::TcpStream, reason: a_abort::Reason) -> std::io::Result<()> {
     use tokio::io::AsyncWriteExt;
 

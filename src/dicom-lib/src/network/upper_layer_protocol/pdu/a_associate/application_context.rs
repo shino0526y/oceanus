@@ -42,7 +42,7 @@ impl ApplicationContext {
             std::str::from_utf8(&buf)
                 .map_err(|_| StreamParseError::InvalidFormat {
                     message:
-                        "Application-context-name フィールドを UTF-8 の文字列として解釈できません"
+                        "Application-context-nameフィールドをUTF-8の文字列として解釈できません"
                             .to_string(),
                 })?
                 .trim_end_matches('\0')

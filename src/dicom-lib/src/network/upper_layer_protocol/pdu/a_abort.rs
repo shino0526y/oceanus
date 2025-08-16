@@ -51,12 +51,12 @@ impl AAbort {
         buf_reader.read_u8().await?; // Reserved
         let source = Source::try_from(buf_reader.read_u8().await?).map_err(|e| {
             StreamParseError::InvalidFormat {
-                message: format!("Source の変換に失敗しました: {e}"),
+                message: format!("Sourceの変換に失敗しました: {e}"),
             }
         })?;
         let reason = Reason::try_from(buf_reader.read_u8().await?).map_err(|e| {
             StreamParseError::InvalidFormat {
-                message: format!("Reason/Diag. の変換に失敗しました: {e}"),
+                message: format!("Reason/Diag.の変換に失敗しました: {e}"),
             }
         })?;
 

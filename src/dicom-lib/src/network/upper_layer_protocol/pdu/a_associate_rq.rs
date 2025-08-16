@@ -58,9 +58,8 @@ impl AAssociateRq {
     ) -> Result<Self, StreamParseError> {
         use tokio::io::AsyncReadExt;
 
-        if length < 68 + 4
-        // Application Context Itemまでのフィールドの長さ + Application Context Itemのヘッダ（Item-type, Reserved, Item-length）の長さ
-        {
+        if length < 68 + 4 {
+            // Application Context Itemまでのフィールドの長さ + Application Context Itemのヘッダ（Item-type, Reserved, Item-length）の長さ が全体の長さを超えている場合
             return Err(StreamParseError::InvalidFormat {
                 message: INVALID_PDU_LENGTH_ERROR_MESSAGE.to_string(),
             });
@@ -77,7 +76,7 @@ impl AAssociateRq {
             buf_reader.read_exact(&mut buf).await?;
             std::str::from_utf8(&buf)
                 .map_err(|_| StreamParseError::InvalidFormat {
-                    message: "Called-AE-title フィールドを UTF-8 の文字列として解釈できません"
+                    message: "Called-AE-titleフィールドをUTF-8の文字列として解釈できません"
                         .to_string(),
                 })?
                 .trim_end_matches(' ')
@@ -90,7 +89,7 @@ impl AAssociateRq {
             buf_reader.read_exact(&mut buf).await?;
             std::str::from_utf8(&buf)
                 .map_err(|_| StreamParseError::InvalidFormat {
-                    message: "Calling-AE-title フィールドを UTF-8 の文字列として解釈できません"
+                    message: "Calling-AE-titleフィールドをUTF-8の文字列として解釈できません"
                         .to_string(),
                 })?
                 .trim_end_matches(' ')
@@ -108,7 +107,7 @@ impl AAssociateRq {
             let item_type = buf_reader.read_u8().await?;
             if item_type != a_associate::application_context::ITEM_TYPE {
                 return Err(StreamParseError::InvalidFormat {
-                    message: "Application Context Item が存在しません".to_string(),
+                    message: "Application Context Itemが存在しません".to_string(),
                 });
             }
             offset += 1;
@@ -126,7 +125,7 @@ impl AAssociateRq {
             let application_context = ApplicationContext::read_from_stream(buf_reader, item_length)
                 .await
                 .map_err(|e| StreamParseError::InvalidFormat {
-                    message: format!("Application Context Item のパースに失敗しました: {e}"),
+                    message: format!("Application Context Itemのパースに失敗しました: {e}"),
                 })?;
             offset += application_context.length() as usize;
 
@@ -155,7 +154,7 @@ impl AAssociateRq {
                             .await
                             .map_err(|e| StreamParseError::InvalidFormat {
                                 message: format!(
-                                    "Presentation Context Item のパースに失敗しました: {e}"
+                                    "Presentation Context Itemのパースに失敗しました: {e}"
                                 ),
                             })?;
                     offset += presentation_context.length() as usize;
@@ -165,7 +164,7 @@ impl AAssociateRq {
                 user_information::ITEM_TYPE => {
                     if presentation_contexts.is_empty() {
                         return Err(StreamParseError::InvalidFormat {
-                            message: "Presentation Context Item が存在しません".to_string(),
+                            message: "Presentation Context Itemが存在しません".to_string(),
                         });
                     }
 
@@ -174,7 +173,7 @@ impl AAssociateRq {
                             .await
                             .map_err(|e| StreamParseError::InvalidFormat {
                                 message: format!(
-                                    "User Information Item のパースに失敗しました: {e}"
+                                    "User Information Itemのパースに失敗しました: {e}"
                                 ),
                             })?;
                     offset += temp_user_information.length() as usize;
@@ -185,7 +184,7 @@ impl AAssociateRq {
                 _ => {
                     return Err(StreamParseError::InvalidFormat {
                         message: format!(
-                            "Presentation Context Item もしくは User Information Item のパースを試みようとした際に予期しない Item-type (0x{item_type:02X}) を持つ Item が出現しました"
+                            "Presentation Context ItemもしくはUser Information Itemのパースを試みようとした際に予期しないItem-typeを持つItemが出現しました (Item-type=0x{item_type:02X})"
                         ),
                     });
                 }
@@ -195,13 +194,13 @@ impl AAssociateRq {
         if offset != length as usize {
             return Err(StreamParseError::InvalidFormat {
                 message: format!(
-                    "PDU-length ({length}) と実際の読み取りバイト数 ({offset}) が一致しません"
+                    "PDU-lengthと実際の読み取りバイト数が一致しません (PDU-length={length} 読み取りバイト数={offset})"
                 ),
             });
         }
 
         let user_information = user_information.ok_or_else(|| StreamParseError::InvalidFormat {
-            message: "User Information Item が存在しません".to_string(),
+            message: "User Information Itemが存在しません".to_string(),
         })?;
 
         Ok(Self {

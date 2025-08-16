@@ -25,24 +25,24 @@ impl TryFrom<CommandSet> for CEchoRq {
             let value_field = command.value_field();
             match (tag.group(), tag.element()) {
                 (0x0000, 0x0002) => {
-                    let str = std::str::from_utf8(value_field).map_err(|_| "Affected SOP Class UID コマンドの値フィールドを UTF-8 の文字列として解釈できません")?;
+                    let str = std::str::from_utf8(value_field).map_err(|_| "Affected SOP Class UIDコマンドの値フィールドをUTF-8の文字列として解釈できません")?;
                     affected_sop_class_uid = Some(str.trim_end_matches('\0'));
                 }
                 (0x0000, 0x0100) => {
                     if value_length != 2 {
-                        return Err("Command Field コマンドの値長さが不正です");
+                        return Err("Command Fieldコマンドの値長さが不正です");
                     }
                     command_field = Some(u16::from_le_bytes([value_field[0], value_field[1]]));
                 }
                 (0x0000, 0x0110) => {
                     if value_length != 2 {
-                        return Err("Message ID コマンドの値長さが不正です");
+                        return Err("Message IDコマンドの値長さが不正です");
                     }
                     message_id = Some(u16::from_le_bytes([value_field[0], value_field[1]]));
                 }
                 (0x0000, 0x0800) => {
                     if value_length != 2 {
-                        return Err("Command Data Set Type コマンドの値長さが不正です");
+                        return Err("Command Data Set Typeコマンドの値長さが不正です");
                     }
                     command_data_set_type =
                         Some(u16::from_le_bytes([value_field[0], value_field[1]]));
@@ -52,29 +52,29 @@ impl TryFrom<CommandSet> for CEchoRq {
         }
 
         if affected_sop_class_uid.is_none() {
-            return Err("Affected SOP Class UID コマンドが存在しません");
+            return Err("Affected SOP Class UIDコマンドが存在しません");
         }
         if affected_sop_class_uid.unwrap() != "1.2.840.10008.1.1" {
-            return Err("Unsupported Affected SOP Class UID が不正です");
+            return Err("Unsupported Affected SOP Class UIDが不正です");
         }
 
         if command_field.is_none() {
-            return Err("Command Field コマンドが存在しません");
+            return Err("Command Fieldコマンドが存在しません");
         }
         if command_field.unwrap() != 0x30 {
-            return Err("Command Field が不正です");
+            return Err("Command Fieldが不正です");
         }
 
         if message_id.is_none() {
-            return Err("Message ID コマンドが存在しません");
+            return Err("Message IDコマンドが存在しません");
         }
         let message_id = message_id.unwrap();
 
         if command_data_set_type.is_none() {
-            return Err("Command Data Set Type コマンドが存在しません");
+            return Err("Command Data Set Typeコマンドが存在しません");
         }
         if command_data_set_type.unwrap() != 0x0101 {
-            return Err("Command Data Set Type が不正です");
+            return Err("Command Data Set Typeが不正です");
         }
 
         Ok(CEchoRq { message_id })

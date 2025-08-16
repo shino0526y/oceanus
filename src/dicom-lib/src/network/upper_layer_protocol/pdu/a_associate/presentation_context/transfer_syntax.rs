@@ -23,7 +23,7 @@ impl TransferSyntax {
     pub fn new<T: Into<String>>(name: T) -> Result<Self, &'static str> {
         let name = name.into();
         if name.is_empty() {
-            return Err("Transfer-syntax-name が空です");
+            return Err("Transfer-syntax-nameが空です");
         }
 
         let mut length = name.len() as u16;
@@ -45,7 +45,7 @@ impl TransferSyntax {
             buf_reader.read_exact(&mut buf).await?;
             std::str::from_utf8(&buf)
                 .map_err(|_| StreamParseError::InvalidFormat {
-                    message: "Transfer-syntax-name フィールドを UTF-8 の文字列として解釈できません"
+                    message: "Transfer-syntax-nameフィールドをUTF-8の文字列として解釈できません"
                         .to_string(),
                 })?
                 .trim_end_matches('\0')

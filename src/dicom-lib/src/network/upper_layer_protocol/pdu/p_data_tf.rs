@@ -61,7 +61,7 @@ impl PDataTf {
             let pdv = PresentationDataValue::read_from_stream(buf_reader, pdv_length)
                 .await
                 .map_err(|e| StreamParseError::InvalidFormat {
-                    message: format!("Presentation Data Value Item のパースに失敗しました: {e}"),
+                    message: format!("Presentation Data Value Itemのパースに失敗しました: {e}"),
                 })?;
             offset += pdv.length() as usize;
 
@@ -71,7 +71,7 @@ impl PDataTf {
         if offset != length as usize {
             return Err(StreamParseError::InvalidFormat {
                 message: format!(
-                    "PDU-length ({length}) と実際の読み取りバイト数 ({offset}) が一致しません"
+                    "PDU-lengthと実際の読み取りバイト数が一致しません (PDU-length={length} 読み取りバイト数={offset})"
                 ),
             });
         }

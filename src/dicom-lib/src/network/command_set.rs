@@ -66,7 +66,7 @@ impl TryFrom<&[u8]> for CommandSet {
             let tag_group = u16::from_le_bytes([bytes[offset], bytes[offset + 1]]);
             if tag_group != 0x0000 {
                 return Err(format!(
-                    "タググループは 0x0000 でなければなりませんが、0x{tag_group:0>4x} です"
+                    "タググループは0x0000でなければなりません (タググループ=0x{tag_group:04X})"
                 ));
             }
             let tag_element = u16::from_le_bytes([bytes[offset + 2], bytes[offset + 3]]);

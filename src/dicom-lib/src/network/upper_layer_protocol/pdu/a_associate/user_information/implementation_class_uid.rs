@@ -23,7 +23,7 @@ impl ImplementationClassUid {
     pub fn new<T: Into<String>>(uid: T) -> Result<Self, &'static str> {
         let uid = uid.into();
         if uid.is_empty() {
-            return Err("Implementation-class-uid が空です");
+            return Err("Implementation-class-uidが空です");
         }
 
         let mut length = uid.len() as u16;
@@ -47,7 +47,7 @@ impl ImplementationClassUid {
             std::str::from_utf8(&buf)
                 .map_err(|_| StreamParseError::InvalidFormat {
                     message:
-                        "Implementation-class-uid フィールドを UTF-8 の文字列として解釈できません"
+                        "Implementation-class-uidフィールドをUTF-8の文字列として解釈できません"
                             .to_string(),
                 })?
                 .trim_end_matches('\0')

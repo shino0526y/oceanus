@@ -23,13 +23,11 @@ impl ImplementationVersionName {
     pub fn new<T: Into<String>>(name: T) -> Result<Self, &'static str> {
         let name = name.into();
         if name.is_empty() || name.len() > 16 {
-            return Err(
-                "Implementation-version-name は 1 文字以上 16 文字以下でなければなりません",
-            );
+            return Err("Implementation-version-nameは1文字以上16文字以下でなければなりません");
         }
         if !name.is_ascii() {
             return Err(
-                "Implementation-version-name は ISO 646:1990 (basic G0 set) でエンコーディングされている必要があります",
+                "Implementation-version-nameはISO 646:1990 (basic G0 set)でエンコーディングされている必要があります",
             );
         }
 
@@ -51,7 +49,7 @@ impl ImplementationVersionName {
             std::str::from_utf8(&buf)
                 .map_err(|_| StreamParseError::InvalidFormat {
                     message:
-                        "Implementation-class-name フィールドを UTF-8 の文字列として解釈できません"
+                        "Implementation-class-nameフィールドをUTF-8の文字列として解釈できません"
                             .to_string(),
                 })?
                 .to_string()

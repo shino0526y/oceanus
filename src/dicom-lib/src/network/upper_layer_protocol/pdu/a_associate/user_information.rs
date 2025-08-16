@@ -76,9 +76,8 @@ impl UserInformation {
         let mut implementation_class_uid = Option::None;
         let mut implementation_version_name = Option::None;
         while offset < length as usize {
-            if offset + 4 > length as usize
-            // オフセット + Sub-Itemヘッダ（Item-type, Reserved, Item-length）の長さ > 全体の長さ
-            {
+            if offset + 4 > length as usize {
+                // オフセット + Sub-Itemヘッダ（Item-type, Reserved, Item-length）の長さ が全体の長さを超えている場合
                 return Err(StreamParseError::InvalidFormat {
                     message: INVALID_ITEM_LENGTH_ERROR_MESSAGE.to_string(),
                 });
@@ -99,7 +98,7 @@ impl UserInformation {
                                 .await
                                 .map_err(|e| StreamParseError::InvalidFormat {
                                     message: format!(
-                                        "Maximum Length Sub-Item のパースに失敗しました: {e}"
+                                        "Maximum Length Sub-Itemのパースに失敗しました: {e}"
                                     ),
                                 })?;
                         offset += maximum_length.length() as usize;
@@ -116,7 +115,7 @@ impl UserInformation {
                         .await
                         .map_err(|e| StreamParseError::InvalidFormat {
                             message: format!(
-                                "Implementation Class UID Sub-Item のパースに失敗しました: {e}"
+                                "Implementation Class UID Sub-Itemのパースに失敗しました: {e}"
                             ),
                         })?;
                         offset += implementation_class_uid.length() as usize;
@@ -130,7 +129,7 @@ impl UserInformation {
                             ImplementationVersionName::read_from_stream(buf_reader, sub_item_length).await.map_err(|e| {
                                     StreamParseError::InvalidFormat {
                                         message: format!(
-                                            "Implementation Version Name Sub-Item のパースに失敗しました: {e}"
+                                            "Implementation Version Name Sub-Itemのパースに失敗しました: {e}"
                                         ),
                                     }
                                 })?;
@@ -146,7 +145,7 @@ impl UserInformation {
                     offset += buf.len();
 
                     tracing::debug!(
-                        "未対応の Sub-Item (type=0x{sub_item_type:02X} buffer=[{}])",
+                        "未対応のSub-Itemが存在します (type=0x{sub_item_type:02X} buffer=[{}])",
                         buf.iter()
                             .map(|b| format!("0x{b:02X}"))
                             .collect::<Vec<_>>()
@@ -159,14 +158,14 @@ impl UserInformation {
         if offset != length as usize {
             return Err(StreamParseError::InvalidFormat {
                 message: format!(
-                    "Item-length ({length}) と実際の読み取りバイト数 ({offset}) が一致しません"
+                    "Item-lengthと実際の読み取りバイト数が一致しません (Item-length={length} 読み取りバイト数={offset})"
                 ),
             });
         }
 
         let implementation_class_uid =
             implementation_class_uid.ok_or_else(|| StreamParseError::InvalidFormat {
-                message: "Implementation Class UID Sub-Item が存在しません".to_string(),
+                message: "Implementation Class UID Sub-Itemが存在しません".to_string(),
             })?;
 
         Ok(Self {
