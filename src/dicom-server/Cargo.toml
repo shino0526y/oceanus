@@ -5,6 +5,9 @@ authors.workspace = true
 edition.workspace = true
 
 [dependencies]
+chrono = "0.4"
 thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber = "0.3"
 tokio.workspace = true
 dicom-lib.workspace = true

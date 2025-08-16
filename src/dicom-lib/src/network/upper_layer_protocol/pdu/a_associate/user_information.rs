@@ -145,11 +145,13 @@ impl UserInformation {
                     buf_reader.read_exact(&mut buf).await?;
                     offset += buf.len();
 
-                    print!("未対応の Sub-Item (Item-type=0x{sub_item_type:02X}): [");
-                    for b in buf {
-                        print!("0x{b:02X}, ");
-                    }
-                    println!("]");
+                    tracing::debug!(
+                        "未対応の Sub-Item (type=0x{sub_item_type:02X} buffer=[{}])",
+                        buf.iter()
+                            .map(|b| format!("0x{b:02X}"))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    );
                 }
             }
         }
