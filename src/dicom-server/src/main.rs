@@ -30,7 +30,6 @@ const SERVER_AE_TITLE: &str = "SERVER";
 const IMPLEMENTATION_CLASS_UID: &str = "1.2.826.0.1.3680043.2.1396.999";
 const IMPLEMENTATION_VERSION_NAME: &str = "Oceanus";
 const MAXIMUM_LENGTH: u32 = 0;
-const DISCONNECTION_MESSAGE: &str = "コネクションを破棄しました";
 
 static CONNECTION_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 
@@ -85,6 +84,10 @@ async fn main() -> std::io::Result<()> {
 
 async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::SocketAddr) {
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    scopeguard::defer! {
+        tracing::info!("コネクションを破棄しました");
+    }
 
     tracing::info!(
         "コネクションを確立しました (IPアドレス=\"{}\" ポート番号={})",
@@ -258,8 +261,6 @@ async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::So
         let bytes: Vec<u8> = a_release_rp.into();
         socket.write_all(&bytes).await.unwrap();
     }
-
-    tracing::info!("{DISCONNECTION_MESSAGE}");
 }
 
 /// A-ABORTを受信し、処理する
