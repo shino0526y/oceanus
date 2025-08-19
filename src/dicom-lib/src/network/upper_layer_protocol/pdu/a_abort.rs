@@ -1,9 +1,7 @@
 pub mod reason;
 pub mod source;
 
-use crate::{
-    errors::StreamParseError, network::upper_layer_protocol::pdu::INVALID_PDU_LENGTH_ERROR_MESSAGE,
-};
+use crate::network::upper_layer_protocol::pdu::{INVALID_PDU_LENGTH_ERROR_MESSAGE, PduReadError};
 pub use reason::Reason;
 pub use source::Source;
 
@@ -38,11 +36,11 @@ impl AAbort {
     pub async fn read_from_stream(
         buf_reader: &mut tokio::io::BufReader<impl tokio::io::AsyncRead + Unpin>,
         length: u32,
-    ) -> Result<Self, StreamParseError> {
+    ) -> Result<Self, PduReadError> {
         use tokio::io::AsyncReadExt;
 
         if length != 4 {
-            return Err(StreamParseError::InvalidFormat {
+            return Err(PduReadError::InvalidFormat {
                 message: INVALID_PDU_LENGTH_ERROR_MESSAGE.to_string(),
             });
         }
@@ -50,12 +48,12 @@ impl AAbort {
         buf_reader.read_u8().await?; // Reserved
         buf_reader.read_u8().await?; // Reserved
         let source = Source::try_from(buf_reader.read_u8().await?).map_err(|e| {
-            StreamParseError::InvalidFormat {
+            PduReadError::InvalidFormat {
                 message: format!("Sourceの変換に失敗しました: {e}"),
             }
         })?;
         let reason = Reason::try_from(buf_reader.read_u8().await?).map_err(|e| {
-            StreamParseError::InvalidFormat {
+            PduReadError::InvalidFormat {
                 message: format!("Reason/Diag.の変換に失敗しました: {e}"),
             }
         })?;

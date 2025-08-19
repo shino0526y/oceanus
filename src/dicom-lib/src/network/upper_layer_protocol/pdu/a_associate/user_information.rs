@@ -2,9 +2,8 @@ pub mod implementation_class_uid;
 pub mod implementation_version_name;
 pub mod maximum_length;
 
-use crate::{
-    errors::StreamParseError,
-    network::upper_layer_protocol::pdu::a_associate::INVALID_ITEM_LENGTH_ERROR_MESSAGE,
+use crate::network::upper_layer_protocol::pdu::{
+    PduReadError, a_associate::INVALID_ITEM_LENGTH_ERROR_MESSAGE,
 };
 pub use implementation_class_uid::ImplementationClassUid;
 pub use implementation_version_name::ImplementationVersionName;
@@ -68,7 +67,7 @@ impl UserInformation {
     pub async fn read_from_stream(
         buf_reader: &mut tokio::io::BufReader<impl tokio::io::AsyncRead + Unpin>,
         length: u16,
-    ) -> Result<Self, StreamParseError> {
+    ) -> Result<Self, PduReadError> {
         use tokio::io::AsyncReadExt;
 
         let mut offset = 0;
@@ -78,7 +77,7 @@ impl UserInformation {
         while offset < length as usize {
             if offset + 4 > length as usize {
                 // オフセット + Sub-Itemヘッダ（Item-type, Reserved, Item-length）の長さ が全体の長さを超えている場合
-                return Err(StreamParseError::InvalidFormat {
+                return Err(PduReadError::InvalidFormat {
                     message: INVALID_ITEM_LENGTH_ERROR_MESSAGE.to_string(),
                 });
             }
@@ -96,7 +95,7 @@ impl UserInformation {
                         let maximum_length =
                             MaximumLength::read_from_stream(buf_reader, sub_item_length)
                                 .await
-                                .map_err(|e| StreamParseError::InvalidFormat {
+                                .map_err(|e| PduReadError::InvalidFormat {
                                     message: format!(
                                         "Maximum Length Sub-Itemのパースに失敗しました: {e}"
                                     ),
@@ -113,7 +112,7 @@ impl UserInformation {
                             sub_item_length,
                         )
                         .await
-                        .map_err(|e| StreamParseError::InvalidFormat {
+                        .map_err(|e| PduReadError::InvalidFormat {
                             message: format!(
                                 "Implementation Class UID Sub-Itemのパースに失敗しました: {e}"
                             ),
@@ -127,7 +126,7 @@ impl UserInformation {
                     implementation_version_name = {
                         let implementation_version_name =
                             ImplementationVersionName::read_from_stream(buf_reader, sub_item_length).await.map_err(|e| {
-                                    StreamParseError::InvalidFormat {
+                                    PduReadError::InvalidFormat {
                                         message: format!(
                                             "Implementation Version Name Sub-Itemのパースに失敗しました: {e}"
                                         ),
@@ -156,7 +155,7 @@ impl UserInformation {
         }
 
         if offset != length as usize {
-            return Err(StreamParseError::InvalidFormat {
+            return Err(PduReadError::InvalidFormat {
                 message: format!(
                     "Item-lengthと実際の読み取りバイト数が一致しません (Item-length={length} 読み取りバイト数={offset})"
                 ),
@@ -164,7 +163,7 @@ impl UserInformation {
         }
 
         let implementation_class_uid =
-            implementation_class_uid.ok_or_else(|| StreamParseError::InvalidFormat {
+            implementation_class_uid.ok_or_else(|| PduReadError::InvalidFormat {
                 message: "Implementation Class UID Sub-Itemが存在しません".to_string(),
             })?;
 

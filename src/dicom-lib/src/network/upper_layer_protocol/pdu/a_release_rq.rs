@@ -1,6 +1,4 @@
-use crate::{
-    errors::StreamParseError, network::upper_layer_protocol::pdu::INVALID_PDU_LENGTH_ERROR_MESSAGE,
-};
+use crate::network::upper_layer_protocol::pdu::{INVALID_PDU_LENGTH_ERROR_MESSAGE, PduReadError};
 
 pub(crate) const PDU_TYPE: u8 = 0x05;
 
@@ -18,11 +16,11 @@ impl AReleaseRq {
     pub async fn read_from_stream(
         buf_reader: &mut tokio::io::BufReader<impl tokio::io::AsyncRead + Unpin>,
         length: u32,
-    ) -> Result<Self, StreamParseError> {
+    ) -> Result<Self, PduReadError> {
         use tokio::io::AsyncReadExt;
 
         if length != 4 {
-            return Err(StreamParseError::InvalidFormat {
+            return Err(PduReadError::InvalidFormat {
                 message: INVALID_PDU_LENGTH_ERROR_MESSAGE.to_string(),
             });
         }

@@ -1,8 +1,6 @@
 pub mod presentation_data_value;
 
-use crate::{
-    errors::StreamParseError, network::upper_layer_protocol::pdu::INVALID_PDU_LENGTH_ERROR_MESSAGE,
-};
+use crate::network::upper_layer_protocol::pdu::{INVALID_PDU_LENGTH_ERROR_MESSAGE, PduReadError};
 pub use presentation_data_value::PresentationDataValue;
 
 pub(crate) const PDU_TYPE: u8 = 0x04;
@@ -40,7 +38,7 @@ impl PDataTf {
     pub async fn read_from_stream(
         buf_reader: &mut tokio::io::BufReader<impl tokio::io::AsyncRead + Unpin>,
         length: u32,
-    ) -> Result<Self, StreamParseError> {
+    ) -> Result<Self, PduReadError> {
         use tokio::io::AsyncReadExt;
 
         let mut offset = 0;
@@ -53,14 +51,14 @@ impl PDataTf {
 
             if offset + pdv_length as usize > length as usize {
                 // オフセット + PDVの長さ が全体の長さを超える場合
-                return Err(StreamParseError::InvalidFormat {
+                return Err(PduReadError::InvalidFormat {
                     message: INVALID_PDU_LENGTH_ERROR_MESSAGE.to_string(),
                 });
             }
 
             let pdv = PresentationDataValue::read_from_stream(buf_reader, pdv_length)
                 .await
-                .map_err(|e| StreamParseError::InvalidFormat {
+                .map_err(|e| PduReadError::InvalidFormat {
                     message: format!("Presentation Data Value Itemのパースに失敗しました: {e}"),
                 })?;
             offset += pdv.length() as usize;
@@ -69,7 +67,7 @@ impl PDataTf {
         }
 
         if offset != length as usize {
-            return Err(StreamParseError::InvalidFormat {
+            return Err(PduReadError::InvalidFormat {
                 message: format!(
                     "PDU-lengthと実際の読み取りバイト数が一致しません (PDU-length={length} 読み取りバイト数={offset})"
                 ),

@@ -15,6 +15,25 @@ pub use p_data_tf::PDataTf;
 
 pub(crate) const INVALID_PDU_LENGTH_ERROR_MESSAGE: &str = "PDU-lengthが不正です";
 
+#[derive(thiserror::Error, Debug)]
+pub enum PduReadError {
+    #[error("フォーマットが不正です: {message}")]
+    InvalidFormat { message: String },
+    #[error("データの終端に予期せず到達しました")]
+    UnexpectedEndOfBuffer,
+    #[error("I/Oエラーが発生しました")]
+    IoError(std::io::Error),
+}
+
+impl From<std::io::Error> for PduReadError {
+    fn from(e: std::io::Error) -> Self {
+        match e.kind() {
+            std::io::ErrorKind::UnexpectedEof => PduReadError::UnexpectedEndOfBuffer,
+            _ => PduReadError::IoError(e),
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum PduType {
     AAssociateRq = a_associate_rq::PDU_TYPE as isize,

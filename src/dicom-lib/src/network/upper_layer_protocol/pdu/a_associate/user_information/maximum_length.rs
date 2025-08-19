@@ -1,6 +1,5 @@
-use crate::{
-    errors::StreamParseError,
-    network::upper_layer_protocol::pdu::a_associate::INVALID_ITEM_LENGTH_ERROR_MESSAGE,
+use crate::network::upper_layer_protocol::pdu::{
+    PduReadError, a_associate::INVALID_ITEM_LENGTH_ERROR_MESSAGE,
 };
 
 pub(crate) const ITEM_TYPE: u8 = 0x51;
@@ -29,11 +28,11 @@ impl MaximumLength {
     pub async fn read_from_stream(
         buf_reader: &mut tokio::io::BufReader<impl tokio::io::AsyncRead + Unpin>,
         length: u16,
-    ) -> Result<Self, StreamParseError> {
+    ) -> Result<Self, PduReadError> {
         use tokio::io::AsyncReadExt;
 
         if length != 4 {
-            return Err(StreamParseError::InvalidFormat {
+            return Err(PduReadError::InvalidFormat {
                 message: INVALID_ITEM_LENGTH_ERROR_MESSAGE.to_string(),
             });
         }

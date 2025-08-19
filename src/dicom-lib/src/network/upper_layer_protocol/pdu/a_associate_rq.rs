@@ -1,9 +1,8 @@
 pub mod presentation_context;
 
 pub use crate::network::upper_layer_protocol::pdu::a_associate::*;
-use crate::{
-    errors::StreamParseError,
-    network::upper_layer_protocol::pdu::{INVALID_PDU_LENGTH_ERROR_MESSAGE, a_associate},
+use crate::network::upper_layer_protocol::pdu::{
+    INVALID_PDU_LENGTH_ERROR_MESSAGE, PduReadError, a_associate,
 };
 pub use presentation_context::PresentationContext;
 
@@ -55,12 +54,12 @@ impl AAssociateRq {
     pub async fn read_from_stream(
         buf_reader: &mut tokio::io::BufReader<impl tokio::io::AsyncRead + Unpin>,
         length: u32,
-    ) -> Result<Self, StreamParseError> {
+    ) -> Result<Self, PduReadError> {
         use tokio::io::AsyncReadExt;
 
         if length < 68 + 4 {
             // Application Context Itemまでのフィールドの長さ + Application Context Itemのヘッダ（Item-type, Reserved, Item-length）の長さ が全体の長さを超えている場合
-            return Err(StreamParseError::InvalidFormat {
+            return Err(PduReadError::InvalidFormat {
                 message: INVALID_PDU_LENGTH_ERROR_MESSAGE.to_string(),
             });
         }
@@ -75,7 +74,7 @@ impl AAssociateRq {
             let mut buf = [0u8; 16];
             buf_reader.read_exact(&mut buf).await?;
             std::str::from_utf8(&buf)
-                .map_err(|_| StreamParseError::InvalidFormat {
+                .map_err(|_| PduReadError::InvalidFormat {
                     message: "Called-AE-titleフィールドをUTF-8の文字列として解釈できません"
                         .to_string(),
                 })?
@@ -88,7 +87,7 @@ impl AAssociateRq {
             let mut buf = [0u8; 16];
             buf_reader.read_exact(&mut buf).await?;
             std::str::from_utf8(&buf)
-                .map_err(|_| StreamParseError::InvalidFormat {
+                .map_err(|_| PduReadError::InvalidFormat {
                     message: "Calling-AE-titleフィールドをUTF-8の文字列として解釈できません"
                         .to_string(),
                 })?
@@ -106,7 +105,7 @@ impl AAssociateRq {
         let application_context = {
             let item_type = buf_reader.read_u8().await?;
             if item_type != a_associate::application_context::ITEM_TYPE {
-                return Err(StreamParseError::InvalidFormat {
+                return Err(PduReadError::InvalidFormat {
                     message: "Application Context Itemが存在しません".to_string(),
                 });
             }
@@ -117,14 +116,14 @@ impl AAssociateRq {
             offset += 2;
 
             if offset + item_length as usize > length as usize {
-                return Err(StreamParseError::InvalidFormat {
+                return Err(PduReadError::InvalidFormat {
                     message: INVALID_PDU_LENGTH_ERROR_MESSAGE.to_string(),
                 });
             }
 
             let application_context = ApplicationContext::read_from_stream(buf_reader, item_length)
                 .await
-                .map_err(|e| StreamParseError::InvalidFormat {
+                .map_err(|e| PduReadError::InvalidFormat {
                     message: format!("Application Context Itemのパースに失敗しました: {e}"),
                 })?;
             offset += application_context.length() as usize;
@@ -142,7 +141,7 @@ impl AAssociateRq {
             offset += 2;
 
             if offset + item_length as usize > length as usize {
-                return Err(StreamParseError::InvalidFormat {
+                return Err(PduReadError::InvalidFormat {
                     message: INVALID_PDU_LENGTH_ERROR_MESSAGE.to_string(),
                 });
             }
@@ -152,7 +151,7 @@ impl AAssociateRq {
                     let presentation_context =
                         PresentationContext::read_from_stream(buf_reader, item_length)
                             .await
-                            .map_err(|e| StreamParseError::InvalidFormat {
+                            .map_err(|e| PduReadError::InvalidFormat {
                                 message: format!(
                                     "Presentation Context Itemのパースに失敗しました: {e}"
                                 ),
@@ -163,7 +162,7 @@ impl AAssociateRq {
                 }
                 user_information::ITEM_TYPE => {
                     if presentation_contexts.is_empty() {
-                        return Err(StreamParseError::InvalidFormat {
+                        return Err(PduReadError::InvalidFormat {
                             message: "Presentation Context Itemが存在しません".to_string(),
                         });
                     }
@@ -171,7 +170,7 @@ impl AAssociateRq {
                     let temp_user_information =
                         UserInformation::read_from_stream(buf_reader, item_length)
                             .await
-                            .map_err(|e| StreamParseError::InvalidFormat {
+                            .map_err(|e| PduReadError::InvalidFormat {
                                 message: format!(
                                     "User Information Itemのパースに失敗しました: {e}"
                                 ),
@@ -182,7 +181,7 @@ impl AAssociateRq {
                     break;
                 }
                 _ => {
-                    return Err(StreamParseError::InvalidFormat {
+                    return Err(PduReadError::InvalidFormat {
                         message: format!(
                             "Presentation Context ItemもしくはUser Information Itemのパースを試みようとした際に予期しないItem-typeを持つItemが出現しました (Item-type=0x{item_type:02X})"
                         ),
@@ -192,14 +191,14 @@ impl AAssociateRq {
         }
 
         if offset != length as usize {
-            return Err(StreamParseError::InvalidFormat {
+            return Err(PduReadError::InvalidFormat {
                 message: format!(
                     "PDU-lengthと実際の読み取りバイト数が一致しません (PDU-length={length} 読み取りバイト数={offset})"
                 ),
             });
         }
 
-        let user_information = user_information.ok_or_else(|| StreamParseError::InvalidFormat {
+        let user_information = user_information.ok_or_else(|| PduReadError::InvalidFormat {
             message: "User Information Itemが存在しません".to_string(),
         })?;
 

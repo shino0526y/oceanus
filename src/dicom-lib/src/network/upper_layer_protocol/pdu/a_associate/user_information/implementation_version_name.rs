@@ -1,4 +1,4 @@
-use crate::errors::StreamParseError;
+use crate::network::upper_layer_protocol::pdu::PduReadError;
 
 pub(crate) const ITEM_TYPE: u8 = 0x55;
 
@@ -39,7 +39,7 @@ impl ImplementationVersionName {
     pub async fn read_from_stream(
         buf_reader: &mut tokio::io::BufReader<impl tokio::io::AsyncRead + Unpin>,
         length: u16,
-    ) -> Result<Self, StreamParseError> {
+    ) -> Result<Self, PduReadError> {
         use tokio::io::AsyncReadExt;
 
         let name = {
@@ -47,7 +47,7 @@ impl ImplementationVersionName {
             buf_reader.read_exact(&mut buf).await?;
 
             std::str::from_utf8(&buf)
-                .map_err(|_| StreamParseError::InvalidFormat {
+                .map_err(|_| PduReadError::InvalidFormat {
                     message:
                         "Implementation-class-nameフィールドをUTF-8の文字列として解釈できません"
                             .to_string(),
