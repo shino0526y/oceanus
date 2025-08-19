@@ -2,12 +2,13 @@ pub mod implementation_class_uid;
 pub mod implementation_version_name;
 pub mod maximum_length;
 
-use crate::network::upper_layer_protocol::pdu::{
-    PduReadError, a_associate::INVALID_ITEM_LENGTH_ERROR_MESSAGE,
-};
 pub use implementation_class_uid::ImplementationClassUid;
 pub use implementation_version_name::ImplementationVersionName;
 pub use maximum_length::MaximumLength;
+
+use crate::network::upper_layer_protocol::pdu::{
+    PduReadError, a_associate::INVALID_ITEM_LENGTH_ERROR_MESSAGE,
+};
 
 pub(crate) const ITEM_TYPE: u8 = 0x50;
 

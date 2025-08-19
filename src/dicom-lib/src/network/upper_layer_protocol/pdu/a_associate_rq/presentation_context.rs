@@ -1,11 +1,12 @@
 pub mod abstract_syntax;
 
 pub use crate::network::upper_layer_protocol::pdu::a_associate::presentation_context::transfer_syntax::{self, TransferSyntax};
+pub use abstract_syntax::AbstractSyntax;
+
 use crate::network::upper_layer_protocol::pdu::{
     PduReadError,
     a_associate::{INVALID_ITEM_LENGTH_ERROR_MESSAGE, INVALID_ITEM_TYPE_ERROR_MESSAGE},
 };
-pub use abstract_syntax::AbstractSyntax;
 
 pub(crate) const ITEM_TYPE: u8 = 0x20;
 

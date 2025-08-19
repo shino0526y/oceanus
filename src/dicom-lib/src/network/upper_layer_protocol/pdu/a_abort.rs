@@ -1,9 +1,10 @@
 pub mod reason;
 pub mod source;
 
-use crate::network::upper_layer_protocol::pdu::{INVALID_PDU_LENGTH_ERROR_MESSAGE, PduReadError};
 pub use reason::Reason;
 pub use source::Source;
+
+use crate::network::upper_layer_protocol::pdu::{INVALID_PDU_LENGTH_ERROR_MESSAGE, PduReadError};
 
 pub(crate) const PDU_TYPE: u8 = 0x07;
 

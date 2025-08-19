@@ -1,7 +1,8 @@
 pub mod command;
 
-use crate::core::Tag;
 pub use command::Command;
+
+use crate::core::Tag;
 use std::{ops::Index, slice::Iter};
 
 const INVALID_BUFFER_LENGTH_ERROR_MESSAGE: &str = "バッファの長さが不正です";
