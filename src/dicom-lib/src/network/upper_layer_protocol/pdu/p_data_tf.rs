@@ -52,15 +52,23 @@ impl PDataTf {
 
             if offset + pdv_length as usize > length as usize {
                 // オフセット + PDVの長さ が全体の長さを超える場合
-                return Err(PduReadError::InvalidFormat {
+                return Err(PduReadError::InvalidPduParameterValue {
                     message: INVALID_PDU_LENGTH_ERROR_MESSAGE.to_string(),
                 });
             }
 
             let pdv = PresentationDataValue::read_from_stream(buf_reader, pdv_length)
                 .await
-                .map_err(|e| PduReadError::InvalidFormat {
-                    message: format!("Presentation Data Value Itemのパースに失敗しました: {e}"),
+                .map_err(|e| match e {
+                    PduReadError::IoError(_) => e,
+                    PduReadError::InvalidPduParameterValue { message } => {
+                        PduReadError::InvalidPduParameterValue {
+                            message: format!(
+                                "Presentation Data Value Itemのパースに失敗しました: {message}"
+                            ),
+                        }
+                    }
+                    _ => panic!(),
                 })?;
             offset += pdv.length() as usize;
 
@@ -68,7 +76,7 @@ impl PDataTf {
         }
 
         if offset != length as usize {
-            return Err(PduReadError::InvalidFormat {
+            return Err(PduReadError::InvalidPduParameterValue {
                 message: format!(
                     "PDU-lengthと実際の読み取りバイト数が一致しません (PDU-length={length} 読み取りバイト数={offset})"
                 ),

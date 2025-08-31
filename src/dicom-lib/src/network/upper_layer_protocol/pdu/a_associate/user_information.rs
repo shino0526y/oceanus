@@ -7,7 +7,7 @@ pub use implementation_version_name::ImplementationVersionName;
 pub use maximum_length::MaximumLength;
 
 use crate::network::upper_layer_protocol::pdu::{
-    PduReadError, a_associate::INVALID_ITEM_LENGTH_ERROR_MESSAGE,
+    ItemType, PduReadError, a_associate::INVALID_ITEM_LENGTH_ERROR_MESSAGE,
 };
 
 pub(crate) const ITEM_TYPE: u8 = 0x50;
@@ -78,12 +78,12 @@ impl UserInformation {
         while offset < length as usize {
             if offset + 4 > length as usize {
                 // オフセット + Sub-Itemヘッダ（Item-type, Reserved, Item-length）の長さ が全体の長さを超えている場合
-                return Err(PduReadError::InvalidFormat {
+                return Err(PduReadError::InvalidPduParameterValue {
                     message: INVALID_ITEM_LENGTH_ERROR_MESSAGE.to_string(),
                 });
             }
 
-            let sub_item_type = buf_reader.read_u8().await?;
+            let sub_item_type = ItemType::read_from_stream(buf_reader).await?;
             offset += 1;
             buf_reader.read_u8().await?; // Reserved
             offset += 1;
@@ -91,72 +91,98 @@ impl UserInformation {
             offset += 2;
 
             match sub_item_type {
-                maximum_length::ITEM_TYPE => {
+                ItemType::MaximumLengthSubItem => {
                     maximum_length = {
-                        let maximum_length =
-                            MaximumLength::read_from_stream(buf_reader, sub_item_length)
-                                .await
-                                .map_err(|e| PduReadError::InvalidFormat {
+                        let maximum_length = MaximumLength::read_from_stream(
+                            buf_reader,
+                            sub_item_length,
+                        )
+                        .await
+                        .map_err(|e| match e {
+                            PduReadError::IoError(_) => e,
+                            PduReadError::InvalidPduParameterValue { message } => {
+                                PduReadError::InvalidPduParameterValue {
                                     message: format!(
-                                        "Maximum Length Sub-Itemのパースに失敗しました: {e}"
+                                        "Maximum Length Sub-Itemのパースに失敗しました: {message}"
                                     ),
-                                })?;
+                                }
+                            }
+                            _ => panic!(),
+                        })?;
                         offset += maximum_length.length() as usize;
 
                         Some(maximum_length)
                     }
                 }
-                implementation_class_uid::ITEM_TYPE => {
+                ItemType::ImplementationClassUidSubItem => {
                     implementation_class_uid = {
                         let implementation_class_uid = ImplementationClassUid::read_from_stream(
                             buf_reader,
                             sub_item_length,
                         )
                         .await
-                        .map_err(|e| PduReadError::InvalidFormat {
-                            message: format!(
-                                "Implementation Class UID Sub-Itemのパースに失敗しました: {e}"
-                            ),
+                        .map_err(|e| match e {
+                            PduReadError::IoError(_) => e,
+                            PduReadError::InvalidPduParameterValue { message } => {
+                                PduReadError::InvalidPduParameterValue {
+                                    message: format!(
+                                        "Implementation Class UID Sub-Itemのパースに失敗しました: {message}"
+                                    ),
+                                }
+                            }
+                            _ => panic!(),
                         })?;
                         offset += implementation_class_uid.length() as usize;
 
                         Some(implementation_class_uid)
                     }
                 }
-                implementation_version_name::ITEM_TYPE => {
+                ItemType::ImplementationVersionNameSubItem => {
                     implementation_version_name = {
                         let implementation_version_name =
-                            ImplementationVersionName::read_from_stream(buf_reader, sub_item_length).await.map_err(|e| {
-                                    PduReadError::InvalidFormat {
+                            ImplementationVersionName::read_from_stream(buf_reader, sub_item_length).await.map_err(|e| match e {
+                                PduReadError::IoError(_) => e,
+                                PduReadError::InvalidPduParameterValue { message } => PduReadError::InvalidPduParameterValue{
                                         message: format!(
-                                            "Implementation Version Name Sub-Itemのパースに失敗しました: {e}"
+                                            "Implementation Version Name Sub-Itemのパースに失敗しました: {message}"
                                         ),
-                                    }
-                                })?;
+                                },
+                                _ => panic!(),
+                            })?;
                         offset += implementation_version_name.length() as usize;
 
                         Some(implementation_version_name)
                     }
                 }
-                _ => {
+                ItemType::AsynchronousOperationsWindowSubItem
+                | ItemType::ScpScuRoleSelectionSubItem
+                | ItemType::SopClassExtendedNegotiationSubItem
+                | ItemType::SopClassCommonExtendedNegotiationSubItem
+                // FIXME: A-ASSOCIATE-RQのUser Identity Sub-ItemとA-ASSOCIATE-ACのUser Identity Sub-Itemは別物なので、別々に扱う
+                | ItemType::UserIdentitySubItemInAAssociateRq
+                | ItemType::UserIdentitySubItemInAAssociateAc => {
                     // TODO: 対応しないサブアイテムの処理。暫定対応として、バイト列をそのまま出力している。
                     let mut buf = vec![0; sub_item_length as usize];
                     buf_reader.read_exact(&mut buf).await?;
                     offset += buf.len();
 
                     tracing::debug!(
-                        "未対応のSub-Itemが存在します (Item-type=0x{sub_item_type:02X} バイト列=[{}])",
+                        "未対応のSub-Itemが存在します (Item-type=0x{:02X} バイト列=[{}])",
+                        sub_item_type as u8,
                         buf.iter()
                             .map(|b| format!("0x{b:02X}"))
                             .collect::<Vec<_>>()
                             .join(", ")
                     );
                 }
+                _ => {
+                    return Err(PduReadError::UnexpectedPduParameter(sub_item_type));
+                }
             }
         }
 
         if offset != length as usize {
-            return Err(PduReadError::InvalidFormat {
+            return Err(PduReadError::InvalidPduParameterValue {
                 message: format!(
                     "Item-lengthと実際の読み取りバイト数が一致しません (Item-length={length} 読み取りバイト数={offset})"
                 ),
@@ -164,7 +190,7 @@ impl UserInformation {
         }
 
         let implementation_class_uid =
-            implementation_class_uid.ok_or_else(|| PduReadError::InvalidFormat {
+            implementation_class_uid.ok_or_else(|| PduReadError::InvalidPduParameterValue {
                 message: "Implementation Class UID Sub-Itemが存在しません".to_string(),
             })?;
 

@@ -4,7 +4,7 @@ pub use crate::network::upper_layer_protocol::pdu::a_associate::*;
 pub use presentation_context::PresentationContext;
 
 use crate::network::upper_layer_protocol::pdu::{
-    INVALID_PDU_LENGTH_ERROR_MESSAGE, PduReadError, a_associate,
+    INVALID_PDU_LENGTH_ERROR_MESSAGE, ItemType, PduReadError,
 };
 
 pub(crate) const PDU_TYPE: u8 = 0x01;
@@ -60,7 +60,7 @@ impl AAssociateRq {
 
         if length < 68 + 4 {
             // Application Context Itemまでのフィールドの長さ + Application Context Itemのヘッダ（Item-type, Reserved, Item-length）の長さ が全体の長さを超えている場合
-            return Err(PduReadError::InvalidFormat {
+            return Err(PduReadError::InvalidPduParameterValue {
                 message: INVALID_PDU_LENGTH_ERROR_MESSAGE.to_string(),
             });
         }
@@ -75,7 +75,7 @@ impl AAssociateRq {
             let mut buf = [0u8; 16];
             buf_reader.read_exact(&mut buf).await?;
             std::str::from_utf8(&buf)
-                .map_err(|_| PduReadError::InvalidFormat {
+                .map_err(|_| PduReadError::InvalidPduParameterValue {
                     message: "Called-AE-titleフィールドをUTF-8の文字列として解釈できません"
                         .to_string(),
                 })?
@@ -88,7 +88,7 @@ impl AAssociateRq {
             let mut buf = [0u8; 16];
             buf_reader.read_exact(&mut buf).await?;
             std::str::from_utf8(&buf)
-                .map_err(|_| PduReadError::InvalidFormat {
+                .map_err(|_| PduReadError::InvalidPduParameterValue {
                     message: "Calling-AE-titleフィールドをUTF-8の文字列として解釈できません"
                         .to_string(),
                 })?
@@ -104,11 +104,9 @@ impl AAssociateRq {
         offset += 32;
 
         let application_context = {
-            let item_type = buf_reader.read_u8().await?;
-            if item_type != a_associate::application_context::ITEM_TYPE {
-                return Err(PduReadError::InvalidFormat {
-                    message: "Application Context Itemが存在しません".to_string(),
-                });
+            let item_type = ItemType::read_from_stream(buf_reader).await?;
+            if item_type != ItemType::ApplicationContextItem {
+                return Err(PduReadError::UnexpectedPduParameter(item_type));
             }
             offset += 1;
             buf_reader.read_u8().await?; // Reserved
@@ -117,15 +115,23 @@ impl AAssociateRq {
             offset += 2;
 
             if offset + item_length as usize > length as usize {
-                return Err(PduReadError::InvalidFormat {
+                return Err(PduReadError::InvalidPduParameterValue {
                     message: INVALID_PDU_LENGTH_ERROR_MESSAGE.to_string(),
                 });
             }
 
             let application_context = ApplicationContext::read_from_stream(buf_reader, item_length)
                 .await
-                .map_err(|e| PduReadError::InvalidFormat {
-                    message: format!("Application Context Itemのパースに失敗しました: {e}"),
+                .map_err(|e| match e {
+                    PduReadError::IoError(_) => e,
+                    PduReadError::InvalidPduParameterValue { message } => {
+                        PduReadError::InvalidPduParameterValue {
+                            message: format!(
+                                "Application Context Itemのパースに失敗しました: {message}"
+                            ),
+                        }
+                    }
+                    _ => panic!(),
                 })?;
             offset += application_context.length() as usize;
 
@@ -134,7 +140,7 @@ impl AAssociateRq {
         let mut presentation_contexts = vec![];
         let mut user_information = None;
         while offset + 4 < length as usize {
-            let item_type = buf_reader.read_u8().await?;
+            let item_type = ItemType::read_from_stream(buf_reader).await?;
             offset += 1;
             buf_reader.read_u8().await?; // Reserved
             offset += 1;
@@ -142,66 +148,74 @@ impl AAssociateRq {
             offset += 2;
 
             if offset + item_length as usize > length as usize {
-                return Err(PduReadError::InvalidFormat {
+                return Err(PduReadError::InvalidPduParameterValue {
                     message: INVALID_PDU_LENGTH_ERROR_MESSAGE.to_string(),
                 });
             }
 
             match item_type {
-                presentation_context::ITEM_TYPE => {
-                    let presentation_context =
-                        PresentationContext::read_from_stream(buf_reader, item_length)
-                            .await
-                            .map_err(|e| PduReadError::InvalidFormat {
+                ItemType::PresentationContextItemInAAssociateRq => {
+                    let presentation_context = PresentationContext::read_from_stream(
+                        buf_reader,
+                        item_length,
+                    )
+                    .await
+                    .map_err(|e| match e {
+                        PduReadError::IoError(_) => e,
+                        PduReadError::InvalidPduParameterValue { message } => {
+                            PduReadError::InvalidPduParameterValue {
                                 message: format!(
-                                    "Presentation Context Itemのパースに失敗しました: {e}"
+                                    "Presentation Context Itemのパースに失敗しました: {message}"
                                 ),
-                            })?;
+                            }
+                        }
+                        _ => panic!(),
+                    })?;
                     offset += presentation_context.length() as usize;
 
                     presentation_contexts.push(presentation_context);
                 }
-                user_information::ITEM_TYPE => {
+                ItemType::UserInformationItem => {
                     if presentation_contexts.is_empty() {
-                        return Err(PduReadError::InvalidFormat {
-                            message: "Presentation Context Itemが存在しません".to_string(),
-                        });
+                        // Presentation Context Itemが存在しないのにUser Information Itemが出現した場合
+                        return Err(PduReadError::UnexpectedPduParameter(item_type));
                     }
 
                     let temp_user_information =
                         UserInformation::read_from_stream(buf_reader, item_length)
                             .await
-                            .map_err(|e| PduReadError::InvalidFormat {
-                                message: format!(
-                                    "User Information Itemのパースに失敗しました: {e}"
-                                ),
+                            .map_err(|e| match e {
+                                PduReadError::IoError(_) => e,
+                                PduReadError::InvalidPduParameterValue { message } => {
+                                    PduReadError::InvalidPduParameterValue {
+                                        message: format!(
+                                            "User Information Itemのパースに失敗しました: {message}"
+                                        ),
+                                    }
+                                }
+                                _ => panic!(),
                             })?;
                     offset += temp_user_information.length() as usize;
 
                     user_information = Some(temp_user_information);
                     break;
                 }
-                _ => {
-                    return Err(PduReadError::InvalidFormat {
-                        message: format!(
-                            "Presentation Context ItemもしくはUser Information Itemのパースを試みようとした際に予期しないItem-typeを持つItemが出現しました (Item-type=0x{item_type:02X})"
-                        ),
-                    });
-                }
+                _ => return Err(PduReadError::UnexpectedPduParameter(item_type)),
             }
         }
 
         if offset != length as usize {
-            return Err(PduReadError::InvalidFormat {
+            return Err(PduReadError::InvalidPduParameterValue {
                 message: format!(
                     "PDU-lengthと実際の読み取りバイト数が一致しません (PDU-length={length} 読み取りバイト数={offset})"
                 ),
             });
         }
 
-        let user_information = user_information.ok_or_else(|| PduReadError::InvalidFormat {
-            message: "User Information Itemが存在しません".to_string(),
-        })?;
+        let user_information =
+            user_information.ok_or_else(|| PduReadError::InvalidPduParameterValue {
+                message: "User Information Itemが存在しません".to_string(),
+            })?;
 
         Ok(Self {
             length,

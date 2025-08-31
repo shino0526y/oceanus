@@ -72,7 +72,7 @@ impl PresentationDataValue {
         const SIZE_OF_PRESENTATION_CONTEXT_ID: usize = 1;
         const SIZE_OF_MESSAGE_CONTROL_HEADER: usize = 1;
         if (length as usize) < SIZE_OF_PRESENTATION_CONTEXT_ID + SIZE_OF_MESSAGE_CONTROL_HEADER {
-            return Err(PduReadError::InvalidFormat {
+            return Err(PduReadError::InvalidPduParameterValue {
                 message: INVALID_ITEM_LENGTH_ERROR_MESSAGE.to_string(),
             });
         }

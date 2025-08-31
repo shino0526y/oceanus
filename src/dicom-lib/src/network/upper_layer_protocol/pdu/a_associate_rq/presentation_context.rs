@@ -4,8 +4,7 @@ pub use crate::network::upper_layer_protocol::pdu::a_associate::presentation_con
 pub use abstract_syntax::AbstractSyntax;
 
 use crate::network::upper_layer_protocol::pdu::{
-    PduReadError,
-    a_associate::{INVALID_ITEM_LENGTH_ERROR_MESSAGE, INVALID_ITEM_TYPE_ERROR_MESSAGE},
+    ItemType, PduReadError, a_associate::INVALID_ITEM_LENGTH_ERROR_MESSAGE,
 };
 
 pub(crate) const ITEM_TYPE: u8 = 0x20;
@@ -46,7 +45,7 @@ impl PresentationContext {
 
         if length < 4 + 4 {
             // Abstract Syntax Sub-Itemまでのフィールドの長さ + Abstract Syntax Sub-Itemのヘッダ（Item-type, Reserved, Item-length）の長さ が全体の長さを超えている場合
-            return Err(PduReadError::InvalidFormat {
+            return Err(PduReadError::InvalidPduParameterValue {
                 message: INVALID_ITEM_LENGTH_ERROR_MESSAGE.to_string(),
             });
         }
@@ -63,11 +62,9 @@ impl PresentationContext {
         offset += 1;
 
         let abstract_syntax = {
-            let sub_item_type = buf_reader.read_u8().await?;
-            if sub_item_type != abstract_syntax::ITEM_TYPE {
-                return Err(PduReadError::InvalidFormat {
-                    message: INVALID_ITEM_TYPE_ERROR_MESSAGE.to_string(),
-                });
+            let sub_item_type = ItemType::read_from_stream(buf_reader).await?;
+            if sub_item_type != ItemType::AbstractSyntaxSubItem {
+                return Err(PduReadError::UnexpectedPduParameter(sub_item_type));
             }
             offset += 1;
             buf_reader.read_u8().await?; // Reserved
@@ -77,8 +74,16 @@ impl PresentationContext {
 
             let abstract_syntax = AbstractSyntax::read_from_stream(buf_reader, sub_item_length)
                 .await
-                .map_err(|e| PduReadError::InvalidFormat {
-                    message: format!("Abstract Syntax Sub-Itemのパースに失敗しました: {e}"),
+                .map_err(|e| match e {
+                    PduReadError::IoError(_) => e,
+                    PduReadError::InvalidPduParameterValue { message } => {
+                        PduReadError::InvalidPduParameterValue {
+                            message: format!(
+                                "Abstract Syntax Sub-Itemのパースに失敗しました: {message}"
+                            ),
+                        }
+                    }
+                    _ => panic!(),
                 })?;
             offset += abstract_syntax.length() as usize;
 
@@ -87,16 +92,14 @@ impl PresentationContext {
         let mut transfer_syntaxes = vec![];
         while offset < length as usize {
             if offset + 4 > length as usize {
-                return Err(PduReadError::InvalidFormat {
+                return Err(PduReadError::InvalidPduParameterValue {
                     message: INVALID_ITEM_LENGTH_ERROR_MESSAGE.to_string(),
                 });
             }
 
-            let sub_item_type = buf_reader.read_u8().await?;
-            if sub_item_type != transfer_syntax::ITEM_TYPE {
-                return Err(PduReadError::InvalidFormat {
-                    message: INVALID_ITEM_TYPE_ERROR_MESSAGE.to_string(),
-                });
+            let sub_item_type = ItemType::read_from_stream(buf_reader).await?;
+            if sub_item_type != ItemType::TransferSyntaxSubItem {
+                return Err(PduReadError::UnexpectedPduParameter(sub_item_type));
             }
             offset += 1;
             buf_reader.read_u8().await?; // Reserved
@@ -106,8 +109,16 @@ impl PresentationContext {
 
             let transfer_syntax = TransferSyntax::read_from_stream(buf_reader, sub_item_length)
                 .await
-                .map_err(|e| PduReadError::InvalidFormat {
-                    message: format!("Transfer Syntax Sub-Itemのパースに失敗しました: {e}"),
+                .map_err(|e| match e {
+                    PduReadError::IoError(_) => e,
+                    PduReadError::InvalidPduParameterValue { message } => {
+                        PduReadError::InvalidPduParameterValue {
+                            message: format!(
+                                "Transfer Syntax Sub-Itemのパースに失敗しました: {message}"
+                            ),
+                        }
+                    }
+                    _ => panic!(),
                 })?;
             offset += transfer_syntax.length() as usize;
 
@@ -115,7 +126,7 @@ impl PresentationContext {
         }
 
         if offset != length as usize {
-            return Err(PduReadError::InvalidFormat {
+            return Err(PduReadError::InvalidPduParameterValue {
                 message: format!(
                     "Item-lengthと実際の読み取りバイト数が一致しません (Item-length={length} 読み取りバイト数={offset})"
                 ),

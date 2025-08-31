@@ -32,7 +32,7 @@ impl MaximumLength {
         use tokio::io::AsyncReadExt;
 
         if length != 4 {
-            return Err(PduReadError::InvalidFormat {
+            return Err(PduReadError::InvalidPduParameterValue {
                 message: INVALID_ITEM_LENGTH_ERROR_MESSAGE.to_string(),
             });
         }

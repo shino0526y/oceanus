@@ -40,7 +40,7 @@ impl ApplicationContext {
             let mut buf = vec![0u8; length as usize];
             buf_reader.read_exact(&mut buf).await?;
             std::str::from_utf8(&buf)
-                .map_err(|_| PduReadError::InvalidFormat {
+                .map_err(|_| PduReadError::InvalidPduParameterValue {
                     message:
                         "Application-context-nameフィールドをUTF-8の文字列として解釈できません"
                             .to_string(),

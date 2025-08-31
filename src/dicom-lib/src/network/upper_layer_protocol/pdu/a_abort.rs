@@ -41,7 +41,7 @@ impl AAbort {
         use tokio::io::AsyncReadExt;
 
         if length != 4 {
-            return Err(PduReadError::InvalidFormat {
+            return Err(PduReadError::InvalidPduParameterValue {
                 message: INVALID_PDU_LENGTH_ERROR_MESSAGE.to_string(),
             });
         }
@@ -49,12 +49,12 @@ impl AAbort {
         buf_reader.read_u8().await?; // Reserved
         buf_reader.read_u8().await?; // Reserved
         let source = Source::try_from(buf_reader.read_u8().await?).map_err(|e| {
-            PduReadError::InvalidFormat {
+            PduReadError::InvalidPduParameterValue {
                 message: format!("Sourceの変換に失敗しました: {e}"),
             }
         })?;
         let reason = Reason::try_from(buf_reader.read_u8().await?).map_err(|e| {
-            PduReadError::InvalidFormat {
+            PduReadError::InvalidPduParameterValue {
                 message: format!("Reason/Diag.の変換に失敗しました: {e}"),
             }
         })?;
