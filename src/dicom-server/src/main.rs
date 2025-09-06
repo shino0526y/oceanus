@@ -25,10 +25,16 @@ use dicom_lib::network::{
 };
 use tracing_subscriber::prelude::*;
 
+// <root>.<app>.<type>.<version>
+// root: 1.3.6.1.4.1.64183 (https://www.iana.org/assignments/enterprise-numbers/)
+// app: 1 (Oceanus)
+// type: 1 (DICOM Server)
+// version: 0
+const IMPLEMENTATION_CLASS_UID: &str = "1.3.6.1.4.1.64183.1.1.0";
+const IMPLEMENTATION_VERSION_NAME: &str = "OCEANUS_0.0.0";
+
 const PORT: u16 = 104;
 const SERVER_AE_TITLE: &str = "SERVER";
-const IMPLEMENTATION_CLASS_UID: &str = "1.2.826.0.1.3680043.2.1396.999";
-const IMPLEMENTATION_VERSION_NAME: &str = "Oceanus";
 const MAXIMUM_LENGTH: u32 = 0;
 
 static CONNECTION_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
