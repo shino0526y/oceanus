@@ -29,9 +29,10 @@ use tracing_subscriber::prelude::*;
 // root: 1.3.6.1.4.1.64183 (https://www.iana.org/assignments/enterprise-numbers/)
 // app: 1 (Oceanus)
 // type: 1 (DICOM Server)
-// version: 0
-const IMPLEMENTATION_CLASS_UID: &str = "1.3.6.1.4.1.64183.1.1.0";
-const IMPLEMENTATION_VERSION_NAME: &str = "OCEANUS_0.0.0";
+// version: x (major version)
+const IMPLEMENTATION_CLASS_UID: &str =
+    concat!("1.3.6.1.4.1.64183.1.1.", env!("CARGO_PKG_VERSION_MAJOR"));
+const IMPLEMENTATION_VERSION_NAME: &str = concat!("OCEANUS_", env!("CARGO_PKG_VERSION")); // OCEANUS_x.y.z
 
 const PORT: u16 = 104;
 const SERVER_AE_TITLE: &str = "SERVER";
@@ -56,6 +57,9 @@ async fn main() -> std::io::Result<()> {
 ",
         env!("CARGO_PKG_VERSION")
     );
+
+    println!("Implementation Class UID: {IMPLEMENTATION_CLASS_UID}");
+    println!("Implementation Version Name: {IMPLEMENTATION_VERSION_NAME}");
 
     // 出力先がTTYなら色付き、リダイレクト/パイプなら無色
     let is_tty = std::io::stdout().is_terminal();
