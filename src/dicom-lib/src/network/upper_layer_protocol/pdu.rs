@@ -13,6 +13,11 @@ pub use a_release_rp::AReleaseRp;
 pub use a_release_rq::AReleaseRq;
 pub use p_data_tf::PDataTf;
 
+use crate::network::upper_layer_protocol::pdu::{
+    a_associate::{ApplicationContext, UserInformation},
+    a_associate_ac::PresentationContext,
+};
+
 pub(crate) const INVALID_PDU_LENGTH_ERROR_MESSAGE: &str = "PDU-lengthが不正です";
 
 #[derive(thiserror::Error, Debug)]
@@ -158,4 +163,192 @@ impl TryFrom<u8> for ItemType {
             _ => Err("不正なItem-typeです"),
         }
     }
+}
+
+pub async fn receive_a_associate_rq(
+    buf_reader: &mut tokio::io::BufReader<impl tokio::io::AsyncRead + Unpin>,
+) -> Result<AAssociateRq, PduReadError> {
+    use tokio::io::AsyncReadExt;
+
+    let pdu_type = {
+        let b = buf_reader.read_u8().await?;
+        match PduType::try_from(b) {
+            Ok(pdu_type) => pdu_type,
+            Err(_) => {
+                return Err(PduReadError::UnrecognizedPdu(b));
+            }
+        }
+    };
+    if pdu_type != PduType::AAssociateRq {
+        return Err(PduReadError::UnexpectedPdu(pdu_type));
+    }
+
+    buf_reader.read_u8().await?; // Reserved
+    let pdu_length = buf_reader.read_u32().await?;
+
+    match AAssociateRq::read_from_stream(buf_reader, pdu_length).await {
+        Ok(val) => Ok(val),
+        Err(e) => Err(PduReadError::InvalidPduParameterValue {
+            message: format!("A-ASSOCIATE-RQのパースに失敗しました: {e:?}"),
+        }),
+    }
+}
+
+pub enum PDataTfReception {
+    PDataTf(PDataTf),
+    AAbort(AAbort),
+}
+pub async fn receive_p_data_tf(
+    buf_reader: &mut tokio::io::BufReader<impl tokio::io::AsyncRead + Unpin>,
+) -> Result<PDataTfReception, PduReadError> {
+    use tokio::io::AsyncReadExt;
+
+    let pdu_type = {
+        let b = buf_reader.read_u8().await?;
+        match PduType::try_from(b) {
+            Ok(pdu_type) => pdu_type,
+            Err(_) => {
+                return Err(PduReadError::UnrecognizedPdu(b));
+            }
+        }
+    };
+    if pdu_type != PduType::PDataTf && pdu_type != PduType::AAbort {
+        return Err(PduReadError::UnexpectedPdu(pdu_type));
+    }
+
+    buf_reader.read_u8().await?; // Reserved
+    let pdu_length = buf_reader.read_u32().await?;
+
+    if pdu_type == PduType::PDataTf {
+        match PDataTf::read_from_stream(buf_reader, pdu_length).await {
+            Ok(val) => Ok(PDataTfReception::PDataTf(val)),
+            Err(e) => Err(PduReadError::InvalidPduParameterValue {
+                message: format!("P-DATA-TFのパースに失敗しました: {e:?}"),
+            }),
+        }
+    } else {
+        match AAbort::read_from_stream(buf_reader, pdu_length).await {
+            Ok(val) => Ok(PDataTfReception::AAbort(val)),
+            Err(e) => Err(PduReadError::InvalidPduParameterValue {
+                message: format!("A-ABORTのパースに失敗しました: {e:?}"),
+            }),
+        }
+    }
+}
+
+pub enum AReleaseRqReception {
+    AReleaseRq(AReleaseRq),
+    AAbort(AAbort),
+}
+pub async fn receive_a_release_rq(
+    buf_reader: &mut tokio::io::BufReader<impl tokio::io::AsyncRead + Unpin>,
+) -> Result<AReleaseRqReception, PduReadError> {
+    use tokio::io::AsyncReadExt;
+
+    let pdu_type = {
+        let b = buf_reader.read_u8().await?;
+        match PduType::try_from(b) {
+            Ok(pdu_type) => pdu_type,
+            Err(_) => {
+                return Err(PduReadError::UnrecognizedPdu(b));
+            }
+        }
+    };
+    if pdu_type != PduType::AReleaseRq && pdu_type != PduType::AAbort {
+        return Err(PduReadError::UnexpectedPdu(pdu_type));
+    }
+
+    buf_reader.read_u8().await?; // Reserved
+    let pdu_length = buf_reader.read_u32().await?;
+
+    if pdu_type == PduType::AReleaseRq {
+        match AReleaseRq::read_from_stream(buf_reader, pdu_length).await {
+            Ok(val) => Ok(AReleaseRqReception::AReleaseRq(val)),
+            Err(e) => Err(PduReadError::InvalidPduParameterValue {
+                message: format!("A-RELEASE-RQのパースに失敗しました: {e:?}"),
+            }),
+        }
+    } else {
+        match AAbort::read_from_stream(buf_reader, pdu_length).await {
+            Ok(val) => Ok(AReleaseRqReception::AAbort(val)),
+            Err(e) => Err(PduReadError::InvalidPduParameterValue {
+                message: format!("A-ABORTのパースに失敗しました: {e:?}"),
+            }),
+        }
+    }
+}
+
+pub async fn send_a_associate_ac<T>(
+    socket: &mut T,
+    called_ae_title: &str,
+    calling_ae_title: &str,
+    application_context: ApplicationContext,
+    presentation_contexts: Vec<PresentationContext>,
+    user_information: UserInformation,
+) -> std::io::Result<()>
+where
+    T: tokio::io::AsyncWrite + Unpin,
+{
+    use tokio::io::AsyncWriteExt;
+
+    let a_associate_ac = AAssociateAc::new(
+        1,
+        called_ae_title,
+        calling_ae_title,
+        application_context,
+        presentation_contexts,
+        user_information,
+    )
+    .unwrap();
+
+    let bytes: Vec<u8> = a_associate_ac.into();
+    socket.write_all(&bytes).await?;
+
+    Ok(())
+}
+
+pub async fn send_p_data_tf<T>(socket: &mut T, p_data_tf_pdus: &[PDataTf]) -> std::io::Result<()>
+where
+    T: tokio::io::AsyncWrite + Unpin,
+{
+    use tokio::io::AsyncWriteExt;
+
+    for p_data_tf in p_data_tf_pdus {
+        let bytes: Vec<u8> = p_data_tf.into();
+        socket.write_all(&bytes).await?;
+    }
+
+    Ok(())
+}
+
+pub async fn send_a_release_rp<T>(socket: &mut T) -> std::io::Result<()>
+where
+    T: tokio::io::AsyncWrite + Unpin,
+{
+    use tokio::io::AsyncWriteExt;
+
+    let a_release_rp = AReleaseRp::new();
+
+    let bytes: Vec<u8> = a_release_rp.into();
+    socket.write_all(&bytes).await?;
+
+    Ok(())
+}
+
+pub async fn send_a_abort<T>(
+    socket: &mut T,
+    source: a_abort::Source,
+    reason: a_abort::Reason,
+) -> std::io::Result<()>
+where
+    T: tokio::io::AsyncWrite + Unpin,
+{
+    use tokio::io::AsyncWriteExt;
+
+    let a_abort = AAbort::new(source, reason);
+
+    let bytes: Vec<u8> = a_abort.into();
+    socket.write_all(&bytes).await?;
+
+    Ok(())
 }

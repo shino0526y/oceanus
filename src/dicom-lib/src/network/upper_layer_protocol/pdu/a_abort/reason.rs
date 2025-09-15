@@ -1,3 +1,5 @@
+use crate::network::upper_layer_protocol::pdu::PduReadError;
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Reason {
     ReasonNotSpecified = 0,
@@ -22,6 +24,21 @@ impl TryFrom<u8> for Reason {
             5 => Ok(Reason::UnexpectedPduParameter),
             6 => Ok(Reason::InvalidPduParameterValue),
             _ => Err(format!("未定義のReason/Diag.です (Reason=0x{val:02X})")),
+        }
+    }
+}
+
+impl From<PduReadError> for Reason {
+    fn from(err: PduReadError) -> Self {
+        match err {
+            PduReadError::UnrecognizedPdu(_) => Reason::UnrecognizedPdu,
+            PduReadError::UnexpectedPdu(_) => Reason::UnexpectedPdu,
+            PduReadError::UnrecognizedPduParameter(_) => Reason::UnrecognizedPduParameter,
+            PduReadError::UnexpectedPduParameter(_) => Reason::UnexpectedPduParameter,
+            PduReadError::InvalidPduParameterValue { message: _ } => {
+                Reason::InvalidPduParameterValue
+            }
+            PduReadError::IoError(_) => Reason::ReasonNotSpecified,
         }
     }
 }
