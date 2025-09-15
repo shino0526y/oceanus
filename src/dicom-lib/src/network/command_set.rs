@@ -3,7 +3,6 @@ pub mod command;
 pub use command::Command;
 
 use crate::core::Tag;
-use std::{ops::Index, slice::Iter};
 
 const INVALID_BUFFER_LENGTH_ERROR_MESSAGE: &str = "バッファの長さが不正です";
 
@@ -29,12 +28,12 @@ impl CommandSet {
     }
 
     #[inline(always)]
-    pub fn iter(&self) -> Iter<'_, Command> {
+    pub fn iter(&self) -> std::slice::Iter<'_, Command> {
         self.commands.iter()
     }
 }
 
-impl Index<usize> for CommandSet {
+impl std::ops::Index<usize> for CommandSet {
     type Output = Command;
 
     #[inline(always)]
@@ -45,7 +44,7 @@ impl Index<usize> for CommandSet {
 
 impl<'a> IntoIterator for &'a CommandSet {
     type Item = &'a Command;
-    type IntoIter = Iter<'a, Command>;
+    type IntoIter = std::slice::Iter<'a, Command>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.commands.iter()
