@@ -13,11 +13,6 @@ pub use a_release_rp::AReleaseRp;
 pub use a_release_rq::AReleaseRq;
 pub use p_data_tf::PDataTf;
 
-use crate::network::upper_layer_protocol::pdu::{
-    a_associate::{ApplicationContext, UserInformation},
-    a_associate_ac::PresentationContext,
-};
-
 pub(crate) const INVALID_PDU_LENGTH_ERROR_MESSAGE: &str = "PDU-lengthが不正です";
 
 #[derive(thiserror::Error, Debug)]
@@ -282,9 +277,9 @@ pub async fn send_a_associate_ac<T>(
     socket: &mut T,
     called_ae_title: &str,
     calling_ae_title: &str,
-    application_context: ApplicationContext,
-    presentation_contexts: Vec<PresentationContext>,
-    user_information: UserInformation,
+    application_context: a_associate::ApplicationContext,
+    presentation_contexts: Vec<a_associate_ac::PresentationContext>,
+    user_information: a_associate::UserInformation,
 ) -> std::io::Result<()>
 where
     T: tokio::io::AsyncWrite + Unpin,
