@@ -60,9 +60,6 @@ async fn main() -> std::io::Result<()> {
         env!("CARGO_PKG_VERSION")
     );
 
-    println!("Implementation Class UID: {IMPLEMENTATION_CLASS_UID}");
-    println!("Implementation Version Name: {IMPLEMENTATION_VERSION_NAME}");
-
     // 出力先がTTYなら色付き、リダイレクト/パイプなら無色
     let is_tty = std::io::stdout().is_terminal();
     tracing_subscriber::registry()
