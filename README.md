@@ -14,13 +14,13 @@ Rust で実装された PACS です。
 #### 開発モード
 
 ```bash
-make run
+make run <AE-TITLE>
 ```
 
 #### リリースモード
 
 ```bash
-make run PROFILE=release
+make run <AE-TITLE> PROFILE=release
 ```
 
 ### 2. 開発ツール

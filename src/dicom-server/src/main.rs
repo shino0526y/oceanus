@@ -37,14 +37,23 @@ const IMPLEMENTATION_CLASS_UID: &str =
 const IMPLEMENTATION_VERSION_NAME: &str = concat!("OCEANUS_", env!("CARGO_PKG_VERSION")); // OCEANUS_x.y.z
 
 const PORT: u16 = 104;
-const SERVER_AE_TITLE: &str = "SERVER";
 const MAXIMUM_LENGTH: u32 = 0;
 
 static CONNECTION_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+static SERVER_AE_TITLE: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     use std::io::IsTerminal;
+
+    // 第1引数からAEタイトルを受け取る
+    {
+        let provided = std::env::args().nth(1).unwrap_or_else(|| {
+            eprintln!("第1引数にAEタイトルを指定してください");
+            std::process::exit(1);
+        });
+        SERVER_AE_TITLE.set(provided).unwrap();
+    }
 
     print!(
         r"
@@ -118,7 +127,7 @@ async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::So
         "A-ASSOCIATE-RQを受信しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\")"
     );
 
-    if called_ae_title != SERVER_AE_TITLE {
+    if called_ae_title != SERVER_AE_TITLE.get().unwrap() {
         // TODO: A_ASSOCIATE_RJを送信する
         panic!("サーバーのAEタイトルとクライアントのAEタイトルが一致しません");
     }
