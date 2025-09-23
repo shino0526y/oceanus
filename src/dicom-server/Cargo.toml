@@ -2,13 +2,15 @@
 name = "dicom-server"
 version.workspace = true
 authors.workspace = true
+description = "DICOM Server"
 edition.workspace = true
 
 [dependencies]
 chrono = "0.4"
+clap = { version = "4", features = ["derive"] }
+scopeguard = "1"
 thiserror.workspace = true
+tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber = "0.3"
-tokio.workspace = true
-scopeguard = "1"
 dicom-lib.workspace = true

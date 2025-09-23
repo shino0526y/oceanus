@@ -36,24 +36,29 @@ const IMPLEMENTATION_CLASS_UID: &str =
     concat!("1.3.6.1.4.1.64183.1.1.", env!("CARGO_PKG_VERSION_MAJOR"));
 const IMPLEMENTATION_VERSION_NAME: &str = concat!("OCEANUS_", env!("CARGO_PKG_VERSION")); // OCEANUS_x.y.z
 
-const PORT: u16 = 104;
 const MAXIMUM_LENGTH: u32 = 0;
 
 static CONNECTION_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 static SERVER_AE_TITLE: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 
+#[derive(clap::Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// サーバのAEタイトル（必須）
+    ae_title: String,
+
+    /// 受信ポート番号
+    #[arg(short = 'p', long = "port", default_value_t = 104)]
+    port: u16,
+}
+
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
+    use clap::Parser;
     use std::io::IsTerminal;
 
-    // 第1引数からAEタイトルを受け取る
-    {
-        let provided = std::env::args().nth(1).unwrap_or_else(|| {
-            eprintln!("第1引数にAEタイトルを指定してください");
-            std::process::exit(1);
-        });
-        SERVER_AE_TITLE.set(provided).unwrap();
-    }
+    let args = Args::parse();
+    SERVER_AE_TITLE.set(args.ae_title).unwrap();
 
     print!(
         r"
@@ -79,8 +84,13 @@ async fn main() -> std::io::Result<()> {
         )
         .init();
 
-    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{PORT}")).await?;
-    tracing::info!("サーバーが起動しました (ポート番号={PORT})");
+    let listener =
+        tokio::net::TcpListener::bind((std::net::Ipv4Addr::UNSPECIFIED, args.port)).await?;
+    tracing::info!(
+        "サーバーが起動しました (AEタイトル=\"{}\" ポート番号={})",
+        SERVER_AE_TITLE.get().unwrap(),
+        args.port
+    );
 
     loop {
         let (socket, addr) = listener.accept().await?;
