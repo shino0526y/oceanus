@@ -1,4 +1,4 @@
-use crate::network::CommandSet;
+use crate::{constants::sop_class_uids::VERIFICATION, network::CommandSet};
 
 pub struct CEchoRq {
     message_id: u16,
@@ -54,7 +54,7 @@ impl TryFrom<CommandSet> for CEchoRq {
         if affected_sop_class_uid.is_none() {
             return Err("Affected SOP Class UIDコマンドが存在しません");
         }
-        if affected_sop_class_uid.unwrap() != "1.2.840.10008.1.1" {
+        if affected_sop_class_uid.unwrap() != VERIFICATION {
             return Err("Unsupported Affected SOP Class UIDが不正です");
         }
 

@@ -1,27 +1,30 @@
 mod log;
 
 use crate::log::Formatter;
-use dicom_lib::network::{
-    dimse::c_echo::{
-        c_echo_rq::CEchoRq,
-        c_echo_rsp::{CEchoRsp, Status},
-    },
-    upper_layer_protocol::{
-        pdu::{
-            self, AReleaseRqReception, PDataTfReception,
-            a_abort::{Reason, Source},
-            a_associate_ac::{
-                ApplicationContext, PresentationContext, UserInformation,
-                presentation_context::{ResultReason, TransferSyntax},
-                user_information::{
-                    ImplementationClassUid, ImplementationVersionName, MaximumLength,
-                },
-            },
-            receive_a_associate_rq, receive_a_release_rq, receive_p_data_tf, send_a_associate_ac,
-            send_a_release_rp, send_p_data_tf,
+use dicom_lib::{
+    constants::{sop_class_uids::VERIFICATION, transfer_syntax_uids::IMPLICIT_VR_LITTLE_ENDIAN},
+    network::{
+        dimse::c_echo::{
+            c_echo_rq::CEchoRq,
+            c_echo_rsp::{CEchoRsp, Status},
         },
-        utils::command_set_converter::{
-            command_set_to_p_data_tf_pdus, p_data_tf_pdus_to_command_set,
+        upper_layer_protocol::{
+            pdu::{
+                self, AReleaseRqReception, PDataTfReception,
+                a_abort::{Reason, Source},
+                a_associate_ac::{
+                    ApplicationContext, PresentationContext, UserInformation,
+                    presentation_context::{ResultReason, TransferSyntax},
+                    user_information::{
+                        ImplementationClassUid, ImplementationVersionName, MaximumLength,
+                    },
+                },
+                receive_a_associate_rq, receive_a_release_rq, receive_p_data_tf,
+                send_a_associate_ac, send_a_release_rp, send_p_data_tf,
+            },
+            utils::command_set_converter::{
+                command_set_to_p_data_tf_pdus, p_data_tf_pdus_to_command_set,
+            },
         },
     },
 };
@@ -149,12 +152,12 @@ async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::So
         .map(|presentation_context| {
             PresentationContext::new(
                 presentation_context.context_id(),
-                if presentation_context.abstract_syntax().name() == "1.2.840.10008.1.1" {
+                if presentation_context.abstract_syntax().name() == VERIFICATION {
                     ResultReason::Acceptance
                 } else {
                     ResultReason::AbstractSyntaxNotSupported
                 },
-                TransferSyntax::new("1.2.840.10008.1.2").unwrap(),
+                TransferSyntax::new(IMPLICIT_VR_LITTLE_ENDIAN).unwrap(),
             )
         })
         .collect::<Vec<_>>();

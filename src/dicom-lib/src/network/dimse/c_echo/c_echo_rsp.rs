@@ -1,4 +1,5 @@
 use crate::{
+    constants::sop_class_uids::VERIFICATION,
     core::Tag,
     network::{CommandSet, command_set::Command},
 };
@@ -40,7 +41,7 @@ impl From<CEchoRsp> for CommandSet {
     fn from(val: CEchoRsp) -> Self {
         let affected_sop_class_uid = Command {
             tag: Tag::new(0x0000, 0x0002),
-            value_field: b"1.2.840.10008.1.1\0".to_vec(),
+            value_field: format!("{}{}", VERIFICATION, '\0').into_bytes(),
         };
         let command_field = Command {
             tag: Tag::new(0x0000, 0x0100),
