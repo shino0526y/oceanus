@@ -148,16 +148,16 @@ async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::So
     // TODO: A_ASSOCIATE_RJを送信する
     if called_ae_title != SERVER_AE_TITLE.get().unwrap() {
         tracing::warn!(
-            "アソシエーションを拒否しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\" 理由=AEタイトル不一致)",
+            "アソシエーション要求を拒否しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\" 理由=AEタイトル不一致)",
         );
         panic!("サーバーのAEタイトルとクライアントのAEタイトルが一致しません");
     } else if !is_supported {
         tracing::warn!(
-            "アソシエーションを拒否しました (送信元=\"{calling_ae_title}\" 理由=サポートされていない抽象構文)",
+            "アソシエーション要求を拒否しました (送信元=\"{calling_ae_title}\" 理由=サポートされていない抽象構文)",
         );
         panic!("サポートされていない抽象構文が指定されました");
     } else {
-        tracing::info!("アソシエーションを受諾しました (送信元=\"{calling_ae_title}\")",);
+        tracing::info!("アソシエーション要求を受諾しました (送信元=\"{calling_ae_title}\")",);
     }
 
     // A-ASSOCIATE-ACの送信
