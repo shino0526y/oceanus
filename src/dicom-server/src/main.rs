@@ -140,55 +140,66 @@ async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::So
         "A-ASSOCIATE-RQを受信しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\")"
     );
 
-    if called_ae_title == SERVER_AE_TITLE.get().unwrap() {
-        tracing::info!("アソシエーションを受諾しました (送信元=\"{calling_ae_title}\")",);
-    } else {
+    let presentation_contexts = a_associate_rq.presentation_contexts();
+    let is_supported = presentation_contexts
+        .iter()
+        .any(|presentation_context| presentation_context.abstract_syntax().name() == VERIFICATION);
+
+    // TODO: A_ASSOCIATE_RJを送信する
+    if called_ae_title != SERVER_AE_TITLE.get().unwrap() {
         tracing::warn!(
             "アソシエーションを拒否しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\" 理由=AEタイトル不一致)",
         );
-        // TODO: A_ASSOCIATE_RJを送信する
         panic!("サーバーのAEタイトルとクライアントのAEタイトルが一致しません");
+    } else if !is_supported {
+        tracing::warn!(
+            "アソシエーションを拒否しました (送信元=\"{calling_ae_title}\" 理由=サポートされていない抽象構文)",
+        );
+        panic!("サポートされていない抽象構文が指定されました");
+    } else {
+        tracing::info!("アソシエーションを受諾しました (送信元=\"{calling_ae_title}\")",);
     }
 
-    let application_context = ApplicationContext::new("1.2.840.10008.3.1.1.1.1");
-    let presentation_contexts = a_associate_rq
-        .presentation_contexts()
-        .iter()
-        .map(|presentation_context| {
-            PresentationContext::new(
-                presentation_context.context_id(),
-                if presentation_context.abstract_syntax().name() == VERIFICATION {
-                    ResultReason::Acceptance
-                } else {
-                    ResultReason::AbstractSyntaxNotSupported
-                },
-                TransferSyntax::new(IMPLICIT_VR_LITTLE_ENDIAN).unwrap(),
-            )
-        })
-        .collect::<Vec<_>>();
-    let user_information = UserInformation::new(
-        Some(MaximumLength::new(MAXIMUM_LENGTH)),
-        ImplementationClassUid::new(IMPLEMENTATION_CLASS_UID).unwrap(),
-        Some(ImplementationVersionName::new(IMPLEMENTATION_VERSION_NAME).unwrap()),
-    );
-
     // A-ASSOCIATE-ACの送信
-    match send_a_associate_ac(
-        &mut buf_reader.get_mut(),
-        called_ae_title,
-        calling_ae_title,
-        application_context,
-        presentation_contexts,
-        user_information,
-    )
-    .await
     {
-        Ok(()) => {}
-        Err(e) => {
-            tracing::error!("A-ASSOCIATE-ACの送信に失敗しました: {e:?}");
-            return;
-        }
-    };
+        let application_context = ApplicationContext::new("1.2.840.10008.3.1.1.1.1");
+        let presentation_contexts = presentation_contexts
+            .iter()
+            .map(|presentation_context| {
+                PresentationContext::new(
+                    presentation_context.context_id(),
+                    if presentation_context.abstract_syntax().name() == VERIFICATION {
+                        ResultReason::Acceptance
+                    } else {
+                        ResultReason::AbstractSyntaxNotSupported
+                    },
+                    TransferSyntax::new(IMPLICIT_VR_LITTLE_ENDIAN).unwrap(),
+                )
+            })
+            .collect::<Vec<_>>();
+        let user_information = UserInformation::new(
+            Some(MaximumLength::new(MAXIMUM_LENGTH)),
+            ImplementationClassUid::new(IMPLEMENTATION_CLASS_UID).unwrap(),
+            Some(ImplementationVersionName::new(IMPLEMENTATION_VERSION_NAME).unwrap()),
+        );
+
+        match send_a_associate_ac(
+            &mut buf_reader.get_mut(),
+            called_ae_title,
+            calling_ae_title,
+            application_context,
+            presentation_contexts,
+            user_information,
+        )
+        .await
+        {
+            Ok(()) => {}
+            Err(e) => {
+                tracing::error!("A-ASSOCIATE-ACの送信に失敗しました: {e:?}");
+                return;
+            }
+        };
+    }
     tracing::debug!("A-ASSOCIATE-ACを送信しました");
 
     // P-DATA-TFの受信
