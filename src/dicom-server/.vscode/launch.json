@@ -5,8 +5,8 @@
       "type": "lldb",
       "request": "launch",
       "name": "Debug dicom-server",
-      "program": "${workspaceFolder}/../target/debug/dicom-server ANY-SCP",
-      "args": [],
+      "program": "${workspaceFolder}/../target/debug/dicom-server",
+      "args": ["ANY-SCP"],
       "cwd": "${workspaceFolder}",
       "sourceLanguages": ["rust"]
     }
