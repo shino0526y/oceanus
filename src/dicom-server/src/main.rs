@@ -115,7 +115,7 @@ async fn main() -> std::io::Result<()> {
 
 async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::SocketAddr) {
     scopeguard::defer! {
-        tracing::info!("コネクションを破棄しました");
+        tracing::debug!("コネクションを破棄しました");
     }
 
     tracing::info!(
@@ -136,11 +136,16 @@ async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::So
     };
     let called_ae_title = a_associate_rq.called_ae_title();
     let calling_ae_title = a_associate_rq.calling_ae_title();
-    tracing::info!(
+    tracing::debug!(
         "A-ASSOCIATE-RQを受信しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\")"
     );
 
-    if called_ae_title != SERVER_AE_TITLE.get().unwrap() {
+    if called_ae_title == SERVER_AE_TITLE.get().unwrap() {
+        tracing::info!("アソシエーションを受諾しました (送信元=\"{calling_ae_title}\")",);
+    } else {
+        tracing::warn!(
+            "アソシエーションを拒否しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\" 理由=AEタイトル不一致)",
+        );
         // TODO: A_ASSOCIATE_RJを送信する
         panic!("サーバーのAEタイトルとクライアントのAEタイトルが一致しません");
     }
@@ -184,7 +189,7 @@ async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::So
             return;
         }
     };
-    tracing::info!("A-ASSOCIATE-ACを送信しました");
+    tracing::debug!("A-ASSOCIATE-ACを送信しました");
 
     // P-DATA-TFの受信
     let p_data_tf = {
@@ -201,7 +206,7 @@ async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::So
         match reception {
             PDataTfReception::PDataTf(val) => val,
             PDataTfReception::AAbort(a_abort) => {
-                tracing::info!(
+                tracing::debug!(
                     "A-ABORTを受信しました: (Source={:02X} Reason={:02X})",
                     a_abort.source() as u8,
                     a_abort.reason() as u8
@@ -210,7 +215,7 @@ async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::So
             }
         }
     };
-    tracing::info!("P-DATA-TFを受信しました");
+    tracing::debug!("P-DATA-TFを受信しました");
 
     // 受信したP-DATA-TFからコマンドセットを生成する
     let presentation_context_id = p_data_tf.presentation_data_values()[0].presentation_context_id();
@@ -233,10 +238,10 @@ async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::So
             return;
         }
     };
-    tracing::info!("  -> C-ECHO-RQ",);
+    tracing::debug!("  -> C-ECHO-RQ",);
 
     let c_echo_rsp = CEchoRsp::new(c_echo_rq.message_id(), Status::Success);
-    tracing::info!("  <- C-ECHO-RSP",);
+    tracing::debug!("  <- C-ECHO-RSP",);
 
     // 送信するP-DATA-TFのためのコマンドセットを生成する
     let command_set_to_be_sent = c_echo_rsp.into();
@@ -260,7 +265,7 @@ async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::So
                 return;
             }
         }
-        tracing::info!("P-DATA-TFを送信しました");
+        tracing::debug!("P-DATA-TFを送信しました");
     }
 
     // A-RELEASE-RQの受信
@@ -278,7 +283,7 @@ async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::So
         match reception {
             AReleaseRqReception::AReleaseRq(val) => val,
             AReleaseRqReception::AAbort(a_abort) => {
-                tracing::info!(
+                tracing::debug!(
                     "A-ABORTを受信しました: (Source={:02X} Reason={:02X})",
                     a_abort.source() as u8,
                     a_abort.reason() as u8
@@ -287,7 +292,7 @@ async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::So
             }
         }
     };
-    tracing::info!("A-RELEASE-RQを受信しました");
+    tracing::debug!("A-RELEASE-RQを受信しました");
 
     // A-RELEASE-RPの送信
     match send_a_release_rp(buf_reader.get_mut()).await {
@@ -297,7 +302,9 @@ async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::So
             return;
         }
     }
-    tracing::info!("A-RELEASE-RPを送信しました");
+    tracing::debug!("A-RELEASE-RPを送信しました");
+
+    tracing::info!("Verificationサービスを正常に完了しました");
 }
 
 async fn send_a_abort(
@@ -305,7 +312,7 @@ async fn send_a_abort(
     reason: Reason,
 ) {
     match pdu::send_a_abort(&mut buf_reader.get_mut(), Source::Provider, reason).await {
-        Ok(()) => tracing::info!("A-ABORTを送信しました"),
+        Ok(()) => tracing::debug!("A-ABORTを送信しました"),
         Err(e) => tracing::error!("A-ABORTの送信に失敗しました: {e:?}"),
     }
 }
