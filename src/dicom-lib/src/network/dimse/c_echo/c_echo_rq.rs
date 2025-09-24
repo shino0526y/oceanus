@@ -55,7 +55,7 @@ impl TryFrom<CommandSet> for CEchoRq {
             return Err("Affected SOP Class UIDコマンドが存在しません");
         }
         if affected_sop_class_uid.unwrap() != VERIFICATION {
-            return Err("Unsupported Affected SOP Class UIDが不正です");
+            return Err("Affected SOP Class UIDが不正です");
         }
 
         if command_field.is_none() {
