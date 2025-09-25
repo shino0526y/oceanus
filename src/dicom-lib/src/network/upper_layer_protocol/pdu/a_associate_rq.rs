@@ -6,6 +6,7 @@ pub use presentation_context::PresentationContext;
 use crate::network::upper_layer_protocol::pdu::{
     INVALID_PDU_LENGTH_ERROR_MESSAGE, ItemType, PduReadError,
 };
+use tokio::io::{AsyncRead, AsyncReadExt, BufReader};
 
 pub(crate) const PDU_TYPE: u8 = 0x01;
 
@@ -53,11 +54,9 @@ impl AAssociateRq {
     }
 
     pub async fn read_from_stream(
-        buf_reader: &mut tokio::io::BufReader<impl tokio::io::AsyncRead + Unpin>,
+        buf_reader: &mut BufReader<impl AsyncRead + Unpin>,
         length: u32,
     ) -> Result<Self, PduReadError> {
-        use tokio::io::AsyncReadExt;
-
         if length < 68 + 4 {
             // Application Context Itemまでのフィールドの長さ + Application Context Itemのヘッダ（Item-type, Reserved, Item-length）の長さ が全体の長さを超えている場合
             return Err(PduReadError::InvalidPduParameterValue {

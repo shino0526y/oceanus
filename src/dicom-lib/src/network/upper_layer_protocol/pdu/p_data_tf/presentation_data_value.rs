@@ -1,6 +1,7 @@
 use crate::network::upper_layer_protocol::pdu::{
     PduReadError, a_associate::INVALID_ITEM_LENGTH_ERROR_MESSAGE,
 };
+use tokio::io::{AsyncRead, AsyncReadExt, BufReader};
 
 pub struct PresentationDataValue {
     length: u32,
@@ -64,11 +65,9 @@ impl PresentationDataValue {
     }
 
     pub async fn read_from_stream(
-        buf_reader: &mut tokio::io::BufReader<impl tokio::io::AsyncRead + Unpin>,
+        buf_reader: &mut BufReader<impl AsyncRead + Unpin>,
         length: u32,
     ) -> Result<Self, PduReadError> {
-        use tokio::io::AsyncReadExt;
-
         const SIZE_OF_PRESENTATION_CONTEXT_ID: usize = 1;
         const SIZE_OF_MESSAGE_CONTROL_HEADER: usize = 1;
         if (length as usize) < SIZE_OF_PRESENTATION_CONTEXT_ID + SIZE_OF_MESSAGE_CONTROL_HEADER {

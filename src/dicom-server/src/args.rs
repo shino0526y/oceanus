@@ -1,4 +1,7 @@
-#[derive(clap::Parser, Debug)]
+use clap::{Parser, ValueEnum};
+use tracing::level_filters::LevelFilter;
+
+#[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
     /// サーバのAEタイトル（必須）
@@ -13,7 +16,7 @@ pub struct Args {
     pub log_level: LogLevel,
 }
 
-#[derive(clap::ValueEnum, Clone, Copy, Debug)]
+#[derive(ValueEnum, Clone, Copy, Debug)]
 pub enum LogLevel {
     Error,
     Warn,
@@ -22,14 +25,14 @@ pub enum LogLevel {
     Trace,
 }
 
-impl From<LogLevel> for tracing_subscriber::filter::LevelFilter {
+impl From<LogLevel> for LevelFilter {
     fn from(level: LogLevel) -> Self {
         match level {
-            LogLevel::Error => tracing_subscriber::filter::LevelFilter::ERROR,
-            LogLevel::Warn => tracing_subscriber::filter::LevelFilter::WARN,
-            LogLevel::Info => tracing_subscriber::filter::LevelFilter::INFO,
-            LogLevel::Debug => tracing_subscriber::filter::LevelFilter::DEBUG,
-            LogLevel::Trace => tracing_subscriber::filter::LevelFilter::TRACE,
+            LogLevel::Error => LevelFilter::ERROR,
+            LogLevel::Warn => LevelFilter::WARN,
+            LogLevel::Info => LevelFilter::INFO,
+            LogLevel::Debug => LevelFilter::DEBUG,
+            LogLevel::Trace => LevelFilter::TRACE,
         }
     }
 }

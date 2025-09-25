@@ -1,6 +1,7 @@
 mod args;
 
 use crate::args::Args;
+use clap::Parser;
 use dicom_lib::{
     constants::{sop_class_uids::VERIFICATION, transfer_syntax_uids::IMPLICIT_VR_LITTLE_ENDIAN},
     network::{
@@ -28,6 +29,20 @@ use dicom_lib::{
         },
     },
 };
+use std::{
+    io::IsTerminal,
+    net::Ipv4Addr,
+    sync::{
+        OnceLock,
+        atomic::{AtomicU64, Ordering},
+    },
+};
+use tokio::{
+    io::BufReader,
+    net::{TcpListener, TcpStream},
+};
+use tracing::{Instrument, Level, debug, error, info, level_filters::LevelFilter, span, warn};
+use tracing_subscriber::fmt::time::LocalTime;
 
 // <root>.<app>.<type>.<version>
 // root: 1.3.6.1.4.1.64183 (https://www.iana.org/assignments/enterprise-numbers/)
@@ -40,14 +55,11 @@ const IMPLEMENTATION_VERSION_NAME: &str = concat!("OCEANUS_", env!("CARGO_PKG_VE
 
 const MAXIMUM_LENGTH: u32 = 0;
 
-static CONNECTION_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
-static SERVER_AE_TITLE: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+static CONNECTION_COUNTER: AtomicU64 = AtomicU64::new(1);
+static SERVER_AE_TITLE: OnceLock<String> = OnceLock::new();
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
-    use clap::Parser;
-    use std::io::IsTerminal;
-
     let args = Args::parse();
     SERVER_AE_TITLE.set(args.ae_title).unwrap();
 
@@ -68,19 +80,18 @@ async fn main() -> std::io::Result<()> {
     // ログ設定
     {
         let is_tty = std::io::stdout().is_terminal();
-        let log_level_filter: tracing_subscriber::filter::LevelFilter = args.log_level.into();
+        let log_level_filter: LevelFilter = args.log_level.into();
 
         tracing_subscriber::fmt()
             .with_ansi(is_tty)
-            .with_timer(tracing_subscriber::fmt::time::LocalTime::rfc_3339())
+            .with_timer(LocalTime::rfc_3339())
             .with_max_level(log_level_filter)
             .with_target(false)
             .init();
     }
 
-    let listener =
-        tokio::net::TcpListener::bind((std::net::Ipv4Addr::UNSPECIFIED, args.port)).await?;
-    tracing::info!(
+    let listener = TcpListener::bind((Ipv4Addr::UNSPECIFIED, args.port)).await?;
+    info!(
         "サーバーが起動しました (AEタイトル=\"{}\" ポート番号={})",
         SERVER_AE_TITLE.get().unwrap(),
         args.port
@@ -88,14 +99,14 @@ async fn main() -> std::io::Result<()> {
 
     loop {
         let (socket, addr) = listener.accept().await?;
-        let connection_id = CONNECTION_COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let connection_id = CONNECTION_COUNTER.fetch_add(1, Ordering::Relaxed);
 
         tokio::spawn(async move {
-            use tracing::Instrument;
+            use Instrument;
 
             handle_connection(socket)
-                .instrument(tracing::span!(
-                    tracing::Level::INFO,
+                .instrument(span!(
+                    Level::INFO,
                     "connection",
                     ID = connection_id,
                     IP = format!("{}", addr.ip()),
@@ -106,20 +117,20 @@ async fn main() -> std::io::Result<()> {
     }
 }
 
-async fn handle_connection(mut socket: tokio::net::TcpStream) {
-    let mut buf_reader = tokio::io::BufReader::new(&mut socket);
+async fn handle_connection(mut socket: TcpStream) {
+    let mut buf_reader = BufReader::new(&mut socket);
 
     // A-ASSOCIATE-RQの受信
     let a_associate_rq = match receive_a_associate_rq(&mut buf_reader).await {
         Ok(val) => val,
         Err(e) => {
-            tracing::error!("A-ASSOCIATE-RQの受信に失敗しました: {e:?}");
+            error!("A-ASSOCIATE-RQの受信に失敗しました: {e:?}");
             return;
         }
     };
     let called_ae_title = a_associate_rq.called_ae_title();
     let calling_ae_title = a_associate_rq.calling_ae_title();
-    tracing::debug!(
+    debug!(
         "A-ASSOCIATE-RQを受信しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\")"
     );
 
@@ -130,17 +141,17 @@ async fn handle_connection(mut socket: tokio::net::TcpStream) {
 
     // TODO: A_ASSOCIATE_RJを送信する
     if called_ae_title != SERVER_AE_TITLE.get().unwrap() {
-        tracing::warn!(
+        warn!(
             "アソシエーション要求を拒否しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\" 理由=AEタイトル不一致)",
         );
         panic!("サーバーのAEタイトルとクライアントのAEタイトルが一致しません");
     } else if !is_supported {
-        tracing::warn!(
+        warn!(
             "アソシエーション要求を拒否しました (送信元=\"{calling_ae_title}\" 理由=サポートされていない抽象構文)",
         );
         panic!("サポートされていない抽象構文が指定されました");
     } else {
-        tracing::info!("アソシエーション要求を受諾しました (送信元=\"{calling_ae_title}\")",);
+        info!("アソシエーション要求を受諾しました (送信元=\"{calling_ae_title}\")",);
     }
 
     // A-ASSOCIATE-ACの送信
@@ -178,19 +189,19 @@ async fn handle_connection(mut socket: tokio::net::TcpStream) {
         {
             Ok(()) => {}
             Err(e) => {
-                tracing::error!("A-ASSOCIATE-ACの送信に失敗しました: {e:?}");
+                error!("A-ASSOCIATE-ACの送信に失敗しました: {e:?}");
                 return;
             }
         };
     }
-    tracing::debug!("A-ASSOCIATE-ACを送信しました");
+    debug!("A-ASSOCIATE-ACを送信しました");
 
     // P-DATA-TFの受信
     let p_data_tf = {
         let reception = match receive_p_data_tf(&mut buf_reader).await {
             Ok(val) => val,
             Err(e) => {
-                tracing::error!("P-DATA-TFの受信に失敗しました: {e:?}");
+                error!("P-DATA-TFの受信に失敗しました: {e:?}");
                 let reason = Reason::from(e);
                 send_a_abort(&mut buf_reader, reason).await;
                 return;
@@ -200,7 +211,7 @@ async fn handle_connection(mut socket: tokio::net::TcpStream) {
         match reception {
             PDataTfReception::PDataTf(val) => val,
             PDataTfReception::AAbort(a_abort) => {
-                tracing::debug!(
+                debug!(
                     "A-ABORTを受信しました: (Source={:02X} Reason={:02X})",
                     a_abort.source() as u8,
                     a_abort.reason() as u8
@@ -209,14 +220,14 @@ async fn handle_connection(mut socket: tokio::net::TcpStream) {
             }
         }
     };
-    tracing::debug!("P-DATA-TFを受信しました");
+    debug!("P-DATA-TFを受信しました");
 
     // 受信したP-DATA-TFからコマンドセットを生成する
     let presentation_context_id = p_data_tf.presentation_data_values()[0].presentation_context_id();
     let command_set_received = match p_data_tf_pdus_to_command_set(&[p_data_tf]) {
         Ok(val) => val,
         Err(e) => {
-            tracing::error!("コマンドセットのパースに失敗しました: {e}");
+            error!("コマンドセットのパースに失敗しました: {e}");
             let reason = Reason::InvalidPduParameterValue;
             send_a_abort(&mut buf_reader, reason).await;
             return;
@@ -226,16 +237,16 @@ async fn handle_connection(mut socket: tokio::net::TcpStream) {
     let c_echo_rq = match CEchoRq::try_from(command_set_received) {
         Ok(val) => val,
         Err(e) => {
-            tracing::error!("C-ECHO-RQのパースに失敗しました: {e}");
+            error!("C-ECHO-RQのパースに失敗しました: {e}");
             let reason = Reason::InvalidPduParameterValue;
             send_a_abort(&mut buf_reader, reason).await;
             return;
         }
     };
-    tracing::debug!("  -> C-ECHO-RQ",);
+    debug!("  -> C-ECHO-RQ",);
 
     let c_echo_rsp = CEchoRsp::new(c_echo_rq.message_id(), Status::Success);
-    tracing::debug!("  <- C-ECHO-RSP",);
+    debug!("  <- C-ECHO-RSP",);
 
     // 送信するP-DATA-TFのためのコマンドセットを生成する
     let command_set_to_be_sent = c_echo_rsp.into();
@@ -255,11 +266,11 @@ async fn handle_connection(mut socket: tokio::net::TcpStream) {
         match send_p_data_tf(&mut buf_reader.get_mut(), &p_data_tf_pdus).await {
             Ok(()) => {}
             Err(e) => {
-                tracing::error!("P-DATA-TFの送信に失敗しました: {e:?}");
+                error!("P-DATA-TFの送信に失敗しました: {e:?}");
                 return;
             }
         }
-        tracing::debug!("P-DATA-TFを送信しました");
+        debug!("P-DATA-TFを送信しました");
     }
 
     // A-RELEASE-RQの受信
@@ -267,7 +278,7 @@ async fn handle_connection(mut socket: tokio::net::TcpStream) {
         let reception = match receive_a_release_rq(&mut buf_reader).await {
             Ok(val) => val,
             Err(e) => {
-                tracing::error!("A-RELEASE-RQの受信に失敗しました: {e:?}");
+                error!("A-RELEASE-RQの受信に失敗しました: {e:?}");
                 let reason = Reason::from(e);
                 send_a_abort(&mut buf_reader, reason).await;
                 return;
@@ -277,7 +288,7 @@ async fn handle_connection(mut socket: tokio::net::TcpStream) {
         match reception {
             AReleaseRqReception::AReleaseRq(val) => val,
             AReleaseRqReception::AAbort(a_abort) => {
-                tracing::debug!(
+                debug!(
                     "A-ABORTを受信しました: (Source={:02X} Reason={:02X})",
                     a_abort.source() as u8,
                     a_abort.reason() as u8
@@ -286,27 +297,24 @@ async fn handle_connection(mut socket: tokio::net::TcpStream) {
             }
         }
     };
-    tracing::debug!("A-RELEASE-RQを受信しました");
+    debug!("A-RELEASE-RQを受信しました");
 
     // A-RELEASE-RPの送信
     match send_a_release_rp(buf_reader.get_mut()).await {
         Ok(()) => {}
         Err(e) => {
-            tracing::error!("A-RELEASE-RPの送信に失敗しました: {e:?}");
+            error!("A-RELEASE-RPの送信に失敗しました: {e:?}");
             return;
         }
     }
-    tracing::debug!("A-RELEASE-RPを送信しました");
+    debug!("A-RELEASE-RPを送信しました");
 
-    tracing::info!("Verificationサービスを正常に完了しました");
+    info!("Verificationサービスを正常に完了しました");
 }
 
-async fn send_a_abort(
-    buf_reader: &mut tokio::io::BufReader<&mut tokio::net::TcpStream>,
-    reason: Reason,
-) {
+async fn send_a_abort(buf_reader: &mut BufReader<&mut TcpStream>, reason: Reason) {
     match pdu::send_a_abort(&mut buf_reader.get_mut(), Source::Provider, reason).await {
-        Ok(()) => tracing::debug!("A-ABORTを送信しました"),
-        Err(e) => tracing::error!("A-ABORTの送信に失敗しました: {e:?}"),
+        Ok(()) => debug!("A-ABORTを送信しました"),
+        Err(e) => error!("A-ABORTの送信に失敗しました: {e:?}"),
     }
 }

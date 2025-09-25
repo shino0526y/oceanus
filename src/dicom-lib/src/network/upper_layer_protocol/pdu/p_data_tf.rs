@@ -3,6 +3,7 @@ pub mod presentation_data_value;
 pub use presentation_data_value::PresentationDataValue;
 
 use crate::network::upper_layer_protocol::pdu::{INVALID_PDU_LENGTH_ERROR_MESSAGE, PduReadError};
+use tokio::io::{AsyncRead, AsyncReadExt, BufReader};
 
 pub(crate) const PDU_TYPE: u8 = 0x04;
 
@@ -37,11 +38,9 @@ impl PDataTf {
     }
 
     pub async fn read_from_stream(
-        buf_reader: &mut tokio::io::BufReader<impl tokio::io::AsyncRead + Unpin>,
+        buf_reader: &mut BufReader<impl AsyncRead + Unpin>,
         length: u32,
     ) -> Result<Self, PduReadError> {
-        use tokio::io::AsyncReadExt;
-
         let mut offset = 0;
         let mut presentation_data_values = vec![];
         while offset + 4 < length as usize {

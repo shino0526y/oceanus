@@ -9,6 +9,8 @@ pub use maximum_length::MaximumLength;
 use crate::network::upper_layer_protocol::pdu::{
     ItemType, PduReadError, a_associate::INVALID_ITEM_LENGTH_ERROR_MESSAGE,
 };
+use tokio::io::{AsyncRead, AsyncReadExt, BufReader};
+use tracing::debug;
 
 pub(crate) const ITEM_TYPE: u8 = 0x50;
 
@@ -66,11 +68,9 @@ impl UserInformation {
     }
 
     pub async fn read_from_stream(
-        buf_reader: &mut tokio::io::BufReader<impl tokio::io::AsyncRead + Unpin>,
+        buf_reader: &mut BufReader<impl AsyncRead + Unpin>,
         length: u16,
     ) -> Result<Self, PduReadError> {
-        use tokio::io::AsyncReadExt;
-
         let mut offset = 0;
         let mut maximum_length = Option::None;
         let mut implementation_class_uid = Option::None;
@@ -166,7 +166,7 @@ impl UserInformation {
                     buf_reader.read_exact(&mut buf).await?;
                     offset += buf.len();
 
-                    tracing::debug!(
+                    debug!(
                         "未対応のSub-Itemが存在します (Item-type=0x{:02X} バイト列=[{}])",
                         sub_item_type as u8,
                         buf.iter()

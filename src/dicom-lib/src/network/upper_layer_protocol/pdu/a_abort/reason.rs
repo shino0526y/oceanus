@@ -1,4 +1,4 @@
-use crate::network::upper_layer_protocol::pdu;
+use crate::network::upper_layer_protocol::pdu::PduReadError;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Reason {
@@ -28,17 +28,17 @@ impl TryFrom<u8> for Reason {
     }
 }
 
-impl From<pdu::PduReadError> for Reason {
-    fn from(err: pdu::PduReadError) -> Self {
+impl From<PduReadError> for Reason {
+    fn from(err: PduReadError) -> Self {
         match err {
-            pdu::PduReadError::UnrecognizedPdu(_) => Reason::UnrecognizedPdu,
-            pdu::PduReadError::UnexpectedPdu(_) => Reason::UnexpectedPdu,
-            pdu::PduReadError::UnrecognizedPduParameter(_) => Reason::UnrecognizedPduParameter,
-            pdu::PduReadError::UnexpectedPduParameter(_) => Reason::UnexpectedPduParameter,
-            pdu::PduReadError::InvalidPduParameterValue { message: _ } => {
+            PduReadError::UnrecognizedPdu(_) => Reason::UnrecognizedPdu,
+            PduReadError::UnexpectedPdu(_) => Reason::UnexpectedPdu,
+            PduReadError::UnrecognizedPduParameter(_) => Reason::UnrecognizedPduParameter,
+            PduReadError::UnexpectedPduParameter(_) => Reason::UnexpectedPduParameter,
+            PduReadError::InvalidPduParameterValue { message: _ } => {
                 Reason::InvalidPduParameterValue
             }
-            pdu::PduReadError::IoError(_) => Reason::ReasonNotSpecified,
+            PduReadError::IoError(_) => Reason::ReasonNotSpecified,
         }
     }
 }

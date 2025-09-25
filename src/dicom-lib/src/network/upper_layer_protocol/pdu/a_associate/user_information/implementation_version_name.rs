@@ -1,4 +1,5 @@
 use crate::network::upper_layer_protocol::pdu::PduReadError;
+use tokio::io::{AsyncRead, AsyncReadExt, BufReader};
 
 pub(crate) const ITEM_TYPE: u8 = 0x55;
 
@@ -37,11 +38,9 @@ impl ImplementationVersionName {
     }
 
     pub async fn read_from_stream(
-        buf_reader: &mut tokio::io::BufReader<impl tokio::io::AsyncRead + Unpin>,
+        buf_reader: &mut BufReader<impl AsyncRead + Unpin>,
         length: u16,
     ) -> Result<Self, PduReadError> {
-        use tokio::io::AsyncReadExt;
-
         let name = {
             let mut buf = vec![0u8; length as usize];
             buf_reader.read_exact(&mut buf).await?;

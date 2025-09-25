@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter};
+
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Tag(u16, u16);
 
@@ -19,13 +21,13 @@ impl Tag {
 }
 
 impl std::fmt::Debug for Tag {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         write!(f, "Tag({:#06x?}, {:#06x?})", self.0, self.1)
     }
 }
 
-impl std::fmt::Display for Tag {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl Display for Tag {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         write!(f, "({:04X},{:04X})", self.0, self.1)
     }
 }

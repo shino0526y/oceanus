@@ -13,6 +13,9 @@ pub use a_release_rp::AReleaseRp;
 pub use a_release_rq::AReleaseRq;
 pub use p_data_tf::PDataTf;
 
+use std::fmt::Formatter;
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader};
+
 pub(crate) const INVALID_PDU_LENGTH_ERROR_MESSAGE: &str = "PDU-lengthが不正です";
 
 #[derive(thiserror::Error, Debug)]
@@ -26,7 +29,7 @@ pub enum PduReadError {
 }
 
 impl std::fmt::Display for PduReadError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::UnrecognizedPdu(pdu_type) => {
                 write!(f, "不明なPDU-typeです (PDU-type=0x{pdu_type:02X})")
@@ -112,10 +115,8 @@ pub enum ItemType {
 
 impl ItemType {
     pub(crate) async fn read_from_stream(
-        buf_reader: &mut tokio::io::BufReader<impl tokio::io::AsyncRead + Unpin>,
+        buf_reader: &mut BufReader<impl AsyncRead + Unpin>,
     ) -> Result<Self, PduReadError> {
-        use tokio::io::AsyncReadExt;
-
         let b = buf_reader.read_u8().await?;
         ItemType::try_from(b).map_err(|_| PduReadError::UnrecognizedPduParameter(b))
     }
@@ -161,10 +162,8 @@ impl TryFrom<u8> for ItemType {
 }
 
 pub async fn receive_a_associate_rq(
-    buf_reader: &mut tokio::io::BufReader<impl tokio::io::AsyncRead + Unpin>,
+    buf_reader: &mut BufReader<impl AsyncRead + Unpin>,
 ) -> Result<AAssociateRq, PduReadError> {
-    use tokio::io::AsyncReadExt;
-
     let pdu_type = {
         let b = buf_reader.read_u8().await?;
         match PduType::try_from(b) {
@@ -194,10 +193,8 @@ pub enum PDataTfReception {
     AAbort(AAbort),
 }
 pub async fn receive_p_data_tf(
-    buf_reader: &mut tokio::io::BufReader<impl tokio::io::AsyncRead + Unpin>,
+    buf_reader: &mut BufReader<impl AsyncRead + Unpin>,
 ) -> Result<PDataTfReception, PduReadError> {
-    use tokio::io::AsyncReadExt;
-
     let pdu_type = {
         let b = buf_reader.read_u8().await?;
         match PduType::try_from(b) {
@@ -236,10 +233,8 @@ pub enum AReleaseRqReception {
     AAbort(AAbort),
 }
 pub async fn receive_a_release_rq(
-    buf_reader: &mut tokio::io::BufReader<impl tokio::io::AsyncRead + Unpin>,
+    buf_reader: &mut BufReader<impl AsyncRead + Unpin>,
 ) -> Result<AReleaseRqReception, PduReadError> {
-    use tokio::io::AsyncReadExt;
-
     let pdu_type = {
         let b = buf_reader.read_u8().await?;
         match PduType::try_from(b) {
@@ -282,10 +277,8 @@ pub async fn send_a_associate_ac<T>(
     user_information: a_associate::UserInformation,
 ) -> std::io::Result<()>
 where
-    T: tokio::io::AsyncWrite + Unpin,
+    T: AsyncWrite + Unpin,
 {
-    use tokio::io::AsyncWriteExt;
-
     let a_associate_ac = AAssociateAc::new(
         1,
         called_ae_title,
@@ -304,10 +297,8 @@ where
 
 pub async fn send_p_data_tf<T>(socket: &mut T, p_data_tf_pdus: &[PDataTf]) -> std::io::Result<()>
 where
-    T: tokio::io::AsyncWrite + Unpin,
+    T: AsyncWrite + Unpin,
 {
-    use tokio::io::AsyncWriteExt;
-
     for p_data_tf in p_data_tf_pdus {
         let bytes: Vec<u8> = p_data_tf.into();
         socket.write_all(&bytes).await?;
@@ -318,10 +309,8 @@ where
 
 pub async fn send_a_release_rp<T>(socket: &mut T) -> std::io::Result<()>
 where
-    T: tokio::io::AsyncWrite + Unpin,
+    T: AsyncWrite + Unpin,
 {
-    use tokio::io::AsyncWriteExt;
-
     let a_release_rp = AReleaseRp::new();
 
     let bytes: Vec<u8> = a_release_rp.into();
@@ -336,10 +325,8 @@ pub async fn send_a_abort<T>(
     reason: a_abort::Reason,
 ) -> std::io::Result<()>
 where
-    T: tokio::io::AsyncWrite + Unpin,
+    T: AsyncWrite + Unpin,
 {
-    use tokio::io::AsyncWriteExt;
-
     let a_abort = AAbort::new(source, reason);
 
     let bytes: Vec<u8> = a_abort.into();
