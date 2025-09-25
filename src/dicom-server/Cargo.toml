@@ -8,9 +8,8 @@ edition.workspace = true
 [dependencies]
 chrono = "0.4"
 clap = { version = "4", features = ["derive"] }
-scopeguard = "1"
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-tracing-subscriber = "0.3"
+tracing-subscriber = { version = "0.3", features = ["local-time"] }
 dicom-lib.workspace = true

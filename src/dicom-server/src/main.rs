@@ -1,7 +1,6 @@
 mod args;
-mod log;
 
-use crate::{args::Args, log::Formatter};
+use crate::args::Args;
 use dicom_lib::{
     constants::{sop_class_uids::VERIFICATION, transfer_syntax_uids::IMPLICIT_VR_LITTLE_ENDIAN},
     network::{
@@ -29,7 +28,6 @@ use dicom_lib::{
         },
     },
 };
-use tracing_subscriber::prelude::*;
 
 // <root>.<app>.<type>.<version>
 // root: 1.3.6.1.4.1.64183 (https://www.iana.org/assignments/enterprise-numbers/)
@@ -69,16 +67,15 @@ async fn main() -> std::io::Result<()> {
 
     // ログ設定
     {
-        // 出力先がTTYなら色付き、リダイレクト/パイプなら無色
         let is_tty = std::io::stdout().is_terminal();
-        // ログレベルの設定
         let log_level_filter: tracing_subscriber::filter::LevelFilter = args.log_level.into();
 
-        let fmt_layer = tracing_subscriber::fmt::layer()
-            .event_format(Formatter::new(is_tty))
+        tracing_subscriber::fmt()
             .with_ansi(is_tty)
-            .with_filter(log_level_filter);
-        tracing_subscriber::registry().with(fmt_layer).init();
+            .with_timer(tracing_subscriber::fmt::time::LocalTime::rfc_3339())
+            .with_max_level(log_level_filter)
+            .with_target(false)
+            .init();
     }
 
     let listener =
@@ -96,28 +93,20 @@ async fn main() -> std::io::Result<()> {
         tokio::spawn(async move {
             use tracing::Instrument;
 
-            handle_connection(socket, addr)
+            handle_connection(socket)
                 .instrument(tracing::span!(
                     tracing::Level::INFO,
                     "connection",
-                    ID = connection_id
+                    ID = connection_id,
+                    IP = format!("{}", addr.ip()),
+                    Port = addr.port()
                 ))
                 .await;
         });
     }
 }
 
-async fn handle_connection(mut socket: tokio::net::TcpStream, addr: std::net::SocketAddr) {
-    scopeguard::defer! {
-        tracing::debug!("コネクションを破棄しました");
-    }
-
-    tracing::info!(
-        "コネクションを確立しました (IPアドレス=\"{}\" ポート番号={})",
-        addr.ip(),
-        addr.port()
-    );
-
+async fn handle_connection(mut socket: tokio::net::TcpStream) {
     let mut buf_reader = tokio::io::BufReader::new(&mut socket);
 
     // A-ASSOCIATE-RQの受信
