@@ -5,6 +5,7 @@
       "type": "lldb",
       "request": "launch",
       "name": "Debug dicom-server",
+      "preLaunchTask": "rust: cargo build",
       "program": "${workspaceFolder}/../target/debug/dicom-server",
       "args": ["ANY-SCP", "--log-level", "debug"],
       "cwd": "${workspaceFolder}",
