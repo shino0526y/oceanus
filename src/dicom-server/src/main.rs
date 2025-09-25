@@ -1,6 +1,7 @@
+mod args;
 mod log;
 
-use crate::log::Formatter;
+use crate::{args::Args, log::Formatter};
 use dicom_lib::{
     constants::{sop_class_uids::VERIFICATION, transfer_syntax_uids::IMPLICIT_VR_LITTLE_ENDIAN},
     network::{
@@ -44,17 +45,6 @@ const MAXIMUM_LENGTH: u32 = 0;
 static CONNECTION_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 static SERVER_AE_TITLE: std::sync::OnceLock<String> = std::sync::OnceLock::new();
 
-#[derive(clap::Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-struct Args {
-    /// サーバのAEタイトル（必須）
-    ae_title: String,
-
-    /// 受信ポート番号
-    #[arg(short = 'p', long = "port", default_value_t = 104)]
-    port: u16,
-}
-
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     use clap::Parser;
@@ -77,15 +67,19 @@ async fn main() -> std::io::Result<()> {
         env!("CARGO_PKG_VERSION")
     );
 
-    // 出力先がTTYなら色付き、リダイレクト/パイプなら無色
-    let is_tty = std::io::stdout().is_terminal();
-    tracing_subscriber::registry()
-        .with(
-            tracing_subscriber::fmt::layer()
-                .event_format(Formatter::new(is_tty))
-                .with_ansi(is_tty),
-        )
-        .init();
+    // ログ設定
+    {
+        // 出力先がTTYなら色付き、リダイレクト/パイプなら無色
+        let is_tty = std::io::stdout().is_terminal();
+        // ログレベルの設定
+        let log_level_filter: tracing_subscriber::filter::LevelFilter = args.log_level.into();
+
+        let fmt_layer = tracing_subscriber::fmt::layer()
+            .event_format(Formatter::new(is_tty))
+            .with_ansi(is_tty)
+            .with_filter(log_level_filter);
+        tracing_subscriber::registry().with(fmt_layer).init();
+    }
 
     let listener =
         tokio::net::TcpListener::bind((std::net::Ipv4Addr::UNSPECIFIED, args.port)).await?;
