@@ -13,52 +13,25 @@ pub use a_release_rp::AReleaseRp;
 pub use a_release_rq::AReleaseRq;
 pub use p_data_tf::PDataTf;
 
-use std::fmt::Formatter;
+use std::fmt::{Formatter, UpperHex};
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 
 pub(crate) const INVALID_PDU_LENGTH_ERROR_MESSAGE: &str = "PDU-lengthが不正です";
 
 #[derive(thiserror::Error, Debug)]
 pub enum PduReadError {
+    #[error("不明なPDU-typeです (PDU-type=0x{0:02X})")]
     UnrecognizedPdu(u8),
+    #[error("想定外のPDU-typeです (PDU-type=0x{0:02X})")]
     UnexpectedPdu(PduType),
+    #[error("不明なPDUパラメータです (Item-type=0x{0:02X})")]
     UnrecognizedPduParameter(u8),
+    #[error("想定外のPDUパラメータです (Item-type=0x{0:02X})")]
     UnexpectedPduParameter(ItemType),
+    #[error("不正なPDUパラメータ値です: {message}")]
     InvalidPduParameterValue { message: String },
+    #[error("I/Oエラーが発生しました: {0}")]
     IoError(#[from] std::io::Error),
-}
-
-impl std::fmt::Display for PduReadError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::UnrecognizedPdu(pdu_type) => {
-                write!(f, "不明なPDU-typeです (PDU-type=0x{pdu_type:02X})")
-            }
-            Self::UnexpectedPdu(pdu_type) => {
-                write!(
-                    f,
-                    "想定外のPDU-typeです (PDU-type=0x{:02X})",
-                    *pdu_type as u8
-                )
-            }
-            Self::UnrecognizedPduParameter(item_type) => {
-                write!(f, "不明なPDUパラメータです (Item-type=0x{item_type:02X})")
-            }
-            Self::UnexpectedPduParameter(item_type) => {
-                write!(
-                    f,
-                    "想定外のPDUパラメータです (Item-type=0x{:02X})",
-                    *item_type as u8
-                )
-            }
-            Self::InvalidPduParameterValue { message } => {
-                write!(f, "不正なPDUパラメータ値です: {}", message)
-            }
-            Self::IoError(err) => {
-                write!(f, "I/Oエラーが発生しました: {}", err)
-            }
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -86,6 +59,12 @@ impl TryFrom<u8> for PduType {
             a_abort::PDU_TYPE => Ok(Self::AAbort),
             _ => Err("不正なPDU-typeです"),
         }
+    }
+}
+
+impl UpperHex for PduType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:02X}", *self as u8)
     }
 }
 
@@ -158,6 +137,12 @@ impl TryFrom<u8> for ItemType {
             0x59 => Ok(Self::UserIdentitySubItemInAAssociateAc),
             _ => Err("不正なItem-typeです"),
         }
+    }
+}
+
+impl UpperHex for ItemType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:02X}", *self as u8)
     }
 }
 
