@@ -170,7 +170,7 @@ pub async fn receive_a_associate_rq(
     match AAssociateRq::read_from_stream(buf_reader, pdu_length).await {
         Ok(val) => Ok(val),
         Err(e) => Err(PduReadError::InvalidPduParameterValue {
-            message: format!("A-ASSOCIATE-RQのパースに失敗しました: {e:?}"),
+            message: format!("A-ASSOCIATE-RQのパースに失敗しました: {e}"),
         }),
     }
 }
@@ -202,14 +202,14 @@ pub async fn receive_p_data_tf(
         match PDataTf::read_from_stream(buf_reader, pdu_length).await {
             Ok(val) => Ok(PDataTfReception::PDataTf(val)),
             Err(e) => Err(PduReadError::InvalidPduParameterValue {
-                message: format!("P-DATA-TFのパースに失敗しました: {e:?}"),
+                message: format!("P-DATA-TFのパースに失敗しました: {e}"),
             }),
         }
     } else {
         match AAbort::read_from_stream(buf_reader, pdu_length).await {
             Ok(val) => Ok(PDataTfReception::AAbort(val)),
             Err(e) => Err(PduReadError::InvalidPduParameterValue {
-                message: format!("A-ABORTのパースに失敗しました: {e:?}"),
+                message: format!("A-ABORTのパースに失敗しました: {e}"),
             }),
         }
     }
@@ -242,14 +242,14 @@ pub async fn receive_a_release_rq(
         match AReleaseRq::read_from_stream(buf_reader, pdu_length).await {
             Ok(val) => Ok(AReleaseRqReception::AReleaseRq(val)),
             Err(e) => Err(PduReadError::InvalidPduParameterValue {
-                message: format!("A-RELEASE-RQのパースに失敗しました: {e:?}"),
+                message: format!("A-RELEASE-RQのパースに失敗しました: {e}"),
             }),
         }
     } else {
         match AAbort::read_from_stream(buf_reader, pdu_length).await {
             Ok(val) => Ok(AReleaseRqReception::AAbort(val)),
             Err(e) => Err(PduReadError::InvalidPduParameterValue {
-                message: format!("A-ABORTのパースに失敗しました: {e:?}"),
+                message: format!("A-ABORTのパースに失敗しました: {e}"),
             }),
         }
     }

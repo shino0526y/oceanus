@@ -125,7 +125,7 @@ async fn handle_connection(mut socket: TcpStream) {
     let a_associate_rq = match receive_a_associate_rq(&mut buf_reader).await {
         Ok(val) => val,
         Err(e) => {
-            error!("A-ASSOCIATE-RQの受信に失敗しました: {e:?}");
+            error!("A-ASSOCIATE-RQの受信に失敗しました: {e}");
             return;
         }
     };
@@ -195,7 +195,7 @@ async fn handle_connection(mut socket: TcpStream) {
         {
             Ok(()) => {}
             Err(e) => {
-                error!("A-ASSOCIATE-ACの送信に失敗しました: {e:?}");
+                error!("A-ASSOCIATE-ACの送信に失敗しました: {e}");
                 return;
             }
         };
@@ -207,7 +207,7 @@ async fn handle_connection(mut socket: TcpStream) {
         let reception = match receive_p_data_tf(&mut buf_reader).await {
             Ok(val) => val,
             Err(e) => {
-                error!("P-DATA-TFの受信に失敗しました: {e:?}");
+                error!("P-DATA-TFの受信に失敗しました: {e}");
                 let reason = a_abort::Reason::from(e);
                 send_a_abort(&mut buf_reader, reason).await;
                 return;
@@ -272,7 +272,7 @@ async fn handle_connection(mut socket: TcpStream) {
         match send_p_data_tf(&mut buf_reader.get_mut(), &p_data_tf_pdus).await {
             Ok(()) => {}
             Err(e) => {
-                error!("P-DATA-TFの送信に失敗しました: {e:?}");
+                error!("P-DATA-TFの送信に失敗しました: {e}");
                 return;
             }
         }
@@ -284,7 +284,7 @@ async fn handle_connection(mut socket: TcpStream) {
         let reception = match receive_a_release_rq(&mut buf_reader).await {
             Ok(val) => val,
             Err(e) => {
-                error!("A-RELEASE-RQの受信に失敗しました: {e:?}");
+                error!("A-RELEASE-RQの受信に失敗しました: {e}");
                 let reason = a_abort::Reason::from(e);
                 send_a_abort(&mut buf_reader, reason).await;
                 return;
@@ -309,7 +309,7 @@ async fn handle_connection(mut socket: TcpStream) {
     match send_a_release_rp(buf_reader.get_mut()).await {
         Ok(()) => {}
         Err(e) => {
-            error!("A-RELEASE-RPの送信に失敗しました: {e:?}");
+            error!("A-RELEASE-RPの送信に失敗しました: {e}");
             return;
         }
     }
@@ -321,6 +321,6 @@ async fn handle_connection(mut socket: TcpStream) {
 async fn send_a_abort(buf_reader: &mut BufReader<&mut TcpStream>, reason: a_abort::Reason) {
     match pdu::send_a_abort(&mut buf_reader.get_mut(), Source::Provider, reason).await {
         Ok(()) => debug!("A-ABORTを送信しました"),
-        Err(e) => error!("A-ABORTの送信に失敗しました: {e:?}"),
+        Err(e) => error!("A-ABORTの送信に失敗しました: {e}"),
     }
 }
