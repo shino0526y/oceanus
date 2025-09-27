@@ -1,6 +1,7 @@
 pub mod a_abort;
 mod a_associate;
 pub mod a_associate_ac;
+pub mod a_associate_rj;
 pub mod a_associate_rq;
 pub mod a_release_rp;
 pub mod a_release_rq;
@@ -8,6 +9,7 @@ pub mod p_data_tf;
 
 pub use a_abort::AAbort;
 pub use a_associate_ac::AAssociateAc;
+pub use a_associate_rj::AAssociateRj;
 pub use a_associate_rq::AAssociateRq;
 pub use a_release_rp::AReleaseRp;
 pub use a_release_rq::AReleaseRq;
@@ -38,7 +40,7 @@ pub enum PduReadError {
 pub enum PduType {
     AAssociateRq = a_associate_rq::PDU_TYPE as isize,
     AAssociateAc = a_associate_ac::PDU_TYPE as isize,
-    AAssociateRj = 0x03,
+    AAssociateRj = a_associate_rj::PDU_TYPE as isize,
     PDataTf = p_data_tf::PDU_TYPE as isize,
     AReleaseRq = a_release_rq::PDU_TYPE as isize,
     AReleaseRp = a_release_rp::PDU_TYPE as isize,
@@ -52,7 +54,7 @@ impl TryFrom<u8> for PduType {
         match value {
             a_associate_rq::PDU_TYPE => Ok(Self::AAssociateRq),
             a_associate_ac::PDU_TYPE => Ok(Self::AAssociateAc),
-            0x03 => Ok(Self::AAssociateRj),
+            a_associate_rj::PDU_TYPE => Ok(Self::AAssociateRj),
             p_data_tf::PDU_TYPE => Ok(Self::PDataTf),
             a_release_rq::PDU_TYPE => Ok(Self::AReleaseRq),
             a_release_rp::PDU_TYPE => Ok(Self::AReleaseRp),
@@ -275,6 +277,22 @@ where
     .unwrap();
 
     let bytes: Vec<u8> = a_associate_ac.into();
+    socket.write_all(&bytes).await?;
+
+    Ok(())
+}
+
+pub async fn send_a_associate_rj<T>(
+    socket: &mut T,
+    result: a_associate_rj::Result,
+    source_and_reason: a_associate_rj::SourceAndReason,
+) -> std::io::Result<()>
+where
+    T: AsyncWrite + Unpin,
+{
+    let a_associate_rj = AAssociateRj::new(result, source_and_reason);
+
+    let bytes: Vec<u8> = a_associate_rj.into();
     socket.write_all(&bytes).await?;
 
     Ok(())

@@ -12,7 +12,7 @@ use dicom_lib::{
         upper_layer_protocol::{
             pdu::{
                 self, AReleaseRqReception, PDataTfReception,
-                a_abort::{Reason, Source},
+                a_abort::{self, Source},
                 a_associate_ac::{
                     ApplicationContext, PresentationContext, UserInformation,
                     presentation_context::{ResultReason, TransferSyntax},
@@ -20,8 +20,9 @@ use dicom_lib::{
                         ImplementationClassUid, ImplementationVersionName, MaximumLength,
                     },
                 },
+                a_associate_rj::{self, SourceAndReason, source::service_user},
                 receive_a_associate_rq, receive_a_release_rq, receive_p_data_tf,
-                send_a_associate_ac, send_a_release_rp, send_p_data_tf,
+                send_a_associate_ac, send_a_associate_rj, send_a_release_rp, send_p_data_tf,
             },
             utils::command_set_converter::{
                 command_set_to_p_data_tf_pdus, p_data_tf_pdus_to_command_set,
@@ -134,30 +135,35 @@ async fn handle_connection(mut socket: TcpStream) {
         "A-ASSOCIATE-RQを受信しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\")"
     );
 
-    let presentation_contexts = a_associate_rq.presentation_contexts();
-    let is_supported = presentation_contexts
-        .iter()
-        .any(|presentation_context| presentation_context.abstract_syntax().name() == VERIFICATION);
-
-    // TODO: A_ASSOCIATE_RJを送信する
+    // アソシエーション要求を受諾するか判定し、拒否する場合はA-ASSOCIATE-RJを送信して終了する
     if called_ae_title != SERVER_AE_TITLE.get().unwrap() {
         warn!(
-            "アソシエーション要求を拒否しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\" 理由=AEタイトル不一致)",
+            "アソシエーション要求を拒否しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\" 理由=宛先AEタイトル不一致)",
         );
-        panic!("サーバーのAEタイトルとクライアントのAEタイトルが一致しません");
-    } else if !is_supported {
-        warn!(
-            "アソシエーション要求を拒否しました (送信元=\"{calling_ae_title}\" 理由=サポートされていない抽象構文)",
-        );
-        panic!("サポートされていない抽象構文が指定されました");
-    } else {
-        info!("アソシエーション要求を受諾しました (送信元=\"{calling_ae_title}\")",);
+        match send_a_associate_rj(
+            &mut buf_reader.get_mut(),
+            a_associate_rj::Result::RejectedPermanent,
+            SourceAndReason::ServiceUser(service_user::Reason::CalledAeTitleNotRecognized),
+        )
+        .await
+        {
+            Ok(()) => {
+                debug!("A-ASSOCIATE-RJを送信しました");
+            }
+            Err(e) => {
+                error!("A-ASSOCIATE-RJの送信に失敗しました: {e}");
+            }
+        }
+        return;
     }
+
+    info!("アソシエーション要求を受諾しました (送信元=\"{calling_ae_title}\")",);
 
     // A-ASSOCIATE-ACの送信
     {
         let application_context = ApplicationContext::new("1.2.840.10008.3.1.1.1.1");
-        let presentation_contexts = presentation_contexts
+        let presentation_contexts = a_associate_rq
+            .presentation_contexts()
             .iter()
             .map(|presentation_context| {
                 PresentationContext::new(
@@ -202,7 +208,7 @@ async fn handle_connection(mut socket: TcpStream) {
             Ok(val) => val,
             Err(e) => {
                 error!("P-DATA-TFの受信に失敗しました: {e:?}");
-                let reason = Reason::from(e);
+                let reason = a_abort::Reason::from(e);
                 send_a_abort(&mut buf_reader, reason).await;
                 return;
             }
@@ -228,7 +234,7 @@ async fn handle_connection(mut socket: TcpStream) {
         Ok(val) => val,
         Err(e) => {
             error!("コマンドセットのパースに失敗しました: {e}");
-            let reason = Reason::InvalidPduParameterValue;
+            let reason = a_abort::Reason::InvalidPduParameterValue;
             send_a_abort(&mut buf_reader, reason).await;
             return;
         }
@@ -238,7 +244,7 @@ async fn handle_connection(mut socket: TcpStream) {
         Ok(val) => val,
         Err(e) => {
             error!("C-ECHO-RQのパースに失敗しました: {e}");
-            let reason = Reason::InvalidPduParameterValue;
+            let reason = a_abort::Reason::InvalidPduParameterValue;
             send_a_abort(&mut buf_reader, reason).await;
             return;
         }
@@ -279,7 +285,7 @@ async fn handle_connection(mut socket: TcpStream) {
             Ok(val) => val,
             Err(e) => {
                 error!("A-RELEASE-RQの受信に失敗しました: {e:?}");
-                let reason = Reason::from(e);
+                let reason = a_abort::Reason::from(e);
                 send_a_abort(&mut buf_reader, reason).await;
                 return;
             }
@@ -312,7 +318,7 @@ async fn handle_connection(mut socket: TcpStream) {
     info!("Verificationサービスを正常に完了しました");
 }
 
-async fn send_a_abort(buf_reader: &mut BufReader<&mut TcpStream>, reason: Reason) {
+async fn send_a_abort(buf_reader: &mut BufReader<&mut TcpStream>, reason: a_abort::Reason) {
     match pdu::send_a_abort(&mut buf_reader.get_mut(), Source::Provider, reason).await {
         Ok(()) => debug!("A-ABORTを送信しました"),
         Err(e) => error!("A-ABORTの送信に失敗しました: {e:?}"),
