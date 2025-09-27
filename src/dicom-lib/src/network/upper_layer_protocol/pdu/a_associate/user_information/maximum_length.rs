@@ -48,7 +48,7 @@ impl From<MaximumLength> for Vec<u8> {
 
         bytes.push(ITEM_TYPE);
         bytes.push(0); // Reserved
-        bytes.extend(4u16.to_be_bytes());
+        bytes.extend(val.length().to_be_bytes());
         bytes.extend(val.maximum_length.to_be_bytes());
 
         bytes
