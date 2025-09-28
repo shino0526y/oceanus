@@ -7,7 +7,7 @@
       "name": "Debug dicom-server",
       "preLaunchTask": "rust: cargo build",
       "program": "${workspaceFolder}/../target/debug/dicom-server",
-      "args": ["--log-level", "debug"],
+      "args": ["--log-level", "debug", "--ae-title", "ANY-SCP"],
       "cwd": "${workspaceFolder}",
       "sourceLanguages": ["rust"]
     }
