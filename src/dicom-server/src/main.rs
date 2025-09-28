@@ -35,6 +35,7 @@ use sqlx::{Pool, Postgres, postgres::PgPoolOptions};
 use std::{
     io::IsTerminal,
     net::Ipv4Addr,
+    process::exit,
     sync::{
         OnceLock,
         atomic::{AtomicU64, Ordering},
@@ -64,7 +65,7 @@ static SERVER_AE_TITLE: OnceLock<String> = OnceLock::new();
 static DB_POOL: OnceLock<Pool<Postgres>> = OnceLock::new();
 
 #[tokio::main]
-async fn main() -> std::io::Result<()> {
+async fn main() {
     // 環境変数の読み込み
     let _ = dotenv();
     // コマンドライン引数の解析
@@ -111,11 +112,22 @@ async fn main() -> std::io::Result<()> {
         }
         Err(e) => {
             error!("データベースへの接続に失敗しました: {e}");
-            return Err(std::io::Error::new(std::io::ErrorKind::Other, "DB接続失敗"));
+            exit(1);
         }
     }
 
-    let listener = TcpListener::bind((Ipv4Addr::UNSPECIFIED, args.port)).await?;
+    let listener = {
+        match TcpListener::bind((Ipv4Addr::UNSPECIFIED, args.port)).await {
+            Ok(val) => val,
+            Err(e) => {
+                error!(
+                    "通信の待ち受けに失敗しました (ポート番号={}): {e}",
+                    args.port
+                );
+                exit(1);
+            }
+        }
+    };
     info!(
         "サーバーが起動しました (AEタイトル=\"{}\" ポート番号={})",
         SERVER_AE_TITLE.get().unwrap(),
@@ -123,7 +135,15 @@ async fn main() -> std::io::Result<()> {
     );
 
     loop {
-        let (socket, addr) = listener.accept().await?;
+        let (socket, addr) = {
+            match listener.accept().await {
+                Ok(val) => val,
+                Err(e) => {
+                    error!("接続の受け入れに失敗しました: {e}");
+                    continue;
+                }
+            }
+        };
         let connection_id = CONNECTION_COUNTER.fetch_add(1, Ordering::Relaxed);
 
         tokio::spawn(async move {
