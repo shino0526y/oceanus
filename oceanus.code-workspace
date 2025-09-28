@@ -1,0 +1,55 @@
+{
+  "folders": [
+    {
+      "path": "."
+    },
+    {
+      "path": "./src/dicom-lib"
+    },
+    {
+      "path": "./src/dicom-server"
+    }
+  ],
+  "extensions": {
+    "recommendations": ["rust-lang.rust-analyzer", "vadimcn.vscode-lldb"]
+  },
+  "settings": {
+    "editor.formatOnSave": true,
+    "files.insertFinalNewline": true,
+    "files.trimTrailingWhitespace": true,
+    "[rust]": {
+      "editor.defaultFormatter": "rust-lang.rust-analyzer"
+    }
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "rust: cargo build",
+        "type": "shell",
+        "command": "cargo",
+        "args": [
+          "build",
+          "--manifest-path",
+          "${workspaceFolder:oceanus}/src/Cargo.toml"
+        ],
+        "group": "build",
+        "problemMatcher": ["$rustc"]
+      }
+    ]
+  },
+  "launch": {
+    "configurations": [
+      {
+        "type": "lldb",
+        "request": "launch",
+        "name": "dicom-server",
+        "preLaunchTask": "rust: cargo build",
+        "program": "${workspaceFolder:oceanus}/src/target/debug/dicom-server",
+        "args": ["--log-level", "debug", "--ae-title", "ANY-SCP"],
+        "cwd": "${workspaceFolder:oceanus}/src/dicom-server",
+        "sourceLanguages": ["rust"]
+      }
+    ]
+  }
+}
