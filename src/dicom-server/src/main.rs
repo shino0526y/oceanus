@@ -30,6 +30,8 @@ use dicom_lib::{
         },
     },
 };
+use dotenvy::dotenv;
+use sqlx::{Pool, Postgres, postgres::PgPoolOptions};
 use std::{
     io::IsTerminal,
     net::Ipv4Addr,
@@ -37,6 +39,7 @@ use std::{
         OnceLock,
         atomic::{AtomicU64, Ordering},
     },
+    time::Duration,
 };
 use tokio::{
     io::BufReader,
@@ -58,9 +61,13 @@ const MAXIMUM_LENGTH: u32 = 0;
 
 static CONNECTION_COUNTER: AtomicU64 = AtomicU64::new(1);
 static SERVER_AE_TITLE: OnceLock<String> = OnceLock::new();
+static DB_POOL: OnceLock<Pool<Postgres>> = OnceLock::new();
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
+    // 環境変数の読み込み
+    let _ = dotenv();
+    // コマンドライン引数の解析
     let args = Args::parse();
     SERVER_AE_TITLE.set(args.ae_title).unwrap();
 
@@ -89,6 +96,23 @@ async fn main() -> std::io::Result<()> {
             .with_max_level(log_level_filter)
             .with_target(false)
             .init();
+    }
+
+    // DB 接続
+    match PgPoolOptions::new()
+        .max_connections(5)
+        .acquire_timeout(Duration::from_secs(5))
+        .connect(&args.database_url)
+        .await
+    {
+        Ok(pool) => {
+            DB_POOL.set(pool).ok();
+            debug!("データベースに接続しました");
+        }
+        Err(e) => {
+            error!("データベースへの接続に失敗しました: {e}");
+            return Err(std::io::Error::new(std::io::ErrorKind::Other, "DB接続失敗"));
+        }
     }
 
     let listener = TcpListener::bind((Ipv4Addr::UNSPECIFIED, args.port)).await?;

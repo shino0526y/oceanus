@@ -4,15 +4,20 @@ use tracing::level_filters::LevelFilter;
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 pub struct Args {
-    /// サーバのAEタイトル（必須）
+    /// データベース接続文字列
+    #[arg(long = "database-url", env = "DATABASE_URL")]
+    pub database_url: String,
+
+    /// AEタイトル
+    #[arg(long = "ae-title", env = "AE_TITLE")]
     pub ae_title: String,
 
     /// 受信ポート番号
-    #[arg(short = 'p', long = "port", default_value_t = 104)]
+    #[arg(short = 'p', long = "port", env = "PORT", default_value_t = 104)]
     pub port: u16,
 
     /// ログレベル
-    #[arg(long = "log-level", value_enum, default_value_t = LogLevel::Info)]
+    #[arg(long = "log-level", env = "LOG_LEVEL", value_enum, default_value_t = LogLevel::Info)]
     pub log_level: LogLevel,
 }
 
