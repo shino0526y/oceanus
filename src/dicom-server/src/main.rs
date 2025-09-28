@@ -66,7 +66,7 @@ static DB_POOL: OnceLock<Pool<Postgres>> = OnceLock::new();
 
 #[tokio::main]
 async fn main() {
-    // 環境変数の読み込み
+    // 環境変数の読み込み（失敗しても無視）
     let _ = dotenv();
     // コマンドライン引数の解析
     let args = Args::parse();
@@ -107,7 +107,7 @@ async fn main() {
         .await
     {
         Ok(pool) => {
-            DB_POOL.set(pool).ok();
+            DB_POOL.set(pool).unwrap();
             debug!("データベースに接続しました");
         }
         Err(e) => {
