@@ -11,7 +11,11 @@
     }
   ],
   "extensions": {
-    "recommendations": ["rust-lang.rust-analyzer", "vadimcn.vscode-lldb"]
+    "recommendations": [
+      "rust-lang.rust-analyzer",
+      "vadimcn.vscode-lldb",
+      "bradymholt.pgformatter"
+    ]
   },
   "settings": {
     "editor.formatOnSave": true,
@@ -19,6 +23,9 @@
     "files.trimTrailingWhitespace": true,
     "[rust]": {
       "editor.defaultFormatter": "rust-lang.rust-analyzer"
+    },
+    "[sql]": {
+      "editor.defaultFormatter": "bradymholt.pgformatter"
     }
   },
   "tasks": {
