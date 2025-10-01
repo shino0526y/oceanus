@@ -1,5 +1,5 @@
 services:
-  postgres:
+  db:
     image: postgres:18-alpine
     container_name: oceanus-db
     environment:
@@ -9,8 +9,15 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - oceanus-volume:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - default
 
 volumes:
-  postgres_data:
+  oceanus-volume:
+    name: oceanus-volume
+
+networks:
+  default:
+    name: oceanus-network
