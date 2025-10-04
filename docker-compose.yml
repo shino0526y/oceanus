@@ -1,7 +1,9 @@
 services:
   db:
-    image: postgres:18-alpine
     container_name: oceanus-db
+    build:
+      context: .
+      dockerfile: docker/db/Dockerfile
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-oceanus}
       POSTGRES_USER: ${POSTGRES_USER:-oceanus}
@@ -10,7 +12,6 @@ services:
       - "5432:5432"
     volumes:
       - oceanus-volume:/var/lib/postgresql/data
-      - ./db/init:/docker-entrypoint-initdb.d:ro
     networks:
       - default
 

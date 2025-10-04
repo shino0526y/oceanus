@@ -53,7 +53,7 @@
         "name": "dicom-server",
         "preLaunchTask": "rust: cargo build",
         "program": "${workspaceFolder:oceanus}/src/target/debug/dicom-server",
-        "args": ["--log-level", "debug", "--ae-title", "ANY-SCP"],
+        "args": ["--log-level", "debug"],
         "cwd": "${workspaceFolder:oceanus}/src/dicom-server",
         "sourceLanguages": ["rust"]
       }

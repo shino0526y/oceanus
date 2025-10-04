@@ -20,7 +20,10 @@ use dicom_lib::{
                         ImplementationClassUid, ImplementationVersionName, MaximumLength,
                     },
                 },
-                a_associate_rj::{self, SourceAndReason, source::service_user},
+                a_associate_rj::{
+                    self, SourceAndReason,
+                    source::{service_provider_acse, service_user},
+                },
                 receive_a_associate_rq, receive_a_release_rq, receive_p_data_tf,
                 send_a_associate_ac, send_a_associate_rj, send_a_release_rp, send_p_data_tf,
             },
@@ -115,6 +118,7 @@ async fn main() {
             exit(1);
         }
     }
+    let db_pool = DB_POOL.get().unwrap();
 
     let listener = {
         match TcpListener::bind((Ipv4Addr::UNSPECIFIED, args.port)).await {
@@ -148,8 +152,7 @@ async fn main() {
 
         tokio::spawn(async move {
             use Instrument;
-
-            handle_connection(socket)
+            handle_connection(socket, db_pool)
                 .instrument(span!(
                     Level::INFO,
                     "connection",
@@ -162,7 +165,7 @@ async fn main() {
     }
 }
 
-async fn handle_connection(mut socket: TcpStream) {
+async fn handle_connection(mut socket: TcpStream, db_pool: &Pool<Postgres>) {
     let mut buf_reader = BufReader::new(&mut socket);
 
     // A-ASSOCIATE-RQの受信
@@ -199,6 +202,87 @@ async fn handle_connection(mut socket: TcpStream) {
             }
         }
         return;
+    }
+
+    match sqlx::query!(
+        "SELECT host FROM application_entities WHERE title = $1",
+        calling_ae_title
+    )
+    .fetch_one(db_pool)
+    .await
+    {
+        Ok(application_entity) => {
+            let mut host_addresses = {
+                match tokio::net::lookup_host((application_entity.host.as_str(), 0)).await {
+                    Ok(addresses) => addresses,
+                    Err(e) => {
+                        warn!(
+                            "アソシエーション要求を拒否しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\" 理由=ホスト名の解決に失敗): {e}",
+                        );
+                        match send_a_associate_rj(
+                            &mut buf_reader.get_mut(),
+                            a_associate_rj::Result::RejectedTransient,
+                            SourceAndReason::ServiceProviderAcse(
+                                service_provider_acse::Reason::NoReasonGiven,
+                            ),
+                        )
+                        .await
+                        {
+                            Ok(()) => {
+                                debug!("A-ASSOCIATE-RJを送信しました");
+                            }
+                            Err(e) => {
+                                error!("A-ASSOCIATE-RJの送信に失敗しました: {e}");
+                            }
+                        }
+                        return;
+                    }
+                }
+            };
+            let peer_address = buf_reader.get_ref().peer_addr().unwrap();
+            let is_matched = host_addresses.any(|addr| addr.ip() == peer_address.ip());
+
+            if !is_matched {
+                warn!(
+                    "アソシエーション要求を拒否しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\" 理由=送信元AEタイトル不明)",
+                );
+                match send_a_associate_rj(
+                    &mut buf_reader.get_mut(),
+                    a_associate_rj::Result::RejectedPermanent,
+                    SourceAndReason::ServiceUser(service_user::Reason::CallingAeTitleNotRecognized),
+                )
+                .await
+                {
+                    Ok(()) => {
+                        debug!("A-ASSOCIATE-RJを送信しました");
+                    }
+                    Err(e) => {
+                        error!("A-ASSOCIATE-RJの送信に失敗しました: {e}");
+                    }
+                }
+                return;
+            }
+        }
+        Err(_) => {
+            warn!(
+                "アソシエーション要求を拒否しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\" 理由=送信元AEタイトル不明)",
+            );
+            match send_a_associate_rj(
+                &mut buf_reader.get_mut(),
+                a_associate_rj::Result::RejectedPermanent,
+                SourceAndReason::ServiceUser(service_user::Reason::CallingAeTitleNotRecognized),
+            )
+            .await
+            {
+                Ok(()) => {
+                    debug!("A-ASSOCIATE-RJを送信しました");
+                }
+                Err(e) => {
+                    error!("A-ASSOCIATE-RJの送信に失敗しました: {e}");
+                }
+            }
+            return;
+        }
     }
 
     info!("アソシエーション要求を受諾しました (送信元=\"{calling_ae_title}\")",);
