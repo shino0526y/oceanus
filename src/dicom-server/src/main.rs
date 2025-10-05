@@ -11,7 +11,7 @@ use dicom_lib::{
         },
         upper_layer_protocol::{
             pdu::{
-                self, AReleaseRqReception, PDataTfReception,
+                self, AAssociateRq, AReleaseRqReception, PDataTfReception,
                 a_abort::{self, Source},
                 a_associate_ac::{
                     ApplicationContext, PresentationContext, UserInformation,
@@ -118,7 +118,6 @@ async fn main() {
             exit(1);
         }
     }
-    let db_pool = DB_POOL.get().unwrap();
 
     let listener = {
         match TcpListener::bind((Ipv4Addr::UNSPECIFIED, args.port)).await {
@@ -152,7 +151,7 @@ async fn main() {
 
         tokio::spawn(async move {
             use Instrument;
-            handle_connection(socket, db_pool)
+            handle_connection(socket)
                 .instrument(span!(
                     Level::INFO,
                     "connection",
@@ -165,170 +164,13 @@ async fn main() {
     }
 }
 
-async fn handle_connection(mut socket: TcpStream, db_pool: &Pool<Postgres>) {
+async fn handle_connection(mut socket: TcpStream) {
     let mut buf_reader = BufReader::new(&mut socket);
 
-    // A-ASSOCIATE-RQの受信
-    let a_associate_rq = match receive_a_associate_rq(&mut buf_reader).await {
-        Ok(val) => val,
-        Err(e) => {
-            error!("A-ASSOCIATE-RQの受信に失敗しました: {e}");
-            return;
-        }
+    let a_associate_rq = match handle_association(&mut buf_reader).await {
+        Some(val) => val,
+        None => return,
     };
-    let called_ae_title = a_associate_rq.called_ae_title();
-    let calling_ae_title = a_associate_rq.calling_ae_title();
-    debug!(
-        "A-ASSOCIATE-RQを受信しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\")"
-    );
-
-    // アソシエーション要求を受諾するか判定し、拒否する場合はA-ASSOCIATE-RJを送信して終了する
-    if called_ae_title != SERVER_AE_TITLE.get().unwrap() {
-        warn!(
-            "アソシエーション要求を拒否しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\" 理由=宛先AEタイトル不一致)",
-        );
-        match send_a_associate_rj(
-            &mut buf_reader.get_mut(),
-            a_associate_rj::Result::RejectedPermanent,
-            SourceAndReason::ServiceUser(service_user::Reason::CalledAeTitleNotRecognized),
-        )
-        .await
-        {
-            Ok(()) => {
-                debug!("A-ASSOCIATE-RJを送信しました");
-            }
-            Err(e) => {
-                error!("A-ASSOCIATE-RJの送信に失敗しました: {e}");
-            }
-        }
-        return;
-    }
-
-    match sqlx::query!(
-        "SELECT host FROM application_entities WHERE title = $1",
-        calling_ae_title
-    )
-    .fetch_one(db_pool)
-    .await
-    {
-        Ok(application_entity) => {
-            let mut host_addresses = {
-                match tokio::net::lookup_host((application_entity.host.as_str(), 0)).await {
-                    Ok(addresses) => addresses,
-                    Err(e) => {
-                        warn!(
-                            "アソシエーション要求を拒否しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\" 理由=ホスト名の解決に失敗): {e}",
-                        );
-                        match send_a_associate_rj(
-                            &mut buf_reader.get_mut(),
-                            a_associate_rj::Result::RejectedTransient,
-                            SourceAndReason::ServiceProviderAcse(
-                                service_provider_acse::Reason::NoReasonGiven,
-                            ),
-                        )
-                        .await
-                        {
-                            Ok(()) => {
-                                debug!("A-ASSOCIATE-RJを送信しました");
-                            }
-                            Err(e) => {
-                                error!("A-ASSOCIATE-RJの送信に失敗しました: {e}");
-                            }
-                        }
-                        return;
-                    }
-                }
-            };
-            let peer_address = buf_reader.get_ref().peer_addr().unwrap();
-            let is_matched = host_addresses.any(|addr| addr.ip() == peer_address.ip());
-
-            if !is_matched {
-                warn!(
-                    "アソシエーション要求を拒否しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\" 理由=送信元AEタイトル不明)",
-                );
-                match send_a_associate_rj(
-                    &mut buf_reader.get_mut(),
-                    a_associate_rj::Result::RejectedPermanent,
-                    SourceAndReason::ServiceUser(service_user::Reason::CallingAeTitleNotRecognized),
-                )
-                .await
-                {
-                    Ok(()) => {
-                        debug!("A-ASSOCIATE-RJを送信しました");
-                    }
-                    Err(e) => {
-                        error!("A-ASSOCIATE-RJの送信に失敗しました: {e}");
-                    }
-                }
-                return;
-            }
-        }
-        Err(_) => {
-            warn!(
-                "アソシエーション要求を拒否しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\" 理由=送信元AEタイトル不明)",
-            );
-            match send_a_associate_rj(
-                &mut buf_reader.get_mut(),
-                a_associate_rj::Result::RejectedPermanent,
-                SourceAndReason::ServiceUser(service_user::Reason::CallingAeTitleNotRecognized),
-            )
-            .await
-            {
-                Ok(()) => {
-                    debug!("A-ASSOCIATE-RJを送信しました");
-                }
-                Err(e) => {
-                    error!("A-ASSOCIATE-RJの送信に失敗しました: {e}");
-                }
-            }
-            return;
-        }
-    }
-
-    info!("アソシエーション要求を受諾しました (送信元=\"{calling_ae_title}\")",);
-
-    // A-ASSOCIATE-ACの送信
-    {
-        let application_context = ApplicationContext::new("1.2.840.10008.3.1.1.1.1");
-        let presentation_contexts = a_associate_rq
-            .presentation_contexts()
-            .iter()
-            .map(|presentation_context| {
-                PresentationContext::new(
-                    presentation_context.context_id(),
-                    if presentation_context.abstract_syntax().name() == VERIFICATION {
-                        ResultReason::Acceptance
-                    } else {
-                        ResultReason::AbstractSyntaxNotSupported
-                    },
-                    TransferSyntax::new(IMPLICIT_VR_LITTLE_ENDIAN).unwrap(),
-                )
-            })
-            .collect::<Vec<_>>();
-        let user_information = UserInformation::new(
-            Some(MaximumLength::new(MAXIMUM_LENGTH)),
-            ImplementationClassUid::new(IMPLEMENTATION_CLASS_UID).unwrap(),
-            Some(ImplementationVersionName::new(IMPLEMENTATION_VERSION_NAME).unwrap()),
-        );
-
-        match send_a_associate_ac(
-            &mut buf_reader.get_mut(),
-            called_ae_title,
-            calling_ae_title,
-            application_context,
-            presentation_contexts,
-            user_information,
-        )
-        .await
-        {
-            Ok(()) => {}
-            Err(e) => {
-                error!("A-ASSOCIATE-ACの送信に失敗しました: {e}");
-                return;
-            }
-        };
-    }
-    debug!("A-ASSOCIATE-ACを送信しました");
 
     // P-DATA-TFの受信
     let p_data_tf = {
@@ -336,8 +178,7 @@ async fn handle_connection(mut socket: TcpStream, db_pool: &Pool<Postgres>) {
             Ok(val) => val,
             Err(e) => {
                 error!("P-DATA-TFの受信に失敗しました: {e}");
-                let reason = a_abort::Reason::from(e);
-                send_a_abort(&mut buf_reader, reason).await;
+                abort(&mut buf_reader, a_abort::Reason::from(e)).await;
                 return;
             }
         };
@@ -362,8 +203,7 @@ async fn handle_connection(mut socket: TcpStream, db_pool: &Pool<Postgres>) {
         Ok(val) => val,
         Err(e) => {
             error!("コマンドセットのパースに失敗しました: {e}");
-            let reason = a_abort::Reason::InvalidPduParameterValue;
-            send_a_abort(&mut buf_reader, reason).await;
+            abort(&mut buf_reader, a_abort::Reason::InvalidPduParameterValue).await;
             return;
         }
     };
@@ -372,8 +212,7 @@ async fn handle_connection(mut socket: TcpStream, db_pool: &Pool<Postgres>) {
         Ok(val) => val,
         Err(e) => {
             error!("C-ECHO-RQのパースに失敗しました: {e}");
-            let reason = a_abort::Reason::InvalidPduParameterValue;
-            send_a_abort(&mut buf_reader, reason).await;
+            abort(&mut buf_reader, a_abort::Reason::InvalidPduParameterValue).await;
             return;
         }
     };
@@ -407,46 +246,180 @@ async fn handle_connection(mut socket: TcpStream, db_pool: &Pool<Postgres>) {
         debug!("P-DATA-TFを送信しました");
     }
 
-    // A-RELEASE-RQの受信
-    {
-        let reception = match receive_a_release_rq(&mut buf_reader).await {
-            Ok(val) => val,
-            Err(e) => {
-                error!("A-RELEASE-RQの受信に失敗しました: {e}");
-                let reason = a_abort::Reason::from(e);
-                send_a_abort(&mut buf_reader, reason).await;
-                return;
-            }
-        };
-
-        match reception {
-            AReleaseRqReception::AReleaseRq(val) => val,
-            AReleaseRqReception::AAbort(a_abort) => {
-                debug!(
-                    "A-ABORTを受信しました: (Source={:02X} Reason={:02X})",
-                    a_abort.source() as u8,
-                    a_abort.reason() as u8
-                );
-                return;
-            }
-        }
-    };
-    debug!("A-RELEASE-RQを受信しました");
-
-    // A-RELEASE-RPの送信
-    match send_a_release_rp(buf_reader.get_mut()).await {
-        Ok(()) => {}
-        Err(e) => {
-            error!("A-RELEASE-RPの送信に失敗しました: {e}");
-            return;
-        }
-    }
-    debug!("A-RELEASE-RPを送信しました");
+    handle_release(&mut buf_reader).await;
 
     info!("Verificationサービスを正常に完了しました");
 }
 
-async fn send_a_abort(buf_reader: &mut BufReader<&mut TcpStream>, reason: a_abort::Reason) {
+async fn handle_association(buf_reader: &mut BufReader<&mut TcpStream>) -> Option<AAssociateRq> {
+    // A-ASSOCIATE-RQの受信
+    let a_associate_rq = match receive_a_associate_rq(buf_reader).await {
+        Ok(val) => val,
+        Err(e) => {
+            error!("A-ASSOCIATE-RQの受信に失敗しました: {e}");
+            return None;
+        }
+    };
+    let called_ae_title = a_associate_rq.called_ae_title();
+    let calling_ae_title = a_associate_rq.calling_ae_title();
+    debug!(
+        "A-ASSOCIATE-RQを受信しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\")"
+    );
+
+    // アソシエーション要求を受諾するか判定し、拒否する場合はA-ASSOCIATE-RJを送信して終了する
+    if called_ae_title != SERVER_AE_TITLE.get().unwrap() {
+        warn!(
+            "アソシエーション要求を拒否しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\" 理由=宛先AEタイトル不一致)",
+        );
+        reject_association(
+            buf_reader,
+            a_associate_rj::Result::RejectedPermanent,
+            SourceAndReason::ServiceUser(service_user::Reason::CalledAeTitleNotRecognized),
+        )
+        .await;
+        return None;
+    }
+
+    match sqlx::query!(
+        "SELECT host FROM application_entities WHERE title = $1",
+        calling_ae_title
+    )
+    .fetch_one(DB_POOL.get().unwrap())
+    .await
+    {
+        Ok(application_entity) => {
+            let mut host_addresses = {
+                match tokio::net::lookup_host((application_entity.host.as_str(), 0)).await {
+                    Ok(addresses) => addresses,
+                    Err(e) => {
+                        warn!(
+                            "アソシエーション要求を拒否しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\" 理由=ホスト名の解決に失敗): {e}",
+                        );
+                        reject_association(
+                            buf_reader,
+                            a_associate_rj::Result::RejectedTransient,
+                            SourceAndReason::ServiceProviderAcse(
+                                service_provider_acse::Reason::NoReasonGiven,
+                            ),
+                        )
+                        .await;
+                        return None;
+                    }
+                }
+            };
+            let peer_address = buf_reader.get_ref().peer_addr().unwrap();
+            let is_matched = host_addresses.any(|addr| addr.ip() == peer_address.ip());
+
+            if !is_matched {
+                warn!(
+                    "アソシエーション要求を拒否しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\" 理由=送信元AEタイトル不明)",
+                );
+                reject_association(
+                    buf_reader,
+                    a_associate_rj::Result::RejectedPermanent,
+                    SourceAndReason::ServiceUser(service_user::Reason::CallingAeTitleNotRecognized),
+                )
+                .await;
+                return None;
+            }
+        }
+        Err(_) => {
+            warn!(
+                "アソシエーション要求を拒否しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\" 理由=送信元AEタイトル不明)",
+            );
+            reject_association(
+                buf_reader,
+                a_associate_rj::Result::RejectedPermanent,
+                SourceAndReason::ServiceUser(service_user::Reason::CallingAeTitleNotRecognized),
+            )
+            .await;
+            return None;
+        }
+    }
+
+    info!("アソシエーション要求を受諾しました (送信元=\"{calling_ae_title}\")",);
+
+    // A-ASSOCIATE-ACの送信
+    {
+        let application_context = ApplicationContext::new("1.2.840.10008.3.1.1.1.1");
+        let presentation_contexts = a_associate_rq
+            .presentation_contexts()
+            .iter()
+            .map(|presentation_context| {
+                PresentationContext::new(
+                    presentation_context.context_id(),
+                    if presentation_context.abstract_syntax().name() == VERIFICATION {
+                        ResultReason::Acceptance
+                    } else {
+                        ResultReason::AbstractSyntaxNotSupported
+                    },
+                    TransferSyntax::new(IMPLICIT_VR_LITTLE_ENDIAN).unwrap(),
+                )
+            })
+            .collect::<Vec<_>>();
+        let user_information = UserInformation::new(
+            Some(MaximumLength::new(MAXIMUM_LENGTH)),
+            ImplementationClassUid::new(IMPLEMENTATION_CLASS_UID).unwrap(),
+            Some(ImplementationVersionName::new(IMPLEMENTATION_VERSION_NAME).unwrap()),
+        );
+
+        if let Err(e) = send_a_associate_ac(
+            &mut buf_reader.get_mut(),
+            called_ae_title,
+            calling_ae_title,
+            application_context,
+            presentation_contexts,
+            user_information,
+        )
+        .await
+        {
+            error!("A-ASSOCIATE-ACの送信に失敗しました: {e}");
+            return None;
+        };
+    }
+    debug!("A-ASSOCIATE-ACを送信しました");
+
+    Some(a_associate_rq)
+}
+
+async fn reject_association(
+    buf_reader: &mut BufReader<&mut TcpStream>,
+    result: a_associate_rj::Result,
+    source_and_reason: SourceAndReason,
+) {
+    match send_a_associate_rj(&mut buf_reader.get_mut(), result, source_and_reason).await {
+        Ok(()) => debug!("A-ASSOCIATE-RJを送信しました"),
+        Err(e) => error!("A-ASSOCIATE-RJの送信に失敗しました: {e}"),
+    }
+}
+
+async fn handle_release(buf_reader: &mut BufReader<&mut TcpStream>) {
+    let reception = match receive_a_release_rq(buf_reader).await {
+        Ok(val) => val,
+        Err(e) => {
+            error!("A-RELEASE-RQの受信に失敗しました: {e}");
+            abort(buf_reader, a_abort::Reason::from(e)).await;
+            return;
+        }
+    };
+    if let AReleaseRqReception::AAbort(a_abort) = reception {
+        debug!(
+            "A-ABORTを受信しました: (Source={:02X} Reason={:02X})",
+            a_abort.source() as u8,
+            a_abort.reason() as u8
+        );
+        return;
+    }
+    debug!("A-RELEASE-RQを受信しました");
+
+    if let Err(e) = send_a_release_rp(buf_reader.get_mut()).await {
+        error!("A-RELEASE-RPの送信に失敗しました: {e}");
+        return;
+    }
+    debug!("A-RELEASE-RPを送信しました");
+}
+
+async fn abort(buf_reader: &mut BufReader<&mut TcpStream>, reason: a_abort::Reason) {
     match pdu::send_a_abort(&mut buf_reader.get_mut(), Source::Provider, reason).await {
         Ok(()) => debug!("A-ABORTを送信しました"),
         Err(e) => error!("A-ABORTの送信に失敗しました: {e}"),
