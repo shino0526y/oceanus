@@ -11,7 +11,7 @@ use dicom_lib::{
         },
         upper_layer_protocol::{
             pdu::{
-                self, AAssociateRq, AReleaseRqReception, PDataTfReception,
+                self, AAssociateRq, AReleaseRqReception, PDataTfReception, PduReadError,
                 a_abort::{self, Source},
                 a_associate_ac::{
                     ApplicationContext, PresentationContext, UserInformation,
@@ -178,7 +178,9 @@ async fn handle_connection(mut socket: TcpStream) {
             Ok(val) => val,
             Err(e) => {
                 error!("P-DATA-TFの受信に失敗しました: {e}");
-                abort(&mut buf_reader, a_abort::Reason::from(e)).await;
+                if !matches!(e, PduReadError::IoError(_)) {
+                    abort(&mut buf_reader, a_abort::Reason::from(e)).await;
+                }
                 return;
             }
         };
@@ -398,7 +400,9 @@ async fn handle_release(buf_reader: &mut BufReader<&mut TcpStream>) {
         Ok(val) => val,
         Err(e) => {
             error!("A-RELEASE-RQの受信に失敗しました: {e}");
-            abort(buf_reader, a_abort::Reason::from(e)).await;
+            if !matches!(e, PduReadError::IoError(_)) {
+                abort(buf_reader, a_abort::Reason::from(e)).await;
+            }
             return;
         }
     };
