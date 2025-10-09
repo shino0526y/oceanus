@@ -13,7 +13,7 @@ use dicom_lib::{
         upper_layer_protocol::{
             AReleaseRqReception, PDataTfReception,
             pdu::{
-                AAssociateRq, PduReadError,
+                AAssociateAc, AAssociateRq, PduReadError,
                 a_abort::{self, Source},
                 a_associate_ac::{
                     ApplicationContext, PresentationContext, UserInformation,
@@ -363,17 +363,17 @@ async fn handle_association(buf_reader: &mut BufReader<&mut TcpStream>) -> Optio
             ImplementationClassUid::new(IMPLEMENTATION_CLASS_UID).unwrap(),
             Some(ImplementationVersionName::new(IMPLEMENTATION_VERSION_NAME).unwrap()),
         );
-
-        if let Err(e) = send_a_associate_ac(
-            &mut buf_reader.get_mut(),
+        let a_associate_ac = AAssociateAc::new(
+            1,
             called_ae_title,
             calling_ae_title,
             application_context,
             presentation_contexts,
             user_information,
         )
-        .await
-        {
+        .unwrap();
+
+        if let Err(e) = send_a_associate_ac(&mut buf_reader.get_mut(), a_associate_ac).await {
             error!("A-ASSOCIATE-ACの送信に失敗しました: {e}");
             return None;
         };

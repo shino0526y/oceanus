@@ -1,6 +1,5 @@
 use crate::network::upper_layer_protocol::pdu::{
-    AAssociateAc, AAssociateRj, AAssociateRq, PduReadError, PduType, a_associate, a_associate_ac,
-    a_associate_rj,
+    AAssociateAc, AAssociateRj, AAssociateRq, PduReadError, PduType, a_associate_rj,
 };
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 
@@ -33,22 +32,8 @@ pub async fn receive_a_associate_rq(
 
 pub async fn send_a_associate_ac(
     socket: &mut (impl AsyncWrite + Unpin),
-    called_ae_title: &str,
-    calling_ae_title: &str,
-    application_context: a_associate::ApplicationContext,
-    presentation_contexts: Vec<a_associate_ac::PresentationContext>,
-    user_information: a_associate::UserInformation,
+    a_associate_ac: AAssociateAc,
 ) -> std::io::Result<()> {
-    let a_associate_ac = AAssociateAc::new(
-        1,
-        called_ae_title,
-        calling_ae_title,
-        application_context,
-        presentation_contexts,
-        user_information,
-    )
-    .unwrap();
-
     let bytes: Vec<u8> = a_associate_ac.into();
     socket.write_all(&bytes).await?;
 
