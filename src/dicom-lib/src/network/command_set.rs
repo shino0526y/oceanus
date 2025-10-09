@@ -29,6 +29,22 @@ impl CommandSet {
     pub fn iter(&self) -> Iter<'_, Command> {
         self.commands.iter()
     }
+
+    pub fn new(commands: Vec<Command>) -> Result<Self, &'static str> {
+        if commands.is_empty() {
+            return Err("コマンドセットは少なくとも1つのコマンドを含む必要があります");
+        }
+
+        let mut size = commands[0].size();
+        for i in 1..commands.len() {
+            if commands[i - 1].tag() >= commands[i].tag() {
+                return Err("コマンドはタグの昇順で並んでいる必要があります");
+            }
+            size += commands[i].size();
+        }
+
+        Ok(Self { size, commands })
+    }
 }
 
 impl Index<usize> for CommandSet {

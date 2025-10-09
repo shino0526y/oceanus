@@ -7,6 +7,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, BufReader};
 
 pub(crate) const PDU_TYPE: u8 = 0x04;
 
+#[derive(Debug, PartialEq)]
 pub struct PDataTf {
     length: u32,
     presentation_data_values: Vec<PresentationDataValue>,

@@ -21,6 +21,10 @@ impl Command {
     pub fn size(&self) -> usize {
         8 + self.value_length() as usize
     }
+
+    pub fn new(tag: Tag, value_field: Vec<u8>) -> Self {
+        Self { tag, value_field }
+    }
 }
 
 impl From<Command> for Vec<u8> {

@@ -3,6 +3,7 @@ use crate::network::upper_layer_protocol::pdu::{
 };
 use tokio::io::{AsyncRead, AsyncReadExt, BufReader};
 
+#[derive(Debug, PartialEq)]
 pub struct PresentationDataValue {
     length: u32,
     presentation_context_id: u8,
@@ -43,7 +44,13 @@ impl PresentationDataValue {
         self.message_control_header & 0b00000010 == 2
     }
 
-    pub fn new(presentation_context_id: u8, is_command: bool, is_last: bool, data: &[u8]) -> Self {
+    pub fn new(
+        presentation_context_id: u8,
+        is_command: bool,
+        is_last: bool,
+        data: impl Into<Vec<u8>>,
+    ) -> Self {
+        let data = data.into();
         let length = data.len() as u32
             + 1 // Presentation Context ID
             + 1; // Message Control Header
@@ -54,7 +61,6 @@ impl PresentationDataValue {
         if is_last {
             message_control_header |= 0b00000010;
         }
-        let data = data.to_vec();
 
         Self {
             length,
