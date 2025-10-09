@@ -54,3 +54,51 @@ pub async fn send_p_data_tf(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        core::Tag,
+        network::{
+            CommandSet, command_set::Command,
+            upper_layer_protocol::pdu::p_data_tf::PresentationDataValue,
+        },
+    };
+
+    #[tokio::test]
+    async fn test_receive_p_data_tf() {
+        let expected = {
+            let command_set = CommandSet::new(vec![
+                Command::new(Tag::new(0x0000, 0x0000), 56u32.to_le_bytes().to_vec()),
+                Command::new(
+                    Tag::new(0x0000, 0x0002),
+                    "1.2.840.10008.1.1\0".as_bytes().to_vec(),
+                ),
+                Command::new(Tag::new(0x0000, 0x0100), 0x0030u16.to_le_bytes().to_vec()),
+                Command::new(Tag::new(0x0000, 0x0110), 1u16.to_le_bytes().to_vec()),
+                Command::new(Tag::new(0x0000, 0x0800), 0x0101u16.to_le_bytes().to_vec()),
+            ])
+            .unwrap();
+            PDataTf::new(vec![PresentationDataValue::new(1, true, true, command_set)])
+        };
+
+        let actual = {
+            let buf = [
+                0x04, 0x00, 0x00, 0x00, 0x00, 0x4a, 0x00, 0x00, 0x00, 0x46, 0x01, 0x03, 0x00, 0x00,
+                0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x38, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00,
+                0x12, 0x00, 0x00, 0x00, 0x31, 0x2e, 0x32, 0x2e, 0x38, 0x34, 0x30, 0x2e, 0x31, 0x30,
+                0x30, 0x30, 0x38, 0x2e, 0x31, 0x2e, 0x31, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x00,
+                0x00, 0x00, 0x30, 0x00, 0x00, 0x00, 0x10, 0x01, 0x02, 0x00, 0x00, 0x00, 0x01, 0x00,
+                0x00, 0x00, 0x00, 0x08, 0x02, 0x00, 0x00, 0x00, 0x01, 0x01,
+            ];
+            let mut buf_reader = BufReader::new(&buf[..]);
+            match receive_p_data_tf(&mut buf_reader).await.unwrap() {
+                PDataTfReception::PDataTf(value) => value,
+                PDataTfReception::AAbort(_) => panic!(""),
+            }
+        };
+
+        assert_eq!(expected, actual);
+    }
+}
