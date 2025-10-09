@@ -16,6 +16,7 @@ pub(crate) const ITEM_TYPE: u8 = 0x50;
 
 // Maximum Length Application PDU NotificationとImplementation Identification Notificationに対応しているが、それ以外には対応していない。
 // 対応に迫られたら実装する。
+#[derive(Debug, PartialEq)]
 pub struct UserInformation {
     length: u16,
     maximum_length: Option<MaximumLength>,

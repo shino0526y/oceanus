@@ -10,6 +10,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, BufReader};
 
 pub(crate) const PDU_TYPE: u8 = 0x01;
 
+#[derive(Debug, PartialEq)]
 pub struct AAssociateRq {
     length: u32,
     version: u16,
@@ -51,6 +52,51 @@ impl AAssociateRq {
 
     pub fn user_information(&self) -> &UserInformation {
         &self.user_information
+    }
+
+    pub fn new(
+        version: u16,
+        called_ae_title: impl Into<String>,
+        calling_ae_title: impl Into<String>,
+        application_context: ApplicationContext,
+        presentation_contexts: impl Into<Vec<PresentationContext>>,
+        user_information: UserInformation,
+    ) -> Result<Self, &'static str> {
+        let called_ae_title = called_ae_title.into();
+        if called_ae_title.is_empty() {
+            return Err("Called-AE-titleが空です");
+        } else if called_ae_title.len() > 16 {
+            return Err("Called-AE-titleの長さが16バイトを超えています");
+        }
+        let calling_ae_title = calling_ae_title.into();
+        if calling_ae_title.is_empty() {
+            return Err("Calling-AE-titleが空です");
+        } else if calling_ae_title.len() > 16 {
+            return Err("Calling-AE-titleの長さが16バイトを超えています");
+        }
+
+        let presentation_contexts = presentation_contexts.into();
+        let length = 2 // Protocol-version
+            + 2 // Reserved
+            + 16 // Called-AE-title
+            + 16 // Calling-AE-title
+            + 32 // Reserved
+            + application_context.length() as u32
+            + presentation_contexts
+                .iter()
+                .map(|pc| pc.length() as u32)
+                .sum::<u32>()
+            + user_information.length() as u32;
+
+        Ok(Self {
+            length,
+            version,
+            called_ae_title,
+            calling_ae_title,
+            application_context,
+            presentation_contexts,
+            user_information,
+        })
     }
 
     pub async fn read_from_stream(

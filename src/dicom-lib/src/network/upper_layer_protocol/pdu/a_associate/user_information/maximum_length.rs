@@ -5,6 +5,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, BufReader};
 
 pub(crate) const ITEM_TYPE: u8 = 0x51;
 
+#[derive(Debug, PartialEq)]
 pub struct MaximumLength {
     maximum_length: u32,
 }

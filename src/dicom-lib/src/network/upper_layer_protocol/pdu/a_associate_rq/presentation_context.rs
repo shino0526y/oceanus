@@ -10,6 +10,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, BufReader};
 
 pub(crate) const ITEM_TYPE: u8 = 0x20;
 
+#[derive(Debug, PartialEq)]
 pub struct PresentationContext {
     length: u16,
     context_id: u8,
@@ -36,6 +37,27 @@ impl PresentationContext {
 
     pub fn transfer_syntaxes(&self) -> &[TransferSyntax] {
         &self.transfer_syntaxes
+    }
+
+    pub fn new(
+        context_id: u8,
+        abstract_syntax: AbstractSyntax,
+        transfer_syntaxes: impl Into<Vec<TransferSyntax>>,
+    ) -> Self {
+        let transfer_syntaxes = transfer_syntaxes.into();
+        let length = 1 // Presentation-context-ID
+            + 1 // Reserved
+            + 1 // Reserved
+            + 1 // Reserved
+            + abstract_syntax.size() as u16
+            + transfer_syntaxes.iter().map(|ts| ts.size() as u16).sum::<u16>();
+
+        Self {
+            length,
+            context_id,
+            abstract_syntax,
+            transfer_syntaxes,
+        }
     }
 
     pub async fn read_from_stream(

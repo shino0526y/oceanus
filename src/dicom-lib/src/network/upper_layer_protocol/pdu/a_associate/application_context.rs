@@ -3,6 +3,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, BufReader};
 
 pub(crate) const ITEM_TYPE: u8 = 0x10;
 
+#[derive(Debug, PartialEq)]
 pub struct ApplicationContext {
     length: u16,
     name: String,
@@ -21,7 +22,7 @@ impl ApplicationContext {
         &self.name
     }
 
-    pub fn new<T: Into<String>>(name: T) -> Self {
+    pub fn new(name: impl Into<String>) -> Self {
         let name = name.into();
         let mut length = name.len() as u16;
         if name.len() % 2 != 0 {

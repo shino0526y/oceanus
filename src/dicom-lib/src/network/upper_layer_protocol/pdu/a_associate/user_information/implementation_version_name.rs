@@ -3,6 +3,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, BufReader};
 
 pub(crate) const ITEM_TYPE: u8 = 0x55;
 
+#[derive(Debug, PartialEq)]
 pub struct ImplementationVersionName {
     length: u16,
     name: String,
@@ -21,7 +22,7 @@ impl ImplementationVersionName {
         &self.name
     }
 
-    pub fn new<T: Into<String>>(name: T) -> Result<Self, &'static str> {
+    pub fn new(name: impl Into<String>) -> Result<Self, &'static str> {
         let name = name.into();
         if name.is_empty() || name.len() > 16 {
             return Err("Implementation-version-nameは1文字以上16文字以下でなければなりません");

@@ -3,6 +3,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, BufReader};
 
 pub(crate) const ITEM_TYPE: u8 = 0x52;
 
+#[derive(Debug, PartialEq)]
 pub struct ImplementationClassUid {
     length: u16,
     uid: String,
@@ -21,7 +22,7 @@ impl ImplementationClassUid {
         &self.uid
     }
 
-    pub fn new<T: Into<String>>(uid: T) -> Result<Self, &'static str> {
+    pub fn new(uid: impl Into<String>) -> Result<Self, &'static str> {
         let uid = uid.into();
         if uid.is_empty() {
             return Err("Implementation-class-uidが空です");

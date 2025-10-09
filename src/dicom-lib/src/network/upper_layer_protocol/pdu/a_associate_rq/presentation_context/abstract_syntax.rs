@@ -3,6 +3,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, BufReader};
 
 pub(crate) const ITEM_TYPE: u8 = 0x30;
 
+#[derive(Debug, PartialEq)]
 pub struct AbstractSyntax {
     length: u16,
     name: String,
@@ -19,6 +20,20 @@ impl AbstractSyntax {
 
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn new(name: impl Into<String>) -> Result<Self, &'static str> {
+        let name = name.into();
+        if name.is_empty() {
+            return Err("Abstract-syntax-nameが空です");
+        }
+
+        let mut length = name.len() as u16;
+        if name.len() % 2 != 0 {
+            length += 1;
+        }
+
+        Ok(Self { length, name })
     }
 
     pub async fn read_from_stream(

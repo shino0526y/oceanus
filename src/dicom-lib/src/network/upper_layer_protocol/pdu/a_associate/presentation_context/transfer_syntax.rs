@@ -3,6 +3,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, BufReader};
 
 pub(crate) const ITEM_TYPE: u8 = 0x40;
 
+#[derive(Debug, PartialEq)]
 pub struct TransferSyntax {
     length: u16,
     name: String,
@@ -21,7 +22,7 @@ impl TransferSyntax {
         &self.name
     }
 
-    pub fn new<T: Into<String>>(name: T) -> Result<Self, &'static str> {
+    pub fn new(name: impl Into<String>) -> Result<Self, &'static str> {
         let name = name.into();
         if name.is_empty() {
             return Err("Transfer-syntax-nameが空です");
