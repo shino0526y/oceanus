@@ -48,10 +48,10 @@ impl AAssociateAc {
         &self.user_information
     }
 
-    pub fn new<T: Into<String>>(
+    pub fn new(
         version: u16,
-        called_ae_title: T,
-        calling_ae_title: T,
+        called_ae_title: impl Into<String>,
+        calling_ae_title: impl Into<String>,
         application_context: ApplicationContext,
         presentation_contexts: Vec<PresentationContext>,
         user_information: UserInformation,
