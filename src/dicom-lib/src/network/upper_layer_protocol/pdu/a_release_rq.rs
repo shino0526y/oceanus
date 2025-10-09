@@ -3,6 +3,7 @@ use tokio::io::{AsyncRead, AsyncReadExt, BufReader};
 
 pub(crate) const PDU_TYPE: u8 = 0x05;
 
+#[derive(Debug, PartialEq)]
 pub struct AReleaseRq();
 
 impl AReleaseRq {
@@ -12,6 +13,10 @@ impl AReleaseRq {
 
     pub fn length(&self) -> u32 {
         4
+    }
+
+    pub fn new() -> Self {
+        Self()
     }
 
     pub async fn read_from_stream(
