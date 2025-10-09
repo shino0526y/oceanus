@@ -68,8 +68,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_receive_p_data_tf() {
-        let expected = {
-            let command_set = CommandSet::new(vec![
+        let expected = PDataTf::new(vec![PresentationDataValue::new(
+            1,
+            true,
+            true,
+            CommandSet::new(vec![
                 Command::new(Tag::new(0x0000, 0x0000), 56u32.to_le_bytes().to_vec()),
                 Command::new(
                     Tag::new(0x0000, 0x0002),
@@ -79,9 +82,8 @@ mod tests {
                 Command::new(Tag::new(0x0000, 0x0110), 1u16.to_le_bytes().to_vec()),
                 Command::new(Tag::new(0x0000, 0x0800), 0x0101u16.to_le_bytes().to_vec()),
             ])
-            .unwrap();
-            PDataTf::new(vec![PresentationDataValue::new(1, true, true, command_set)])
-        };
+            .unwrap(),
+        )]);
 
         let actual = {
             let buf = [
