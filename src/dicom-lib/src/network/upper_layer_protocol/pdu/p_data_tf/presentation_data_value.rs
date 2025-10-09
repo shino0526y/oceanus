@@ -89,14 +89,14 @@ impl PresentationDataValue {
     }
 }
 
-impl From<&PresentationDataValue> for Vec<u8> {
-    fn from(val: &PresentationDataValue) -> Self {
+impl From<PresentationDataValue> for Vec<u8> {
+    fn from(mut val: PresentationDataValue) -> Self {
         let mut bytes = Vec::with_capacity(val.size());
 
         bytes.extend(val.length().to_be_bytes());
         bytes.push(val.presentation_context_id());
         bytes.push(val.message_control_header());
-        bytes.extend(val.data());
+        bytes.append(&mut val.data);
 
         bytes
     }

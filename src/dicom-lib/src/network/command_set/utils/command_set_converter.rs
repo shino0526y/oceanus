@@ -18,7 +18,7 @@ pub fn p_data_tf_pdus_to_command_set(p_data_tf_pdus: &[PDataTf]) -> Result<Comma
 }
 
 pub fn command_set_to_p_data_tf_pdus(
-    command_set: &CommandSet,
+    command_set: CommandSet,
     presentation_context_id: u8,
     maximum_length: u32,
 ) -> Vec<PDataTf> {

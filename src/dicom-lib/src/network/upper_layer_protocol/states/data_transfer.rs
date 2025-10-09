@@ -45,7 +45,7 @@ pub async fn receive_p_data_tf(
 
 pub async fn send_p_data_tf(
     socket: &mut (impl AsyncWrite + Unpin),
-    p_data_tf_pdus: &[PDataTf],
+    p_data_tf_pdus: Vec<PDataTf>,
 ) -> std::io::Result<()> {
     for p_data_tf in p_data_tf_pdus {
         let bytes: Vec<u8> = p_data_tf.into();

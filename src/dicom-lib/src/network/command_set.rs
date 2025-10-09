@@ -92,11 +92,11 @@ impl TryFrom<&[u8]> for CommandSet {
     }
 }
 
-impl From<&CommandSet> for Vec<u8> {
-    fn from(val: &CommandSet) -> Self {
+impl From<CommandSet> for Vec<u8> {
+    fn from(val: CommandSet) -> Self {
         let mut bytes = Vec::with_capacity(val.size());
 
-        for command in &val.commands {
+        for command in val.commands {
             bytes.append(&mut command.into());
         }
 

@@ -232,12 +232,12 @@ async fn handle_connection(mut socket: TcpStream) {
             .maximum_length()
             .map_or(0, |maximum_length| maximum_length.maximum_length());
         let p_data_tf_pdus = command_set_to_p_data_tf_pdus(
-            &command_set_to_be_sent,
+            command_set_to_be_sent,
             presentation_context_id,
             maximum_length,
         );
 
-        match send_p_data_tf(&mut buf_reader.get_mut(), &p_data_tf_pdus).await {
+        match send_p_data_tf(&mut buf_reader.get_mut(), p_data_tf_pdus).await {
             Ok(()) => {}
             Err(e) => {
                 error!("P-DATA-TFの送信に失敗しました: {e}");

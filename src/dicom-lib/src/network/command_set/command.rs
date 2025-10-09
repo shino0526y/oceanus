@@ -23,13 +23,13 @@ impl Command {
     }
 }
 
-impl From<&Command> for Vec<u8> {
-    fn from(command: &Command) -> Self {
+impl From<Command> for Vec<u8> {
+    fn from(mut command: Command) -> Self {
         let mut bytes = Vec::with_capacity(command.size());
 
         bytes.append(&mut command.tag().into());
         bytes.extend(command.value_length().to_le_bytes());
-        bytes.extend(command.value_field());
+        bytes.append(&mut command.value_field);
 
         bytes
     }

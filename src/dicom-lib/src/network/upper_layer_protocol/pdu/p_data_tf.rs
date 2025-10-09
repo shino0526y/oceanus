@@ -89,16 +89,16 @@ impl PDataTf {
     }
 }
 
-impl From<&PDataTf> for Vec<u8> {
-    fn from(val: &PDataTf) -> Self {
+impl From<PDataTf> for Vec<u8> {
+    fn from(val: PDataTf) -> Self {
         let mut bytes = Vec::with_capacity(val.size());
 
         bytes.push(PDU_TYPE);
         bytes.push(0); // Reserved
         bytes.extend(val.length().to_be_bytes());
-        val.presentation_data_values().iter().for_each(|pdv| {
+        for pdv in val.presentation_data_values {
             bytes.append(&mut pdv.into());
-        });
+        }
 
         bytes
     }
