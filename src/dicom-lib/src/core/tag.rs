@@ -4,17 +4,14 @@ use std::fmt::{Display, Formatter};
 pub struct Tag(u16, u16);
 
 impl Tag {
-    #[inline(always)]
     pub fn group(self) -> u16 {
         self.0
     }
 
-    #[inline(always)]
     pub fn element(self) -> u16 {
         self.1
     }
 
-    #[inline(always)]
     pub fn new(group: u16, element: u16) -> Self {
         Tag(group, element)
     }

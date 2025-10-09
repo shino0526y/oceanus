@@ -14,22 +14,18 @@ pub struct CommandSet {
 }
 
 impl CommandSet {
-    #[inline(always)]
     pub fn len(&self) -> usize {
         self.commands.len()
     }
 
-    #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.commands.is_empty()
     }
 
-    #[inline(always)]
     pub fn size(&self) -> usize {
         self.size
     }
 
-    #[inline(always)]
     pub fn iter(&self) -> Iter<'_, Command> {
         self.commands.iter()
     }
@@ -38,7 +34,6 @@ impl CommandSet {
 impl Index<usize> for CommandSet {
     type Output = Command;
 
-    #[inline(always)]
     fn index(&self, index: usize) -> &Self::Output {
         &self.commands[index]
     }
