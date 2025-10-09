@@ -24,10 +24,7 @@ impl ApplicationContext {
 
     pub fn new(name: impl Into<String>) -> Self {
         let name = name.into();
-        let mut length = name.len() as u16;
-        if name.len() % 2 != 0 {
-            length += 1;
-        }
+        let length = name.len() as u16;
 
         Self { length, name }
     }
@@ -39,14 +36,10 @@ impl ApplicationContext {
         let name = {
             let mut buf = vec![0u8; length as usize];
             buf_reader.read_exact(&mut buf).await?;
-            std::str::from_utf8(&buf)
-                .map_err(|_| PduReadError::InvalidPduParameterValue {
-                    message:
-                        "Application-context-nameフィールドをUTF-8の文字列として解釈できません"
-                            .to_string(),
-                })?
-                .trim_end_matches('\0')
-                .to_string()
+            String::from_utf8(buf).map_err(|_| PduReadError::InvalidPduParameterValue {
+                message: "Application-context-nameフィールドをUTF-8の文字列として解釈できません"
+                    .to_string(),
+            })?
         };
 
         Ok(Self { length, name })
@@ -61,9 +54,6 @@ impl From<ApplicationContext> for Vec<u8> {
         bytes.push(0); // Reserved
         bytes.extend(val.length.to_be_bytes());
         bytes.extend(val.name.as_bytes());
-        if val.name.len() % 2 != 0 {
-            bytes.push(b'\0');
-        }
 
         bytes
     }

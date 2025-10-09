@@ -81,12 +81,12 @@ impl AAssociateRq {
             + 16 // Called-AE-title
             + 16 // Calling-AE-title
             + 32 // Reserved
-            + application_context.length() as u32
+            + application_context.size() as u32
             + presentation_contexts
                 .iter()
-                .map(|pc| pc.length() as u32)
+                .map(|pc| pc.size() as u32)
                 .sum::<u32>()
-            + user_information.length() as u32;
+            + user_information.size() as u32;
 
         Ok(Self {
             length,

@@ -27,11 +27,7 @@ impl ImplementationClassUid {
         if uid.is_empty() {
             return Err("Implementation-class-uidが空です");
         }
-
-        let mut length = uid.len() as u16;
-        if uid.len() % 2 != 0 {
-            length += 1;
-        }
+        let length = uid.len() as u16;
 
         Ok(Self { length, uid })
     }
@@ -44,14 +40,10 @@ impl ImplementationClassUid {
             let mut buf = vec![0u8; length as usize];
             buf_reader.read_exact(&mut buf).await?;
 
-            std::str::from_utf8(&buf)
-                .map_err(|_| PduReadError::InvalidPduParameterValue {
-                    message:
-                        "Implementation-class-uidフィールドをUTF-8の文字列として解釈できません"
-                            .to_string(),
-                })?
-                .trim_end_matches('\0')
-                .to_string()
+            String::from_utf8(buf).map_err(|_| PduReadError::InvalidPduParameterValue {
+                message: "Implementation-class-uidフィールドをUTF-8の文字列として解釈できません"
+                    .to_string(),
+            })?
         };
 
         Ok(Self { length, uid })
@@ -66,9 +58,6 @@ impl From<ImplementationClassUid> for Vec<u8> {
         bytes.push(0); // Reserved
         bytes.extend(val.length.to_be_bytes());
         bytes.extend(val.uid.as_bytes());
-        if val.uid.len() % 2 != 0 {
-            bytes.push(b'\0');
-        }
 
         bytes
     }

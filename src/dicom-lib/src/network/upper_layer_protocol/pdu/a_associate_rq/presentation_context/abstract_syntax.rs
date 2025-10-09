@@ -27,11 +27,7 @@ impl AbstractSyntax {
         if name.is_empty() {
             return Err("Abstract-syntax-nameが空です");
         }
-
-        let mut length = name.len() as u16;
-        if name.len() % 2 != 0 {
-            length += 1;
-        }
+        let length = name.len() as u16;
 
         Ok(Self { length, name })
     }
@@ -43,13 +39,10 @@ impl AbstractSyntax {
         let name = {
             let mut buf = vec![0u8; length as usize];
             buf_reader.read_exact(&mut buf).await?;
-            std::str::from_utf8(&buf)
-                .map_err(|_| PduReadError::InvalidPduParameterValue {
-                    message: "Abstract-syntax-nameフィールドをUTF-8の文字列として解釈できません"
-                        .to_string(),
-                })?
-                .trim_end_matches('\0')
-                .to_string()
+            String::from_utf8(buf).map_err(|_| PduReadError::InvalidPduParameterValue {
+                message: "Abstract-syntax-nameフィールドをUTF-8の文字列として解釈できません"
+                    .to_string(),
+            })?
         };
 
         Ok(Self { length, name })
