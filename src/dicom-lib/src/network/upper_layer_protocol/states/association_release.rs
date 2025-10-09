@@ -52,3 +52,37 @@ pub async fn send_a_release_rp(socket: &mut (impl AsyncWrite + Unpin)) -> std::i
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_receive_a_release_rq() {
+        let expected = AReleaseRq::new();
+
+        let actual = {
+            let buf = [0x05, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00];
+            let mut buf_reader = BufReader::new(&buf[..]);
+            match receive_a_release_rq(&mut buf_reader).await.unwrap() {
+                AReleaseRqReception::AReleaseRq(value) => value,
+                AReleaseRqReception::AAbort(_) => panic!(""),
+            }
+        };
+
+        assert_eq!(expected, actual);
+    }
+
+    #[tokio::test]
+    async fn test_send_a_release_rp() {
+        let expected = vec![0x06, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00];
+
+        let actual = {
+            let mut buf = vec![];
+            send_a_release_rp(&mut buf).await.unwrap();
+            buf
+        };
+
+        assert_eq!(expected, actual);
+    }
+}
