@@ -35,3 +35,9 @@ impl AReleaseRq {
         Ok(Self())
     }
 }
+
+impl Default for AReleaseRq {
+    fn default() -> Self {
+        Self::new()
+    }
+}
