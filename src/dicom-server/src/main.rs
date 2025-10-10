@@ -16,7 +16,7 @@ use dicom_lib::{
                 AAssociateAc, AAssociateRq, PduReadError,
                 a_abort::{self, Source},
                 a_associate_ac::{
-                    ApplicationContext, PresentationContext, UserInformation,
+                    self, ApplicationContext, UserInformation,
                     presentation_context::{ResultReason, TransferSyntax},
                     user_information::{
                         ImplementationClassUid, ImplementationVersionName, MaximumLength,
@@ -26,6 +26,7 @@ use dicom_lib::{
                     self, SourceAndReason,
                     source::{service_provider_acse, service_user},
                 },
+                a_associate_rq,
             },
             receive_a_associate_rq, receive_a_release_rq, receive_p_data_tf, send_a_abort,
             send_a_associate_ac, send_a_associate_rj, send_a_release_rp, send_p_data_tf,
@@ -60,7 +61,9 @@ const IMPLEMENTATION_CLASS_UID: &str =
     concat!("1.3.6.1.4.1.64183.1.1.", env!("CARGO_PKG_VERSION_MAJOR"));
 const IMPLEMENTATION_VERSION_NAME: &str = concat!("OCEANUS_", env!("CARGO_PKG_VERSION")); // OCEANUS_x.y.z
 
-const MAXIMUM_LENGTH: u32 = 0;
+const MAXIMUM_LENGTH: u32 = 0; // 制限なし
+const SUPPORTED_ABSTRACT_SYNTAX_UIDS: &[&str] = &[VERIFICATION];
+const SUPPORTED_TRANSFER_SYNTAX_UIDS: &[&str] = &[IMPLICIT_VR_LITTLE_ENDIAN];
 
 static CONNECTION_COUNTER: AtomicU64 = AtomicU64::new(1);
 static SERVER_AE_TITLE: OnceLock<String> = OnceLock::new();
@@ -150,7 +153,7 @@ async fn main() {
 
         tokio::spawn(async move {
             use Instrument;
-            handle_connection(socket)
+            handle_association(socket)
                 .instrument(span!(
                     Level::INFO,
                     "connection",
@@ -163,44 +166,79 @@ async fn main() {
     }
 }
 
-async fn handle_connection(mut socket: TcpStream) {
+async fn handle_association(mut socket: TcpStream) {
     let mut buf_reader = BufReader::new(&mut socket);
 
-    let a_associate_rq = match handle_association(&mut buf_reader).await {
-        Some(val) => val,
-        None => return,
-    };
+    let (a_associate_rq, accepted_presentation_contexts) =
+        match handle_association_establishment(&mut buf_reader).await {
+            Some(val) => val,
+            None => return,
+        };
+    if accepted_presentation_contexts.is_empty() {
+        info!(
+            "アソシエーション要求されたPresentation Contextのうち、受諾したものがないため、アソシエーションを終了します"
+        );
+        return;
+    }
+    // TODO: 複数のPresentation Contextに対応する
+    if accepted_presentation_contexts.len() > 1 {
+        panic!("複数のPresentation Contextに対応していません");
+    }
 
     // P-DATA-TFの受信
-    let p_data_tf = {
-        let reception = match receive_p_data_tf(&mut buf_reader).await {
-            Ok(val) => val,
-            Err(e) => {
-                error!("P-DATA-TFの受信に失敗しました: {e}");
-                if !matches!(e, PduReadError::IoError(_)) {
-                    abort(&mut buf_reader, a_abort::Reason::from(e)).await;
+    let mut p_data_tfs = vec![];
+    loop {
+        let p_data_tf = {
+            let reception = match receive_p_data_tf(&mut buf_reader).await {
+                Ok(val) => val,
+                Err(e) => {
+                    error!("P-DATA-TFの受信に失敗しました: {e}");
+                    if !matches!(e, PduReadError::IoError(_)) {
+                        abort(&mut buf_reader, a_abort::Reason::from(e)).await;
+                    }
+                    return;
                 }
-                return;
+            };
+
+            match reception {
+                PDataTfReception::PDataTf(val) => val,
+                PDataTfReception::AAbort(a_abort) => {
+                    debug!(
+                        "A-ABORTを受信しました: (Source={:02X} Reason={:02X})",
+                        a_abort.source() as u8,
+                        a_abort.reason() as u8
+                    );
+                    return;
+                }
             }
         };
 
-        match reception {
-            PDataTfReception::PDataTf(val) => val,
-            PDataTfReception::AAbort(a_abort) => {
-                debug!(
-                    "A-ABORTを受信しました: (Source={:02X} Reason={:02X})",
-                    a_abort.source() as u8,
-                    a_abort.reason() as u8
-                );
-                return;
-            }
+        if p_data_tf.presentation_data_values().iter().any(|pdv| {
+            accepted_presentation_contexts
+                .iter()
+                .all(|pc| pdv.presentation_context_id() != pc.context_id())
+        }) {
+            warn!(
+                "受信したP-DATA-TFのPresentation Context IDがアソシエーションで受諾したものに含まれていません"
+            );
+            abort(&mut buf_reader, a_abort::Reason::InvalidPduParameterValue).await;
+            return;
         }
-    };
+
+        let is_last = p_data_tf
+            .presentation_data_values()
+            .iter()
+            .any(|pdv| pdv.is_last());
+
+        p_data_tfs.push(p_data_tf);
+
+        if is_last {
+            break;
+        }
+    }
     debug!("P-DATA-TFを受信しました");
 
-    // 受信したP-DATA-TFからコマンドセットを生成する
-    let presentation_context_id = p_data_tf.presentation_data_values()[0].presentation_context_id();
-    let command_set_received = match p_data_tf_pdus_to_command_set(&[p_data_tf]) {
+    let command_set_received = match p_data_tf_pdus_to_command_set(&p_data_tfs) {
         Ok(val) => val,
         Err(e) => {
             error!("コマンドセットのパースに失敗しました: {e}");
@@ -217,12 +255,15 @@ async fn handle_connection(mut socket: TcpStream) {
             return;
         }
     };
-    debug!("  -> C-ECHO-RQ",);
+
+    info!(
+        "[{}] Verification (MessageID={})",
+        accepted_presentation_contexts[0].context_id(), // TODO: 複数のPresentation Contextに対応する
+        c_echo_rq.message_id()
+    );
 
     let c_echo_rsp = CEchoRsp::new(c_echo_rq.message_id(), Status::Success);
-    debug!("  <- C-ECHO-RSP",);
 
-    // 送信するP-DATA-TFのためのコマンドセットを生成する
     let command_set_to_be_sent = c_echo_rsp.into();
 
     // P-DATA-TFの送信
@@ -233,7 +274,7 @@ async fn handle_connection(mut socket: TcpStream) {
             .map_or(0, |maximum_length| maximum_length.maximum_length());
         let p_data_tf_pdus = command_set_to_p_data_tf_pdus(
             command_set_to_be_sent,
-            presentation_context_id,
+            accepted_presentation_contexts[0].context_id(), // TODO: 複数のPresentation Contextに対応する
             maximum_length,
         );
 
@@ -247,12 +288,14 @@ async fn handle_connection(mut socket: TcpStream) {
         debug!("P-DATA-TFを送信しました");
     }
 
-    handle_release(&mut buf_reader).await;
+    handle_association_release(&mut buf_reader).await;
 
-    info!("Verificationサービスを正常に完了しました");
+    info!("アソシエーションを正常に完了しました");
 }
 
-async fn handle_association(buf_reader: &mut BufReader<&mut TcpStream>) -> Option<AAssociateRq> {
+async fn handle_association_establishment(
+    buf_reader: &mut BufReader<&mut TcpStream>,
+) -> Option<(AAssociateRq, Vec<a_associate_ac::PresentationContext>)> {
     // A-ASSOCIATE-RQの受信
     let a_associate_rq = match receive_a_associate_rq(buf_reader).await {
         Ok(val) => val,
@@ -341,21 +384,34 @@ async fn handle_association(buf_reader: &mut BufReader<&mut TcpStream>) -> Optio
     info!("アソシエーション要求を受諾しました (送信元=\"{calling_ae_title}\")",);
 
     // A-ASSOCIATE-ACの送信
+    let mut accepted_presentation_contexts = vec![];
     {
         let application_context = ApplicationContext::new("1.2.840.10008.3.1.1.1.1");
         let presentation_contexts = a_associate_rq
             .presentation_contexts()
             .iter()
             .map(|presentation_context| {
-                PresentationContext::new(
-                    presentation_context.context_id(),
-                    if presentation_context.abstract_syntax().name() == VERIFICATION {
-                        ResultReason::Acceptance
-                    } else {
-                        ResultReason::AbstractSyntaxNotSupported
-                    },
-                    TransferSyntax::new(IMPLICIT_VR_LITTLE_ENDIAN).unwrap(),
-                )
+                if !is_abstract_syntax_supported(presentation_context) {
+                    a_associate_ac::PresentationContext::new(
+                        presentation_context.context_id(),
+                        ResultReason::AbstractSyntaxNotSupported,
+                        TransferSyntax::new(IMPLICIT_VR_LITTLE_ENDIAN).unwrap(),
+                    )
+                } else if !is_transfer_syntax_supported(presentation_context) {
+                    a_associate_ac::PresentationContext::new(
+                        presentation_context.context_id(),
+                        ResultReason::TransferSyntaxesNotSupported,
+                        TransferSyntax::new(IMPLICIT_VR_LITTLE_ENDIAN).unwrap(),
+                    )
+                } else {
+                    let pc = a_associate_ac::PresentationContext::new(
+                        presentation_context.context_id(),
+                        ResultReason::Acceptance,
+                        TransferSyntax::new(IMPLICIT_VR_LITTLE_ENDIAN).unwrap(),
+                    );
+                    accepted_presentation_contexts.push(pc.clone());
+                    pc
+                }
             })
             .collect::<Vec<_>>();
         let user_information = UserInformation::new(
@@ -378,9 +434,29 @@ async fn handle_association(buf_reader: &mut BufReader<&mut TcpStream>) -> Optio
             return None;
         };
     }
+
     debug!("A-ASSOCIATE-ACを送信しました");
 
-    Some(a_associate_rq)
+    Some((a_associate_rq, accepted_presentation_contexts))
+}
+
+fn is_abstract_syntax_supported(
+    presentation_context: &a_associate_rq::PresentationContext,
+) -> bool {
+    SUPPORTED_ABSTRACT_SYNTAX_UIDS.contains(&presentation_context.abstract_syntax().name())
+}
+
+fn is_transfer_syntax_supported(
+    presentation_context: &a_associate_rq::PresentationContext,
+) -> bool {
+    SUPPORTED_TRANSFER_SYNTAX_UIDS
+        .iter()
+        .any(|transfer_syntax| {
+            presentation_context
+                .transfer_syntaxes()
+                .iter()
+                .any(|ts| ts.name() == *transfer_syntax)
+        })
 }
 
 async fn reject_association(
@@ -394,7 +470,7 @@ async fn reject_association(
     }
 }
 
-async fn handle_release(buf_reader: &mut BufReader<&mut TcpStream>) {
+async fn handle_association_release(buf_reader: &mut BufReader<&mut TcpStream>) {
     let reception = match receive_a_release_rq(buf_reader).await {
         Ok(val) => val,
         Err(e) => {

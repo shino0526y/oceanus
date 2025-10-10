@@ -11,6 +11,7 @@ pub enum ResultReason {
     TransferSyntaxesNotSupported = 4,
 }
 
+#[derive(Clone)]
 pub struct PresentationContext {
     length: u16,
     context_id: u8,
