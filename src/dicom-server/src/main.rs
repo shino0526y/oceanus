@@ -174,12 +174,6 @@ async fn handle_association(mut socket: TcpStream) {
             Some(val) => val,
             None => return,
         };
-    if accepted_presentation_contexts.is_empty() {
-        info!(
-            "アソシエーション要求されたPresentation Contextのうち、受諾したものがないため、アソシエーションを終了します"
-        );
-        return;
-    }
     // TODO: 複数のPresentation Contextに対応する
     if accepted_presentation_contexts.len() > 1 {
         panic!("複数のPresentation Contextに対応していません");
@@ -290,7 +284,7 @@ async fn handle_association(mut socket: TcpStream) {
 
     handle_association_release(&mut buf_reader).await;
 
-    info!("アソシエーションを正常に完了しました");
+    info!("アソシエーションを正常に終了しました");
 }
 
 async fn handle_association_establishment(
@@ -307,13 +301,13 @@ async fn handle_association_establishment(
     let called_ae_title = a_associate_rq.called_ae_title();
     let calling_ae_title = a_associate_rq.calling_ae_title();
     debug!(
-        "A-ASSOCIATE-RQを受信しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\")"
+        "A-ASSOCIATE-RQを受信しました (呼出元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\")"
     );
 
     // アソシエーション要求を受諾するか判定し、拒否する場合はA-ASSOCIATE-RJを送信して終了する
     if called_ae_title != SERVER_AE_TITLE.get().unwrap() {
         warn!(
-            "アソシエーション要求を拒否しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\" 理由=宛先AEタイトル不一致)",
+            "アソシエーション要求を拒否しました (呼出元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\" 理由=宛先AEタイトル不一致)",
         );
         reject_association(
             buf_reader,
@@ -337,7 +331,7 @@ async fn handle_association_establishment(
                     Ok(addresses) => addresses,
                     Err(e) => {
                         warn!(
-                            "アソシエーション要求を拒否しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\" 理由=ホスト名の解決に失敗): {e}",
+                            "アソシエーション要求を拒否しました (呼出元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\" 理由=ホスト名の解決に失敗): {e}",
                         );
                         reject_association(
                             buf_reader,
@@ -356,7 +350,7 @@ async fn handle_association_establishment(
 
             if !is_matched {
                 warn!(
-                    "アソシエーション要求を拒否しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\" 理由=送信元AEタイトル不明)",
+                    "アソシエーション要求を拒否しました (呼出元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\" 理由=呼出元AEタイトル不明)",
                 );
                 reject_association(
                     buf_reader,
@@ -369,7 +363,7 @@ async fn handle_association_establishment(
         }
         Err(_) => {
             warn!(
-                "アソシエーション要求を拒否しました (送信元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\" 理由=送信元AEタイトル不明)",
+                "アソシエーション要求を拒否しました (呼出元=\"{calling_ae_title}\" 宛先=\"{called_ae_title}\" 理由=呼出元AEタイトル不明)",
             );
             reject_association(
                 buf_reader,
@@ -380,8 +374,6 @@ async fn handle_association_establishment(
             return None;
         }
     }
-
-    info!("アソシエーション要求を受諾しました (送信元=\"{calling_ae_title}\")",);
 
     // A-ASSOCIATE-ACの送信
     let mut accepted_presentation_contexts = vec![];
@@ -434,8 +426,16 @@ async fn handle_association_establishment(
             return None;
         };
     }
-
     debug!("A-ASSOCIATE-ACを送信しました");
+
+    if accepted_presentation_contexts.len() > 0 {
+        info!("アソシエーション要求を受諾しました (呼出元=\"{calling_ae_title}\")");
+    } else {
+        warn!(
+            "アソシエーション要求を受諾しましたが、受諾されたプレゼンテーションコンテキストがありません (呼出元=\"{calling_ae_title}\")"
+        );
+        return None;
+    }
 
     Some((a_associate_rq, accepted_presentation_contexts))
 }
