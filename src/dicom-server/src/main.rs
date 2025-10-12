@@ -432,7 +432,7 @@ async fn handle_association_establishment(
         info!("アソシエーション要求を受諾しました (呼出元=\"{calling_ae_title}\")");
     } else {
         warn!(
-            "アソシエーション要求を受諾しましたが、受諾されたプレゼンテーションコンテキストがありません (呼出元=\"{calling_ae_title}\")"
+            "アソシエーション要求について受諾可能なプレゼンテーションコンテキストがありません (呼出元=\"{calling_ae_title}\")"
         );
         return None;
     }
