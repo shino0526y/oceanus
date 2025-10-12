@@ -1,19 +1,17 @@
 mod args;
+mod constants;
+mod dimse;
 
-use crate::args::Args;
+use crate::{args::Args, constants::*, dimse::DimseMessage};
 use clap::Parser;
 use dicom_lib::{
     constants::{sop_class_uids::VERIFICATION, transfer_syntax_uids::IMPLICIT_VR_LITTLE_ENDIAN},
     network::{
-        command_set::utils::{command_set_to_p_data_tf_pdus, p_data_tf_pdus_to_command_set},
-        dimse::c_echo::{
-            c_echo_rq::CEchoRq,
-            c_echo_rsp::{CEchoRsp, Status},
-        },
+        command_set::utils::generate_p_data_tf_pdus,
         upper_layer_protocol::{
             AReleaseRqReception, PDataTfReception,
             pdu::{
-                AAssociateAc, AAssociateRq, PduReadError,
+                AAssociateAc, AAssociateRq, PDataTf, PduReadError,
                 a_abort::{self, Source},
                 a_associate_ac::{
                     self, ApplicationContext, UserInformation,
@@ -26,7 +24,8 @@ use dicom_lib::{
                     self, SourceAndReason,
                     source::{service_provider_acse, service_user},
                 },
-                a_associate_rq,
+                a_associate_rq::{self},
+                p_data_tf::PresentationDataValue,
             },
             receive_a_associate_rq, receive_a_release_rq, receive_p_data_tf, send_a_abort,
             send_a_associate_ac, send_a_associate_rj, send_a_release_rp, send_p_data_tf,
@@ -34,8 +33,9 @@ use dicom_lib::{
     },
 };
 use dotenvy::dotenv;
-use sqlx::{Pool, Postgres, postgres::PgPoolOptions};
+use sqlx::{Pool, Postgres, postgres::PgPoolOptions, query};
 use std::{
+    collections::{HashMap, HashSet},
     io::IsTerminal,
     net::Ipv4Addr,
     process::exit,
@@ -47,23 +47,11 @@ use std::{
 };
 use tokio::{
     io::BufReader,
-    net::{TcpListener, TcpStream},
+    net::{TcpListener, TcpStream, lookup_host},
+    spawn,
 };
 use tracing::{Instrument, Level, debug, error, info, level_filters::LevelFilter, span, warn};
 use tracing_subscriber::fmt::time::LocalTime;
-
-// <root>.<app>.<type>.<version>
-// root: 1.3.6.1.4.1.64183 (https://www.iana.org/assignments/enterprise-numbers/)
-// app: 1 (Oceanus)
-// type: 1 (DICOM Server)
-// version: x (major version)
-const IMPLEMENTATION_CLASS_UID: &str =
-    concat!("1.3.6.1.4.1.64183.1.1.", env!("CARGO_PKG_VERSION_MAJOR"));
-const IMPLEMENTATION_VERSION_NAME: &str = concat!("OCEANUS_", env!("CARGO_PKG_VERSION")); // OCEANUS_x.y.z
-
-const MAXIMUM_LENGTH: u32 = 0; // 制限なし
-const SUPPORTED_ABSTRACT_SYNTAX_UIDS: &[&str] = &[VERIFICATION];
-const SUPPORTED_TRANSFER_SYNTAX_UIDS: &[&str] = &[IMPLICIT_VR_LITTLE_ENDIAN];
 
 static CONNECTION_COUNTER: AtomicU64 = AtomicU64::new(1);
 static SERVER_AE_TITLE: OnceLock<String> = OnceLock::new();
@@ -151,7 +139,7 @@ async fn main() {
         };
         let connection_id = CONNECTION_COUNTER.fetch_add(1, Ordering::Relaxed);
 
-        tokio::spawn(async move {
+        spawn(async move {
             use Instrument;
             handle_association(socket)
                 .instrument(span!(
@@ -169,19 +157,23 @@ async fn main() {
 async fn handle_association(mut socket: TcpStream) {
     let mut buf_reader = BufReader::new(&mut socket);
 
-    let (a_associate_rq, accepted_presentation_contexts) =
+    let (a_associate_rq, mut context_id_to_dimse_message) =
         match handle_association_establishment(&mut buf_reader).await {
             Some(val) => val,
             None => return,
         };
-    // TODO: 複数のPresentation Contextに対応する
-    if accepted_presentation_contexts.len() > 1 {
-        panic!("複数のPresentation Contextに対応していません");
-    }
+    let maximum_length = a_associate_rq
+        .user_information()
+        .maximum_length()
+        .map_or(0, |maximum_length| maximum_length.maximum_length());
 
-    // P-DATA-TFの受信
-    let mut p_data_tfs = vec![];
+    // サービス処理
+    let accepted_context_ids = context_id_to_dimse_message
+        .keys()
+        .copied()
+        .collect::<HashSet<_>>();
     loop {
+        // P-DATA-TFの受信
         let p_data_tf = {
             let reception = match receive_p_data_tf(&mut buf_reader).await {
                 Ok(val) => val,
@@ -206,80 +198,79 @@ async fn handle_association(mut socket: TcpStream) {
                 }
             }
         };
+        debug!("P-DATA-TFを受信しました");
 
-        if p_data_tf.presentation_data_values().iter().any(|pdv| {
-            accepted_presentation_contexts
-                .iter()
-                .all(|pc| pdv.presentation_context_id() != pc.context_id())
-        }) {
-            warn!(
-                "受信したP-DATA-TFのPresentation Context IDがアソシエーションで受諾したものに含まれていません"
-            );
-            abort(&mut buf_reader, a_abort::Reason::InvalidPduParameterValue).await;
-            return;
-        }
-
-        let is_last = p_data_tf
-            .presentation_data_values()
-            .iter()
-            .any(|pdv| pdv.is_last());
-
-        p_data_tfs.push(p_data_tf);
-
-        if is_last {
-            break;
-        }
-    }
-    debug!("P-DATA-TFを受信しました");
-
-    let command_set_received = match p_data_tf_pdus_to_command_set(&p_data_tfs) {
-        Ok(val) => val,
-        Err(e) => {
-            error!("コマンドセットのパースに失敗しました: {e}");
-            abort(&mut buf_reader, a_abort::Reason::InvalidPduParameterValue).await;
-            return;
-        }
-    };
-
-    let c_echo_rq = match CEchoRq::try_from(command_set_received) {
-        Ok(val) => val,
-        Err(e) => {
-            error!("C-ECHO-RQのパースに失敗しました: {e}");
-            abort(&mut buf_reader, a_abort::Reason::InvalidPduParameterValue).await;
-            return;
-        }
-    };
-
-    info!(
-        "[{}] Verification (MessageID={})",
-        accepted_presentation_contexts[0].context_id(), // TODO: 複数のPresentation Contextに対応する
-        c_echo_rq.message_id()
-    );
-
-    let c_echo_rsp = CEchoRsp::new(c_echo_rq.message_id(), Status::Success);
-
-    let command_set_to_be_sent = c_echo_rsp.into();
-
-    // P-DATA-TFの送信
-    {
-        let maximum_length = a_associate_rq
-            .user_information()
-            .maximum_length()
-            .map_or(0, |maximum_length| maximum_length.maximum_length());
-        let p_data_tf_pdus = command_set_to_p_data_tf_pdus(
-            command_set_to_be_sent,
-            accepted_presentation_contexts[0].context_id(), // TODO: 複数のPresentation Contextに対応する
-            maximum_length,
-        );
-
-        match send_p_data_tf(&mut buf_reader.get_mut(), p_data_tf_pdus).await {
-            Ok(()) => {}
-            Err(e) => {
-                error!("P-DATA-TFの送信に失敗しました: {e}");
+        // 受信したP-DATA-TFからDIMSEメッセージを復元し、Presentation Context IDごとに処理
+        // TODO: 並列化
+        let pdvs = PDataTf::extract_presentation_data_values(p_data_tf);
+        for pdv in pdvs {
+            let context_id = pdv.presentation_context_id();
+            if !accepted_context_ids.contains(&context_id) {
+                error!(
+                    "受信したP-DATA-TFにアソシエーションで受諾していないPresentation Context IDが含まれています (ContextID={context_id})"
+                );
+                abort(&mut buf_reader, a_abort::Reason::InvalidPduParameterValue).await;
+                return;
+            } else if !context_id_to_dimse_message.contains_key(&context_id) {
+                error!(
+                    "受信したP-DATA-TFにすでに処理済みのPresentation Context IDが含まれています (ContextID={context_id})"
+                );
+                abort(&mut buf_reader, a_abort::Reason::InvalidPduParameterValue).await;
                 return;
             }
+
+            let dimse_message = context_id_to_dimse_message.get_mut(&context_id).unwrap();
+            let is_command = pdv.is_command();
+            let is_last = pdv.is_last();
+            let fragment = &mut PresentationDataValue::extract_fragment(pdv);
+            if is_command {
+                dimse_message.command_set_buf.append(fragment);
+                dimse_message.is_command_received = is_last;
+            } else {
+                dimse_message.data_set_buf.append(fragment);
+                dimse_message.is_data_received = is_last;
+            }
+
+            if !(dimse_message.is_command_received && dimse_message.is_data_received) {
+                continue;
+            }
+
+            let dimse_message = context_id_to_dimse_message.remove(&context_id).unwrap();
+            let handler = ABSTRACT_SYNTAX_UID_TO_HANDLER
+                .get(&dimse_message.abstract_syntax_uid)
+                .unwrap();
+
+            let (command_set_buf, data_set_buf) = match handler(dimse_message) {
+                Ok(val) => val,
+                Err(reason) => {
+                    abort(&mut buf_reader, reason).await;
+                    return;
+                }
+            };
+
+            // P-DATA-TFの送信
+            {
+                let p_data_tf_pdus = generate_p_data_tf_pdus(
+                    context_id,
+                    command_set_buf,
+                    data_set_buf,
+                    maximum_length,
+                );
+
+                match send_p_data_tf(&mut buf_reader.get_mut(), p_data_tf_pdus).await {
+                    Ok(()) => {}
+                    Err(e) => {
+                        error!("P-DATA-TFの送信に失敗しました: {e}");
+                        return;
+                    }
+                }
+                debug!("P-DATA-TFを送信しました");
+            }
         }
-        debug!("P-DATA-TFを送信しました");
+
+        if context_id_to_dimse_message.is_empty() {
+            break;
+        }
     }
 
     handle_association_release(&mut buf_reader).await;
@@ -289,7 +280,7 @@ async fn handle_association(mut socket: TcpStream) {
 
 async fn handle_association_establishment(
     buf_reader: &mut BufReader<&mut TcpStream>,
-) -> Option<(AAssociateRq, Vec<a_associate_ac::PresentationContext>)> {
+) -> Option<(AAssociateRq, HashMap<u8, DimseMessage>)> {
     // A-ASSOCIATE-RQの受信
     let a_associate_rq = match receive_a_associate_rq(buf_reader).await {
         Ok(val) => val,
@@ -318,7 +309,7 @@ async fn handle_association_establishment(
         return None;
     }
 
-    match sqlx::query!(
+    match query!(
         "SELECT host FROM application_entities WHERE title = $1",
         calling_ae_title
     )
@@ -327,7 +318,7 @@ async fn handle_association_establishment(
     {
         Ok(application_entity) => {
             let mut host_addresses = {
-                match tokio::net::lookup_host((application_entity.host.as_str(), 0)).await {
+                match lookup_host((application_entity.host.as_str(), 0)).await {
                     Ok(addresses) => addresses,
                     Err(e) => {
                         warn!(
@@ -376,7 +367,7 @@ async fn handle_association_establishment(
     }
 
     // A-ASSOCIATE-ACの送信
-    let mut accepted_presentation_contexts = vec![];
+    let mut context_id_to_dimse_message = HashMap::new();
     {
         let application_context = ApplicationContext::new("1.2.840.10008.3.1.1.1.1");
         let presentation_contexts = a_associate_rq
@@ -396,12 +387,33 @@ async fn handle_association_establishment(
                         TransferSyntax::new(IMPLICIT_VR_LITTLE_ENDIAN).unwrap(),
                     )
                 } else {
+                    let transfer_syntax_uid = IMPLICIT_VR_LITTLE_ENDIAN;
                     let pc = a_associate_ac::PresentationContext::new(
                         presentation_context.context_id(),
                         ResultReason::Acceptance,
-                        TransferSyntax::new(IMPLICIT_VR_LITTLE_ENDIAN).unwrap(),
+                        TransferSyntax::new(transfer_syntax_uid).unwrap(),
                     );
-                    accepted_presentation_contexts.push(pc.clone());
+
+                    {
+                        let context_id = pc.context_id();
+                        let abstract_syntax = presentation_context.abstract_syntax().name();
+                        let is_data_received = match abstract_syntax {
+                            VERIFICATION => true, // C-ECHOはデータセットを使用しない
+                            _ => false,
+                        };
+
+                        let dimse_message = DimseMessage {
+                            context_id,
+                            abstract_syntax_uid: abstract_syntax.to_string(),
+                            _transfer_syntax_uid: transfer_syntax_uid,
+                            command_set_buf: vec![],
+                            data_set_buf: vec![],
+                            is_command_received: false,
+                            is_data_received,
+                        };
+                        context_id_to_dimse_message.insert(context_id, dimse_message);
+                    }
+
                     pc
                 }
             })
@@ -428,16 +440,15 @@ async fn handle_association_establishment(
     }
     debug!("A-ASSOCIATE-ACを送信しました");
 
-    if accepted_presentation_contexts.len() > 0 {
-        info!("アソシエーション要求を受諾しました (呼出元=\"{calling_ae_title}\")");
-    } else {
+    if context_id_to_dimse_message.is_empty() {
         warn!(
             "アソシエーション要求について受諾可能なプレゼンテーションコンテキストがありません (呼出元=\"{calling_ae_title}\")"
         );
         return None;
     }
+    info!("アソシエーション要求を受諾しました (呼出元=\"{calling_ae_title}\")");
 
-    Some((a_associate_rq, accepted_presentation_contexts))
+    Some((a_associate_rq, context_id_to_dimse_message))
 }
 
 fn is_abstract_syntax_supported(

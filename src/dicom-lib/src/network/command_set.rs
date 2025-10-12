@@ -64,32 +64,32 @@ impl<'a> IntoIterator for &'a CommandSet {
     }
 }
 
-impl TryFrom<&[u8]> for CommandSet {
+impl TryFrom<Vec<u8>> for CommandSet {
     type Error = String;
 
-    fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
-        let mut commands = Vec::new();
+    fn try_from(buf: Vec<u8>) -> Result<Self, Self::Error> {
+        let mut commands = vec![];
 
         let mut offset = 0;
-        while offset < bytes.len() {
-            if bytes.len() < offset + 8 {
+        while offset < buf.len() {
+            if buf.len() < offset + 8 {
                 return Err(INVALID_BUFFER_LENGTH_ERROR_MESSAGE.to_string());
             }
 
-            let tag_group = u16::from_le_bytes([bytes[offset], bytes[offset + 1]]);
+            let tag_group = u16::from_le_bytes([buf[offset], buf[offset + 1]]);
             if tag_group != 0x0000 {
                 return Err(format!(
                     "タググループは0x0000でなければなりません (タググループ=0x{tag_group:04X})"
                 ));
             }
-            let tag_element = u16::from_le_bytes([bytes[offset + 2], bytes[offset + 3]]);
+            let tag_element = u16::from_le_bytes([buf[offset + 2], buf[offset + 3]]);
             let value_length = u32::from_le_bytes([
-                bytes[offset + 4],
-                bytes[offset + 5],
-                bytes[offset + 6],
-                bytes[offset + 7],
+                buf[offset + 4],
+                buf[offset + 5],
+                buf[offset + 6],
+                buf[offset + 7],
             ]);
-            let value_field = bytes[offset + 8..offset + 8 + value_length as usize].to_vec();
+            let value_field = buf[offset + 8..offset + 8 + value_length as usize].to_vec();
             if value_length as usize != value_field.len() {
                 return Err(INVALID_BUFFER_LENGTH_ERROR_MESSAGE.to_string());
             }
@@ -102,7 +102,7 @@ impl TryFrom<&[u8]> for CommandSet {
             offset += command.size();
             commands.push(command);
         }
-        let size = bytes.len();
+        let size = buf.len();
 
         Ok(CommandSet { size, commands })
     }
@@ -110,12 +110,12 @@ impl TryFrom<&[u8]> for CommandSet {
 
 impl From<CommandSet> for Vec<u8> {
     fn from(val: CommandSet) -> Self {
-        let mut bytes = Vec::with_capacity(val.size());
+        let mut buf = Vec::with_capacity(val.size());
 
         for command in val.commands {
-            bytes.append(&mut command.into());
+            buf.append(&mut command.into());
         }
 
-        bytes
+        buf
     }
 }

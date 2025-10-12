@@ -88,6 +88,10 @@ impl PDataTf {
             presentation_data_values,
         })
     }
+
+    pub fn extract_presentation_data_values(p_data_tf: Self) -> Vec<PresentationDataValue> {
+        p_data_tf.presentation_data_values
+    }
 }
 
 impl From<PDataTf> for Vec<u8> {

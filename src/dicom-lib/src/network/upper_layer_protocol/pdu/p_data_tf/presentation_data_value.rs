@@ -8,7 +8,7 @@ pub struct PresentationDataValue {
     length: u32,
     presentation_context_id: u8,
     message_control_header: u8,
-    data: Vec<u8>,
+    fragment: Vec<u8>,
 }
 
 impl PresentationDataValue {
@@ -24,12 +24,8 @@ impl PresentationDataValue {
         self.presentation_context_id
     }
 
-    pub fn message_control_header(&self) -> u8 {
-        self.message_control_header
-    }
-
-    pub fn data(&self) -> &[u8] {
-        &self.data
+    pub fn fragment(&self) -> &[u8] {
+        &self.fragment
     }
 
     pub fn is_command(&self) -> bool {
@@ -48,10 +44,10 @@ impl PresentationDataValue {
         presentation_context_id: u8,
         is_command: bool,
         is_last: bool,
-        data: impl Into<Vec<u8>>,
+        fragment: impl Into<Vec<u8>>,
     ) -> Self {
-        let data = data.into();
-        let length = data.len() as u32
+        let fragment = fragment.into();
+        let length = fragment.len() as u32
             + 1 // Presentation Context ID
             + 1; // Message Control Header
         let mut message_control_header = 0;
@@ -66,7 +62,7 @@ impl PresentationDataValue {
             length,
             presentation_context_id,
             message_control_header,
-            data,
+            fragment,
         }
     }
 
@@ -84,14 +80,18 @@ impl PresentationDataValue {
 
         let presentation_context_id = buf_reader.read_u8().await?;
         let message_control_header = buf_reader.read_u8().await?;
-        let mut data = vec![0; (length - 2) as usize];
-        buf_reader.read_exact(&mut data).await?;
+        let mut fragment = vec![0; (length - 2) as usize];
+        buf_reader.read_exact(&mut fragment).await?;
         Ok(Self {
             length,
             presentation_context_id,
             message_control_header,
-            data,
+            fragment,
         })
+    }
+
+    pub fn extract_fragment(pdv: Self) -> Vec<u8> {
+        pdv.fragment
     }
 }
 
@@ -99,10 +99,10 @@ impl From<PresentationDataValue> for Vec<u8> {
     fn from(mut val: PresentationDataValue) -> Self {
         let mut bytes = Vec::with_capacity(val.size());
 
-        bytes.extend(val.length().to_be_bytes());
-        bytes.push(val.presentation_context_id());
-        bytes.push(val.message_control_header());
-        bytes.append(&mut val.data);
+        bytes.extend(val.length.to_be_bytes());
+        bytes.push(val.presentation_context_id);
+        bytes.push(val.message_control_header);
+        bytes.append(&mut val.fragment);
 
         bytes
     }
