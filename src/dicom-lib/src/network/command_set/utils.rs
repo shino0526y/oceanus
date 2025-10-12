@@ -15,7 +15,7 @@ pub fn generate_p_data_tf_pdus(
         )];
 
         if !data_set_buf.is_empty() {
-            unimplemented!()
+            unimplemented!("データセットの変換処理は未実装");
         }
 
         vec![PDataTf::new(pdvs)]
@@ -38,7 +38,7 @@ pub fn generate_p_data_tf_pdus(
         }
 
         if !data_set_buf.is_empty() {
-            unimplemented!()
+            unimplemented!("データセットの変換処理は未実装");
         }
 
         p_data_tf_pdus
