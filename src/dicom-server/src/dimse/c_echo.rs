@@ -25,7 +25,7 @@ pub fn handle_c_echo(dimse_message: DimseMessage) -> Result<(Vec<u8>, Vec<u8>), 
     let message_id = c_echo_rq.message_id();
 
     info!(
-        "[{}] Verification (MessageID={message_id})",
+        "[{}] C-ECHO - Verification SOP Class (MessageID={message_id})",
         dimse_message.context_id
     );
 
