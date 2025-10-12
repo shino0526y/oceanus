@@ -1,0 +1,109 @@
+use crate::network::upper_layer_protocol::pdu::{
+    PduReadError, a_associate::INVALID_ITEM_LENGTH_ERROR_MESSAGE,
+};
+use tokio::io::{AsyncRead, AsyncReadExt, BufReader};
+
+#[derive(Debug, PartialEq)]
+pub struct PresentationDataValue {
+    length: u32,
+    presentation_context_id: u8,
+    message_control_header: u8,
+    fragment: Vec<u8>,
+}
+
+impl PresentationDataValue {
+    pub fn size(&self) -> usize {
+        4 + self.length as usize
+    }
+
+    pub fn length(&self) -> u32 {
+        self.length
+    }
+
+    pub fn presentation_context_id(&self) -> u8 {
+        self.presentation_context_id
+    }
+
+    pub fn fragment(&self) -> &[u8] {
+        &self.fragment
+    }
+
+    pub fn is_command(&self) -> bool {
+        self.message_control_header & 0b00000001 == 1
+    }
+
+    pub fn is_data(&self) -> bool {
+        !self.is_command()
+    }
+
+    pub fn is_last(&self) -> bool {
+        self.message_control_header & 0b00000010 == 2
+    }
+
+    pub fn new(
+        presentation_context_id: u8,
+        is_command: bool,
+        is_last: bool,
+        fragment: impl Into<Vec<u8>>,
+    ) -> Self {
+        let fragment = fragment.into();
+        let length = fragment.len() as u32
+            + 1 // Presentation Context ID
+            + 1; // Message Control Header
+        let mut message_control_header = 0;
+        if is_command {
+            message_control_header |= 0b00000001;
+        }
+        if is_last {
+            message_control_header |= 0b00000010;
+        }
+
+        Self {
+            length,
+            presentation_context_id,
+            message_control_header,
+            fragment,
+        }
+    }
+
+    pub async fn read_from_stream(
+        buf_reader: &mut BufReader<impl AsyncRead + Unpin>,
+        length: u32,
+    ) -> Result<Self, PduReadError> {
+        const SIZE_OF_PRESENTATION_CONTEXT_ID: usize = 1;
+        const SIZE_OF_MESSAGE_CONTROL_HEADER: usize = 1;
+        if (length as usize) < SIZE_OF_PRESENTATION_CONTEXT_ID + SIZE_OF_MESSAGE_CONTROL_HEADER {
+            return Err(PduReadError::InvalidPduParameterValue {
+                message: INVALID_ITEM_LENGTH_ERROR_MESSAGE.to_string(),
+            });
+        }
+
+        let presentation_context_id = buf_reader.read_u8().await?;
+        let message_control_header = buf_reader.read_u8().await?;
+        let mut fragment = vec![0; (length - 2) as usize];
+        buf_reader.read_exact(&mut fragment).await?;
+        Ok(Self {
+            length,
+            presentation_context_id,
+            message_control_header,
+            fragment,
+        })
+    }
+
+    pub fn extract_fragment(pdv: Self) -> Vec<u8> {
+        pdv.fragment
+    }
+}
+
+impl From<PresentationDataValue> for Vec<u8> {
+    fn from(mut val: PresentationDataValue) -> Self {
+        let mut bytes = Vec::with_capacity(val.size());
+
+        bytes.extend(val.length.to_be_bytes());
+        bytes.push(val.presentation_context_id);
+        bytes.push(val.message_control_header);
+        bytes.append(&mut val.fragment);
+
+        bytes
+    }
+}

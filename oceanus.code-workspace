@@ -1,0 +1,63 @@
+{
+  "folders": [
+    {
+      "path": "."
+    },
+    {
+      "path": "./src/dicom-lib"
+    },
+    {
+      "path": "./src/dicom-server"
+    }
+  ],
+  "extensions": {
+    "recommendations": [
+      "rust-lang.rust-analyzer",
+      "vadimcn.vscode-lldb",
+      "bradymholt.pgformatter"
+    ]
+  },
+  "settings": {
+    "editor.formatOnSave": true,
+    "files.insertFinalNewline": true,
+    "files.trimTrailingWhitespace": true,
+    "cSpell.words": ["dotenv", "dotenvy", "sqlx"],
+    "[rust]": {
+      "editor.defaultFormatter": "rust-lang.rust-analyzer"
+    },
+    "[sql]": {
+      "editor.defaultFormatter": "bradymholt.pgformatter"
+    }
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "rust: cargo build",
+        "type": "shell",
+        "command": "cargo",
+        "args": [
+          "build",
+          "--manifest-path",
+          "${workspaceFolder:oceanus}/src/Cargo.toml"
+        ],
+        "group": "build",
+        "problemMatcher": ["$rustc"]
+      }
+    ]
+  },
+  "launch": {
+    "configurations": [
+      {
+        "type": "lldb",
+        "request": "launch",
+        "name": "dicom-server",
+        "preLaunchTask": "rust: cargo build",
+        "program": "${workspaceFolder:oceanus}/src/target/debug/dicom-server",
+        "args": ["--log-level", "debug"],
+        "cwd": "${workspaceFolder:oceanus}/src/dicom-server",
+        "sourceLanguages": ["rust"]
+      }
+    ]
+  }
+}
