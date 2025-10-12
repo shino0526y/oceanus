@@ -49,7 +49,7 @@ impl ImplementationVersionName {
             std::str::from_utf8(&buf)
                 .map_err(|_| PduReadError::InvalidPduParameterValue {
                     message:
-                        "Implementation-class-nameフィールドをUTF-8の文字列として解釈できません"
+                        "Implementation-version-nameフィールドをUTF-8の文字列として解釈できません"
                             .to_string(),
                 })?
                 .to_string()
