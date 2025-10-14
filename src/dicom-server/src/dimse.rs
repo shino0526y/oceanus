@@ -1,6 +1,8 @@
 pub mod c_echo;
+pub mod c_store;
 
-use dicom_lib::network::upper_layer_protocol::pdu::a_abort::Reason;
+use dicom_lib::network::{CommandSet, upper_layer_protocol::pdu::a_abort::Reason};
+use tracing::error;
 
 pub struct DimseMessage {
     pub context_id: u8,
@@ -13,3 +15,13 @@ pub struct DimseMessage {
 }
 
 pub type DimseHandler = fn(DimseMessage) -> Result<(Vec<u8>, Vec<u8>), Reason>;
+
+fn buf_to_command_set(command_set_buf: Vec<u8>) -> Result<CommandSet, Reason> {
+    match CommandSet::try_from(command_set_buf) {
+        Ok(val) => Ok(val),
+        Err(e) => {
+            error!("コマンドセットのパースに失敗しました: {e}");
+            return Err(Reason::InvalidPduParameterValue);
+        }
+    }
+}
