@@ -1,8 +1,11 @@
 use crate::dimse::{DimseMessage, buf_to_command_set};
-use dicom_lib::network::{
-    CommandSet,
-    dimse::c_store::{CStoreRq, CStoreRsp, c_store_rsp::Status},
-    upper_layer_protocol::pdu::a_abort::Reason,
+use dicom_lib::{
+    dictionaries::SOP_CLASS_DICTIONARY,
+    network::{
+        CommandSet,
+        dimse::c_store::{CStoreRq, CStoreRsp, c_store_rsp::Status},
+        upper_layer_protocol::pdu::a_abort::Reason,
+    },
 };
 use tracing::{error, info};
 
@@ -18,18 +21,22 @@ pub fn handle_c_store(dimse_message: DimseMessage) -> Result<(Vec<u8>, Vec<u8>),
     };
     let message_id = c_store_rq.message_id();
     let priority = c_store_rq.priority();
+    let affected_sop_class_uid = c_store_rq.affected_sop_class_uid();
     let affected_sop_instance_uid = c_store_rq.affected_sop_instance_uid();
 
     info!(
-        "[{}] C-STORE - XXX Storage (メッセージID={message_id}, 優先度={priority}, SOPインスタンスUID=\"{affected_sop_instance_uid}\")",
-        dimse_message.context_id
+        "[{}] C-STORE - {} (メッセージID={message_id}, 優先度={priority}, SOPインスタンスUID=\"{affected_sop_instance_uid}\")",
+        dimse_message.context_id,
+        SOP_CLASS_DICTIONARY
+            .get(affected_sop_class_uid)
+            .unwrap_or(&"Unknown SOP Class")
     );
 
     let c_store_rsp = CStoreRsp::new(
         message_id,
         Status::Success,
-        c_store_rq.affected_sop_class_uid(), // TODO: Stringを借用するようにする
-        affected_sop_instance_uid,           // TODO: Stringを借用するようにする
+        affected_sop_class_uid,    // TODO: Stringを借用するようにする
+        affected_sop_instance_uid, // TODO: Stringを借用するようにする
     );
 
     let command_set_to_be_sent: CommandSet = c_store_rsp.into();

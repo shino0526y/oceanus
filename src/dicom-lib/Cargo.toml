@@ -5,6 +5,7 @@ authors.workspace = true
 edition.workspace = true
 
 [dependencies]
+phf.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 tokio.workspace = true
