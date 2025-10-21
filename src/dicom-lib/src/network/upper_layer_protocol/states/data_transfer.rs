@@ -73,14 +73,14 @@ mod tests {
             true,
             true,
             CommandSet::new(vec![
-                Command::new(Tag::new(0x0000, 0x0000), 56u32.to_le_bytes().to_vec()),
+                Command::new(Tag(0x0000, 0x0000), 56u32.to_le_bytes().to_vec()),
                 Command::new(
-                    Tag::new(0x0000, 0x0002),
+                    Tag(0x0000, 0x0002),
                     "1.2.840.10008.1.1\0".as_bytes().to_vec(),
                 ),
-                Command::new(Tag::new(0x0000, 0x0100), 0x0030u16.to_le_bytes().to_vec()),
-                Command::new(Tag::new(0x0000, 0x0110), 1u16.to_le_bytes().to_vec()),
-                Command::new(Tag::new(0x0000, 0x0800), 0x0101u16.to_le_bytes().to_vec()),
+                Command::new(Tag(0x0000, 0x0100), 0x0030u16.to_le_bytes().to_vec()),
+                Command::new(Tag(0x0000, 0x0110), 1u16.to_le_bytes().to_vec()),
+                Command::new(Tag(0x0000, 0x0800), 0x0101u16.to_le_bytes().to_vec()),
             ])
             .unwrap(),
         )]);
@@ -125,15 +125,15 @@ mod tests {
                     true,
                     true,
                     CommandSet::new(vec![
-                        Command::new(Tag::new(0x0000, 0x0000), 66u32.to_le_bytes().to_vec()),
+                        Command::new(Tag(0x0000, 0x0000), 66u32.to_le_bytes().to_vec()),
                         Command::new(
-                            Tag::new(0x0000, 0x0002),
+                            Tag(0x0000, 0x0002),
                             "1.2.840.10008.1.1\0".as_bytes().to_vec(),
                         ),
-                        Command::new(Tag::new(0x0000, 0x0100), 0x8030u16.to_le_bytes().to_vec()),
-                        Command::new(Tag::new(0x0000, 0x0120), 1u16.to_le_bytes().to_vec()),
-                        Command::new(Tag::new(0x0000, 0x0800), 0x0101u16.to_le_bytes().to_vec()),
-                        Command::new(Tag::new(0x0000, 0x0900), 0x00u16.to_le_bytes().to_vec()),
+                        Command::new(Tag(0x0000, 0x0100), 0x8030u16.to_le_bytes().to_vec()),
+                        Command::new(Tag(0x0000, 0x0120), 1u16.to_le_bytes().to_vec()),
+                        Command::new(Tag(0x0000, 0x0800), 0x0101u16.to_le_bytes().to_vec()),
+                        Command::new(Tag(0x0000, 0x0900), 0x00u16.to_le_bytes().to_vec()),
                     ])
                     .unwrap(),
                 )])],

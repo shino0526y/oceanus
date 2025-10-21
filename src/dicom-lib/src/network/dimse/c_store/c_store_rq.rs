@@ -182,17 +182,17 @@ mod tests {
 
         let actual = {
             let command_set = CommandSet::new(vec![
-                Command::new(Tag::new(0x0000, 0x0000), 134u32.to_le_bytes().to_vec()),
+                Command::new(Tag(0x0000, 0x0000), 134u32.to_le_bytes().to_vec()),
                 Command::new(
-                    Tag::new(0x0000, 0x0002),
+                    Tag(0x0000, 0x0002),
                     "1.2.840.10008.5.1.4.1.1.4\0".as_bytes().to_vec(),
                 ),
-                Command::new(Tag::new(0x0000, 0x0100), 0x0001u16.to_le_bytes().to_vec()),
-                Command::new(Tag::new(0x0000, 0x0110), 1u16.to_le_bytes().to_vec()),
-                Command::new(Tag::new(0x0000, 0x0700), 0u16.to_le_bytes().to_vec()),
-                Command::new(Tag::new(0x0000, 0x0800), 1u16.to_le_bytes().to_vec()),
+                Command::new(Tag(0x0000, 0x0100), 0x0001u16.to_le_bytes().to_vec()),
+                Command::new(Tag(0x0000, 0x0110), 1u16.to_le_bytes().to_vec()),
+                Command::new(Tag(0x0000, 0x0700), 0u16.to_le_bytes().to_vec()),
+                Command::new(Tag(0x0000, 0x0800), 1u16.to_le_bytes().to_vec()),
                 Command::new(
-                    Tag::new(0x0000, 0x1000),
+                    Tag(0x0000, 0x1000),
                     "41.2.392.200036.8120.100.20041012.1123100.2001002010"
                         .as_bytes()
                         .to_vec(),

@@ -95,7 +95,7 @@ impl TryFrom<Vec<u8>> for CommandSet {
             }
 
             let command = Command {
-                tag: Tag::new(tag_group, tag_element),
+                tag: Tag(tag_group, tag_element),
                 value_field,
             };
 

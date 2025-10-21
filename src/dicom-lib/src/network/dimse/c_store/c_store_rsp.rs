@@ -54,24 +54,24 @@ impl From<CStoreRsp> for CommandSet {
                 uid.push('\0');
             };
             Command {
-                tag: Tag::new(0x0000, 0x0002),
+                tag: Tag(0x0000, 0x0002),
                 value_field: uid.into_bytes(),
             }
         };
         let command_field = Command {
-            tag: Tag::new(0x0000, 0x0100),
+            tag: Tag(0x0000, 0x0100),
             value_field: 0x8001u16.to_le_bytes().to_vec(),
         };
         let message_id_being_responded_to = Command {
-            tag: Tag::new(0x0000, 0x0120),
+            tag: Tag(0x0000, 0x0120),
             value_field: val.message_id.to_le_bytes().to_vec(),
         };
         let command_data_set_type = Command {
-            tag: Tag::new(0x0000, 0x0800),
+            tag: Tag(0x0000, 0x0800),
             value_field: 0x0101u16.to_le_bytes().to_vec(),
         };
         let status = Command {
-            tag: Tag::new(0x0000, 0x0900),
+            tag: Tag(0x0000, 0x0900),
             value_field: Into::<u16>::into(val.status).to_le_bytes().to_vec(),
         };
         let affected_sop_instance_uid = {
@@ -80,7 +80,7 @@ impl From<CStoreRsp> for CommandSet {
                 uid.push('\0');
             };
             Command {
-                tag: Tag::new(0x0000, 0x1000),
+                tag: Tag(0x0000, 0x1000),
                 value_field: uid.into_bytes(),
             }
         };
@@ -91,7 +91,7 @@ impl From<CStoreRsp> for CommandSet {
             + status.size()
             + affected_sop_instance_uid.size();
         let command_group_length = Command {
-            tag: Tag::new(0x0000, 0x0000),
+            tag: Tag(0x0000, 0x0000),
             value_field: (group_length as u32).to_le_bytes().to_vec(),
         };
         let size = group_length + command_group_length.size();

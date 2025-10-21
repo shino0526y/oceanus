@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Tag(u16, u16);
+pub struct Tag(pub u16, pub u16);
 
 impl Tag {
     pub fn group(self) -> u16 {
@@ -10,10 +10,6 @@ impl Tag {
 
     pub fn element(self) -> u16 {
         self.1
-    }
-
-    pub fn new(group: u16, element: u16) -> Self {
-        Tag(group, element)
     }
 }
 
