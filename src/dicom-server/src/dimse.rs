@@ -21,7 +21,7 @@ fn buf_to_command_set(command_set_buf: Vec<u8>) -> Result<CommandSet, Reason> {
         Ok(val) => Ok(val),
         Err(e) => {
             error!("コマンドセットのパースに失敗しました: {e}");
-            return Err(Reason::InvalidPduParameterValue);
+            Err(Reason::InvalidPduParameterValue)
         }
     }
 }
