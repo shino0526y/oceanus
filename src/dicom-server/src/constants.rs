@@ -1,6 +1,12 @@
 use crate::dimse::{DimseHandler, c_echo::handle_c_echo, c_store::handle_c_store};
 use dicom_lib::constants::{
-    sop_class_uids::{MR_IMAGE_STORAGE, VERIFICATION},
+    sop_class_uids::{
+        COMPUTED_RADIOGRAPHY_IMAGE_STORAGE, CT_IMAGE_STORAGE,
+        DIGITAL_MAMMOGRAPHY_X_RAY_IMAGE_STORAGE_FOR_PRESENTATION,
+        DIGITAL_X_RAY_IMAGE_STORAGE_FOR_PRESENTATION, MR_IMAGE_STORAGE,
+        SECONDARY_CAPTURE_IMAGE_STORAGE, VERIFICATION, X_RAY_ANGIOGRAPHIC_IMAGE_STORAGE,
+        X_RAY_RADIOFLUOROSCOPIC_IMAGE_STORAGE,
+    },
     transfer_syntax_uids::IMPLICIT_VR_LITTLE_ENDIAN,
 };
 use phf::{Map, phf_map};
@@ -16,11 +22,29 @@ pub const IMPLEMENTATION_VERSION_NAME: &str = concat!("OCEANUS_", env!("CARGO_PK
 
 pub const MAXIMUM_LENGTH: u32 = 0; // 制限なし
 
-pub const SUPPORTED_ABSTRACT_SYNTAX_UIDS: &[&str] = &[VERIFICATION, MR_IMAGE_STORAGE];
+pub const SUPPORTED_ABSTRACT_SYNTAX_UIDS: &[&str] = &[
+    // C-ECHO
+    VERIFICATION,
+    // C-STORE
+    COMPUTED_RADIOGRAPHY_IMAGE_STORAGE,
+    DIGITAL_X_RAY_IMAGE_STORAGE_FOR_PRESENTATION,
+    DIGITAL_MAMMOGRAPHY_X_RAY_IMAGE_STORAGE_FOR_PRESENTATION,
+    CT_IMAGE_STORAGE,
+    MR_IMAGE_STORAGE,
+    SECONDARY_CAPTURE_IMAGE_STORAGE,
+    X_RAY_ANGIOGRAPHIC_IMAGE_STORAGE,
+    X_RAY_RADIOFLUOROSCOPIC_IMAGE_STORAGE,
+];
 pub const SUPPORTED_TRANSFER_SYNTAX_UIDS: &[&str] = &[IMPLICIT_VR_LITTLE_ENDIAN];
 
 pub const ABSTRACT_SYNTAX_UID_TO_HANDLER: Map<&'static str, DimseHandler> = phf_map! {
-    // NOTE: phf_mapはキーとしてリテラルしか扱えない
     "1.2.840.10008.1.1" => handle_c_echo, // Verification
+    "1.2.840.10008.5.1.4.1.1.1" => handle_c_store, // Computed Radiography Image Storage
+    "1.2.840.10008.5.1.4.1.1.1.1" => handle_c_store, // Digital X-Ray Image Storage - For Presentation
+    "1.2.840.10008.5.1.4.1.1.1.2" => handle_c_store, // Digital Mammography X-Ray Image Storage - For Presentation
+    "1.2.840.10008.5.1.4.1.1.2" => handle_c_store, // CT Image Storage
     "1.2.840.10008.5.1.4.1.1.4" => handle_c_store, // MR Image Storage
+    "1.2.840.10008.5.1.4.1.1.7" => handle_c_store, // Secondary Capture Image Storage
+    "1.2.840.10008.5.1.4.1.1.12.1" => handle_c_store, // X-Ray Angiographic Image Storage
+    "1.2.840.10008.5.1.4.1.1.12.2" => handle_c_store, // X-Ray Radiofluoroscopic Image Storage
 };

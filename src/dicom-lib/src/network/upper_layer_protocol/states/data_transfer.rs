@@ -1,9 +1,12 @@
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 
-use crate::network::upper_layer_protocol::pdu::{AAbort, PDataTf, PduReadError, PduType};
+use crate::network::upper_layer_protocol::pdu::{
+    AAbort, AReleaseRq, PDataTf, PduReadError, PduType,
+};
 
 pub enum PDataTfReception {
     PDataTf(PDataTf),
+    AReleaseRq(AReleaseRq),
     AAbort(AAbort),
 }
 
@@ -19,26 +22,37 @@ pub async fn receive_p_data_tf(
             }
         }
     };
-    if pdu_type != PduType::PDataTf && pdu_type != PduType::AAbort {
+    if pdu_type != PduType::PDataTf
+        && pdu_type != PduType::AReleaseRq
+        && pdu_type != PduType::AAbort
+    {
         return Err(PduReadError::UnexpectedPdu(pdu_type));
     }
 
     buf_reader.read_u8().await?; // Reserved
     let pdu_length = buf_reader.read_u32().await?;
 
-    if pdu_type == PduType::PDataTf {
-        match PDataTf::read_from_stream(buf_reader, pdu_length).await {
+    match pdu_type {
+        PduType::PDataTf => match PDataTf::read_from_stream(buf_reader, pdu_length).await {
             Ok(val) => Ok(PDataTfReception::PDataTf(val)),
             Err(e) => Err(PduReadError::InvalidPduParameterValue {
                 message: format!("P-DATA-TFのパースに失敗しました: {e}"),
             }),
-        }
-    } else {
-        match AAbort::read_from_stream(buf_reader, pdu_length).await {
+        },
+        PduType::AReleaseRq => match AReleaseRq::read_from_stream(buf_reader, pdu_length).await {
+            Ok(val) => Ok(PDataTfReception::AReleaseRq(val)),
+            Err(e) => Err(PduReadError::InvalidPduParameterValue {
+                message: format!("A-RELEASE-RQのパースに失敗しました: {e}"),
+            }),
+        },
+        PduType::AAbort => match AAbort::read_from_stream(buf_reader, pdu_length).await {
             Ok(val) => Ok(PDataTfReception::AAbort(val)),
             Err(e) => Err(PduReadError::InvalidPduParameterValue {
                 message: format!("A-ABORTのパースに失敗しました: {e}"),
             }),
+        },
+        _ => {
+            unreachable!()
         }
     }
 }
@@ -97,6 +111,7 @@ mod tests {
             let mut buf_reader = BufReader::new(&buf[..]);
             match receive_p_data_tf(&mut buf_reader).await.unwrap() {
                 PDataTfReception::PDataTf(value) => value,
+                PDataTfReception::AReleaseRq(_) => panic!(""),
                 PDataTfReception::AAbort(_) => panic!(""),
             }
         };

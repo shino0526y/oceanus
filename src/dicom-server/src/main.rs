@@ -188,6 +188,11 @@ async fn handle_association(mut socket: TcpStream) {
 
             match reception {
                 PDataTfReception::PDataTf(val) => val,
+                PDataTfReception::AReleaseRq(_) => {
+                    debug!("A-RELEASE-RQを受信しました");
+                    release(&mut buf_reader).await;
+                    return;
+                }
                 PDataTfReception::AAbort(a_abort) => {
                     debug!(
                         "A-ABORTを受信しました: (Source={:02X} Reason={:02X})",
@@ -502,11 +507,14 @@ async fn handle_association_release(buf_reader: &mut BufReader<&mut TcpStream>) 
     }
     debug!("A-RELEASE-RQを受信しました");
 
-    if let Err(e) = send_a_release_rp(buf_reader.get_mut()).await {
-        error!("A-RELEASE-RPの送信に失敗しました: {e}");
-        return;
+    release(buf_reader).await;
+}
+
+async fn release(buf_reader: &mut BufReader<&mut TcpStream>) {
+    match send_a_release_rp(&mut buf_reader.get_mut()).await {
+        Ok(()) => debug!("A-RELEASE-RPを送信しました"),
+        Err(e) => error!("A-RELEASE-RPの送信に失敗しました: {e}"),
     }
-    debug!("A-RELEASE-RPを送信しました");
 }
 
 async fn abort(buf_reader: &mut BufReader<&mut TcpStream>, reason: a_abort::Reason) {
