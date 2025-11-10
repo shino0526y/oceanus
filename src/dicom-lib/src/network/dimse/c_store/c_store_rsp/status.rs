@@ -1,9 +1,9 @@
 /// C-STORE-RSPのステータスコード
 ///
 /// ## 参考文献
-/// - https://dicom.nema.org/medical/dicom/2025c/output/chtml/part04/sect_b.2.3.html
-/// - https://dicom.nema.org/medical/dicom/2025c/output/chtml/part07/chapter_9.html#sect_9.1.1.1.9
-/// - https://dicom.nema.org/medical/dicom/2025c/output/chtml/part07/chapter_C.html
+/// - <https://dicom.nema.org/medical/dicom/2025c/output/chtml/part04/sect_b.2.3.html>
+/// - <https://dicom.nema.org/medical/dicom/2025c/output/chtml/part07/chapter_9.html#sect_9.1.1.1.9>
+/// - <https://dicom.nema.org/medical/dicom/2025c/output/chtml/part07/chapter_C.html>
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Status {
     /// 成功 (0x0000)
