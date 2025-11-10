@@ -124,8 +124,7 @@ impl FromStr for SpecificCharacterSet {
         };
 
         let err = Err(format!(
-            "Specific Character Set として \"{}\" を使用できません",
-            s
+            "Specific Character Setとして使用できない文字列です (文字列=\"{s}\")"
         ));
         match terms.len() {
             1 => match terms[0] {
