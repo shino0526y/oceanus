@@ -117,34 +117,19 @@ fn generate_string_lossy_with_range(bytes: &[u8], index: usize, length: usize) -
 
 fn generate_patient_name_string_lossy(bytes: &[u8], index: usize, length: usize) -> String {
     let mut start_index = index;
-    let mut end_index = index + length - 1;
 
     let mut i = index;
     while i < index + length {
         let code = bytes[i];
 
-        match code {
-            b'=' => {
-                // 領域区切り文字'='が現れた場合、その文字よりも前の全てのバイト値がシングルバイト領域の文字列に対応する。
-                end_index = i - 1;
-                break;
-            }
-            0x1b => {
-                // エスケープシーケンスの先頭文字ESCが現れた場合、シングルバイト領域が存在しなかったということ。
-                //
-                // 例えば、値について、本来ならば"ﾔﾏﾀﾞ^ﾀﾛｳ=山田^太郎=やまだ^たろう"というフォーマットでなければならないが、
-                // 実際には"山田^太郎"といったフォーマットであったということ。
-                //
-                // そのまま文字列に変換して返す。
-                return generate_string_lossy_with_range(bytes, index, length)
-                    .trim_end_matches(' ')
-                    .to_string();
-            }
-            _ => {}
+        if code == b'=' {
+            break;
         }
 
         i += 1;
     }
+
+    let mut end_index = i;
 
     let mut str = String::new();
     let temp_str = iso_ir_13::generate_string_lossy_with_range(
