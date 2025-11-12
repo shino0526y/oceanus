@@ -1,7 +1,6 @@
 mod specific_character_set;
 
 pub use specific_character_set::SpecificCharacterSet;
-
 use specific_character_set::{
     iso_2022_ir_6_and_iso_2022_ir_13_and_iso_2022_ir_87, iso_2022_ir_6_and_iso_2022_ir_87,
     iso_2022_ir_13_and_iso_2022_ir_87, iso_ir_13, iso_ir_192, none,
@@ -63,7 +62,7 @@ pub fn generate_string_lossy(bytes: &[u8], char_set: SpecificCharacterSet) -> St
     }
 }
 
-pub fn generate_patient_name_strings_lossy(
+pub fn generate_person_name_strings_lossy(
     bytes: &[u8],
     char_set: SpecificCharacterSet,
 ) -> Vec<String> {
@@ -72,19 +71,19 @@ pub fn generate_patient_name_strings_lossy(
     }
 
     match char_set {
-        SpecificCharacterSet::None => none::generate_patient_name_strings_lossy(bytes),
-        SpecificCharacterSet::IsoIr13 => iso_ir_13::generate_patient_name_strings_lossy(bytes),
-        SpecificCharacterSet::IsoIr192 => iso_ir_192::generate_patient_name_strings_lossy(bytes),
+        SpecificCharacterSet::None => none::generate_person_name_strings_lossy(bytes),
+        SpecificCharacterSet::IsoIr13 => iso_ir_13::generate_person_name_strings_lossy(bytes),
+        SpecificCharacterSet::IsoIr192 => iso_ir_192::generate_person_name_strings_lossy(bytes),
         SpecificCharacterSet::Iso2022Ir6AndIso2022Ir87 => {
-            iso_2022_ir_6_and_iso_2022_ir_87::generate_patient_name_strings_lossy(bytes)
+            iso_2022_ir_6_and_iso_2022_ir_87::generate_person_name_strings_lossy(bytes)
         }
         SpecificCharacterSet::Iso2022Ir6AndIso2022Ir13AndIso2022Ir87 => {
-            iso_2022_ir_6_and_iso_2022_ir_13_and_iso_2022_ir_87::generate_patient_name_strings_lossy(
+            iso_2022_ir_6_and_iso_2022_ir_13_and_iso_2022_ir_87::generate_person_name_strings_lossy(
                 bytes,
             )
         }
         SpecificCharacterSet::Iso2022Ir13AndIso2022Ir87 => {
-            iso_2022_ir_13_and_iso_2022_ir_87::generate_patient_name_strings_lossy(bytes)
+            iso_2022_ir_13_and_iso_2022_ir_87::generate_person_name_strings_lossy(bytes)
         }
     }
 }
@@ -94,7 +93,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_generate_patient_name_strings_lossy() {
+    fn test_generate_person_name_strings_lossy() {
         // 正常系
         {
             // シングルバイト文字領域ではASCIIが、それ以外の領域ではJIS X 0208が使用される、一般的なケース
@@ -109,7 +108,7 @@ mod tests {
                 ];
                 let expected = vec!["Yamada^Tarou=山田^太郎=やまだ^たろう"];
 
-                let actual = generate_patient_name_strings_lossy(
+                let actual = generate_person_name_strings_lossy(
                     &source,
                     SpecificCharacterSet::Iso2022Ir6AndIso2022Ir87,
                 );
@@ -129,7 +128,7 @@ mod tests {
                 ];
                 let expected = vec!["ﾔﾏﾀﾞ^ﾀﾛｳ=山田^太郎=やまだ^たろう"];
 
-                let actual = generate_patient_name_strings_lossy(
+                let actual = generate_person_name_strings_lossy(
                     &source,
                     SpecificCharacterSet::Iso2022Ir13AndIso2022Ir87,
                 );
@@ -148,7 +147,7 @@ mod tests {
                 ];
                 let expected = vec!["Yamada^Tarou=山田^太郎=ﾔﾏﾀﾞ^ﾀﾛｳ"];
 
-                let actual = generate_patient_name_strings_lossy(
+                let actual = generate_person_name_strings_lossy(
                     &source,
                     SpecificCharacterSet::Iso2022Ir6AndIso2022Ir13AndIso2022Ir87,
                 );
@@ -167,7 +166,7 @@ mod tests {
                 let expected = vec!["Yamada^Tarou=山田^太郎=やまだ^たろう"];
 
                 let actual =
-                    generate_patient_name_strings_lossy(&source, SpecificCharacterSet::IsoIr192);
+                    generate_person_name_strings_lossy(&source, SpecificCharacterSet::IsoIr192);
 
                 assert_eq!(expected, actual);
             }
@@ -187,7 +186,7 @@ mod tests {
                 ];
                 let expected = vec!["Takahashi^Daisuke=�橋^大輔=たかはし^だいすけ"];
 
-                let actual = generate_patient_name_strings_lossy(
+                let actual = generate_person_name_strings_lossy(
                     &source,
                     SpecificCharacterSet::Iso2022Ir6AndIso2022Ir87,
                 );

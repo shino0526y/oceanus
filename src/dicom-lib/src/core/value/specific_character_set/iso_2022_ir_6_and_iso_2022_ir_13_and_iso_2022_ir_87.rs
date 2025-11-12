@@ -57,7 +57,7 @@ pub(crate) fn generate_string_lossy(bytes: &[u8]) -> String {
     str
 }
 
-pub(crate) fn generate_patient_name_strings_lossy(bytes: &[u8]) -> Vec<String> {
+pub(crate) fn generate_person_name_strings_lossy(bytes: &[u8]) -> Vec<String> {
     generate_string_lossy(bytes)
         .trim_end_matches(' ')
         .split('\\')

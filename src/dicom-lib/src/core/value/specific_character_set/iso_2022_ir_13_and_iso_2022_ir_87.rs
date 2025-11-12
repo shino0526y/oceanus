@@ -7,7 +7,7 @@ pub(crate) fn generate_string_lossy(bytes: &[u8]) -> String {
     generate_string_lossy_with_range(bytes, 0, bytes.len())
 }
 
-pub(crate) fn generate_patient_name_strings_lossy(bytes: &[u8]) -> Vec<String> {
+pub(crate) fn generate_person_name_strings_lossy(bytes: &[u8]) -> Vec<String> {
     let mut values = vec![];
 
     let mut escape_sequence = jis_x_0201_romaji::ESCAPE_SEQUENCE;
@@ -18,7 +18,7 @@ pub(crate) fn generate_patient_name_strings_lossy(bytes: &[u8]) -> Vec<String> {
         if bytes[i] == b'\\' && escape_sequence == jis_x_0201_romaji::ESCAPE_SEQUENCE {
             // ここに到達したということは、VMが2以上、つまり値が複数あり、そのうえで、値の区切りが出現したということ。
             // 区切りの直前の値を取得し、Vecに追加する。
-            values.push(generate_patient_name_string_lossy(
+            values.push(generate_person_name_string_lossy(
                 bytes,
                 start_index,
                 i - start_index,
@@ -50,7 +50,7 @@ pub(crate) fn generate_patient_name_strings_lossy(bytes: &[u8]) -> Vec<String> {
         }
     }
 
-    values.push(generate_patient_name_string_lossy(
+    values.push(generate_person_name_string_lossy(
         bytes,
         start_index,
         bytes.len() - start_index,
@@ -115,7 +115,7 @@ fn generate_string_lossy_with_range(bytes: &[u8], index: usize, length: usize) -
     str
 }
 
-fn generate_patient_name_string_lossy(bytes: &[u8], index: usize, length: usize) -> String {
+fn generate_person_name_string_lossy(bytes: &[u8], index: usize, length: usize) -> String {
     let mut start_index = index;
 
     let mut i = index;
