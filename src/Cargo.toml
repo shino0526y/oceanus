@@ -10,6 +10,7 @@ authors = ["Yamato SHINOZUKA <shino0526y@gmail.com>"]
 edition = "2024"
 
 [workspace.dependencies]
+chrono = "0.4"
 phf = { version = "0.13", features = ["macros"] }
 thiserror = "2"
 tracing = "0.1"
