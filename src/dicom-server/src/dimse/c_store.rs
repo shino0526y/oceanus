@@ -109,8 +109,8 @@ pub fn handle_c_store(dimse_message: DimseMessage) -> Result<(Vec<u8>, Vec<u8>),
     let c_store_rsp = CStoreRsp::new(
         c_store_rq.message_id(),
         Status::Success,
-        affected_sop_class_uid, // TODO: Stringを借用するようにする
-        c_store_rq.affected_sop_instance_uid(), // TODO: Stringを借用するようにする
+        affected_sop_class_uid,
+        c_store_rq.affected_sop_instance_uid(),
     );
 
     let command_set_to_be_sent: CommandSet = c_store_rsp.into();
