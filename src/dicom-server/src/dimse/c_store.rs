@@ -54,21 +54,10 @@ pub fn handle_c_store(dimse_message: DimseMessage) -> Result<(Vec<u8>, Vec<u8>),
 
     let patient_id = &instance_info.patient.id;
     let patient_name = {
-        let family_name_alphabet = &instance_info.patient.family_name_alphabet;
-        let given_name_alphabet = &instance_info.patient.given_name_alphabet;
-        let family_name_kanji = &instance_info.patient.family_name_kanji;
-        let given_name_kanji = &instance_info.patient.given_name_kanji;
-        let family_name_hiragana = &instance_info.patient.family_name_hiragana;
-        let given_name_hiragana = &instance_info.patient.given_name_hiragana;
-        format!(
-            "{}^{}={}^{}={}^{}",
-            family_name_alphabet,
-            given_name_alphabet,
-            family_name_kanji,
-            given_name_kanji,
-            family_name_hiragana,
-            given_name_hiragana
-        )
+        let name_alphabet = &instance_info.patient.name_alphabet;
+        let name_kanji = &instance_info.patient.name_kanji;
+        let name_hiragana = &instance_info.patient.name_hiragana;
+        format!("{name_alphabet}={name_kanji}={name_hiragana}")
     };
     let study_instance_uid = &instance_info.study.instance_uid;
     let study_id = &instance_info.study.id;
