@@ -2,7 +2,11 @@ mod args;
 mod constants;
 mod dimse;
 
-use crate::{args::Args, constants::*, dimse::DimseMessage};
+use crate::{
+    args::Args,
+    constants::*,
+    dimse::{DimseMessage, handle_dimse_message},
+};
 use clap::Parser;
 use dicom_lib::{
     constants::{sop_class_uids::VERIFICATION, transfer_syntax_uids::IMPLICIT_VR_LITTLE_ENDIAN},
@@ -241,11 +245,12 @@ async fn handle_association(mut socket: TcpStream) {
             }
 
             let dimse_message = context_id_to_dimse_message.remove(&context_id).unwrap();
-            let handler = ABSTRACT_SYNTAX_UID_TO_HANDLER
-                .get(&dimse_message.abstract_syntax_uid)
-                .unwrap();
-
-            let (command_set_buf, data_set_buf) = match handler(dimse_message) {
+            let (command_set_buf, data_set_buf) = match handle_dimse_message(
+                dimse_message,
+                a_associate_rq.calling_ae_title(),
+            )
+            .await
+            {
                 Ok(val) => val,
                 Err(reason) => {
                     abort(&mut buf_reader, reason).await;

@@ -1,4 +1,3 @@
-use crate::dimse::{DimseHandler, c_echo::handle_c_echo, c_store::handle_c_store};
 use dicom_lib::constants::{
     sop_class_uids::{
         COMPUTED_RADIOGRAPHY_IMAGE_STORAGE, CT_IMAGE_STORAGE,
@@ -9,7 +8,6 @@ use dicom_lib::constants::{
     },
     transfer_syntax_uids::IMPLICIT_VR_LITTLE_ENDIAN,
 };
-use phf::{Map, phf_map};
 
 // <root>.<app>.<type>.<version>
 // root: 1.3.6.1.4.1.64183 (https://www.iana.org/assignments/enterprise-numbers/)
@@ -38,15 +36,3 @@ pub const SUPPORTED_ABSTRACT_SYNTAX_UIDS: &[&str] = &[
 pub const SUPPORTED_TRANSFER_SYNTAX_UIDS: &[&str] = &[IMPLICIT_VR_LITTLE_ENDIAN];
 
 pub const EXPLICIT_VR_BIG_ENDIAN: &str = "1.2.840.10008.1.2.2";
-
-pub const ABSTRACT_SYNTAX_UID_TO_HANDLER: Map<&'static str, DimseHandler> = phf_map! {
-    "1.2.840.10008.1.1" => handle_c_echo, // Verification
-    "1.2.840.10008.5.1.4.1.1.1" => handle_c_store, // Computed Radiography Image Storage
-    "1.2.840.10008.5.1.4.1.1.1.1" => handle_c_store, // Digital X-Ray Image Storage - For Presentation
-    "1.2.840.10008.5.1.4.1.1.1.2" => handle_c_store, // Digital Mammography X-Ray Image Storage - For Presentation
-    "1.2.840.10008.5.1.4.1.1.2" => handle_c_store, // CT Image Storage
-    "1.2.840.10008.5.1.4.1.1.4" => handle_c_store, // MR Image Storage
-    "1.2.840.10008.5.1.4.1.1.7" => handle_c_store, // Secondary Capture Image Storage
-    "1.2.840.10008.5.1.4.1.1.12.1" => handle_c_store, // X-Ray Angiographic Image Storage
-    "1.2.840.10008.5.1.4.1.1.12.2" => handle_c_store, // X-Ray Radiofluoroscopic Image Storage
-};

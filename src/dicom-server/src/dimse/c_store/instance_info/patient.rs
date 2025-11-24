@@ -19,6 +19,16 @@ pub enum Sex {
     O,
 }
 
+impl Sex {
+    pub fn to_smallint(&self) -> i16 {
+        match self {
+            Sex::M => 0,
+            Sex::F => 1,
+            Sex::O => 2,
+        }
+    }
+}
+
 impl Patient {
     pub fn new(
         char_set: SpecificCharacterSet,
