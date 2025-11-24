@@ -37,6 +37,8 @@ pub const SUPPORTED_ABSTRACT_SYNTAX_UIDS: &[&str] = &[
 ];
 pub const SUPPORTED_TRANSFER_SYNTAX_UIDS: &[&str] = &[IMPLICIT_VR_LITTLE_ENDIAN];
 
+pub const EXPLICIT_VR_BIG_ENDIAN: &str = "1.2.840.10008.1.2.2";
+
 pub const ABSTRACT_SYNTAX_UID_TO_HANDLER: Map<&'static str, DimseHandler> = phf_map! {
     "1.2.840.10008.1.1" => handle_c_echo, // Verification
     "1.2.840.10008.5.1.4.1.1.1" => handle_c_store, // Computed Radiography Image Storage

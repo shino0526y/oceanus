@@ -1,7 +1,12 @@
 pub mod c_echo;
 pub mod c_store;
 
-use dicom_lib::network::{CommandSet, upper_layer_protocol::pdu::a_abort::Reason};
+use std::io::Cursor;
+
+use dicom_lib::{
+    core::{DataSet, Encoding},
+    network::{CommandSet, upper_layer_protocol::pdu::a_abort::Reason},
+};
 use tracing::error;
 
 pub struct DimseMessage {
@@ -21,6 +26,17 @@ fn buf_to_command_set(command_set_buf: Vec<u8>) -> Result<CommandSet, Reason> {
         Ok(val) => Ok(val),
         Err(e) => {
             error!("コマンドセットのパースに失敗しました: {e}");
+            Err(Reason::InvalidPduParameterValue)
+        }
+    }
+}
+
+fn buf_to_data_set(buf: Vec<u8>, encoding: Encoding) -> Result<DataSet, Reason> {
+    let mut cur = Cursor::new(buf.as_ref());
+    match DataSet::read_from_cur(&mut cur, encoding) {
+        Ok(val) => Ok(val),
+        Err(e) => {
+            error!("データセットのパースに失敗しました: {e}");
             Err(Reason::InvalidPduParameterValue)
         }
     }

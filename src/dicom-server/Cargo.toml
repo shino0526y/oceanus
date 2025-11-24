@@ -6,7 +6,7 @@ description = "DICOM Server"
 edition.workspace = true
 
 [dependencies]
-chrono = "0.4"
+chrono.workspace = true
 clap = { version = "4", features = ["derive", "env"] }
 dotenvy = "0.15"
 phf.workspace = true
