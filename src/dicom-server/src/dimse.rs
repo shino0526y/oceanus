@@ -19,7 +19,7 @@ use tracing::error;
 pub struct DimseMessage {
     pub context_id: u8,
     pub abstract_syntax_uid: String,
-    pub _transfer_syntax_uid: &'static str,
+    pub transfer_syntax_uid: &'static str,
     pub command_set_buf: Vec<u8>,
     pub data_set_buf: Vec<u8>,
     pub is_command_received: bool,

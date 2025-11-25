@@ -415,7 +415,7 @@ async fn handle_association_establishment(
                         let dimse_message = DimseMessage {
                             context_id,
                             abstract_syntax_uid: abstract_syntax.to_string(),
-                            _transfer_syntax_uid: transfer_syntax_uid,
+                            transfer_syntax_uid,
                             command_set_buf: vec![],
                             data_set_buf: vec![],
                             is_command_received: false,

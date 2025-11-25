@@ -118,7 +118,7 @@ pub async fn handle_c_store(
     };
 
     let data_set_received = {
-        let encoding = match dimse_message._transfer_syntax_uid {
+        let encoding = match dimse_message.transfer_syntax_uid {
             IMPLICIT_VR_LITTLE_ENDIAN => Encoding::ImplicitVrLittleEndian,
             EXPLICIT_VR_BIG_ENDIAN => {
                 unimplemented!("Explicit VR Big Endianのサポートは未実装です")
