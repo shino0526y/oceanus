@@ -244,7 +244,18 @@ async fn handle_association(mut socket: TcpStream) {
                 continue;
             }
 
+            // DIMSEメッセージを取り出し、空のDIMSEメッセージを生成し登録しなおす。
+            // これにより、同じPresentation Context IDで複数のDIMSEメッセージを処理できるようにする。
             let dimse_message = context_id_to_dimse_message.remove(&context_id).unwrap();
+            context_id_to_dimse_message.insert(
+                context_id,
+                generate_empty_dimse_message(
+                    context_id,
+                    &dimse_message.abstract_syntax_uid,
+                    dimse_message.transfer_syntax_uid,
+                ),
+            );
+
             let (command_set_buf, data_set_buf) = match handle_dimse_message(
                 dimse_message,
                 a_associate_rq.calling_ae_title(),
@@ -407,21 +418,15 @@ async fn handle_association_establishment(
                     {
                         let context_id = pc.context_id();
                         let abstract_syntax = presentation_context.abstract_syntax().name();
-                        let is_data_received = match abstract_syntax {
-                            VERIFICATION => true, // C-ECHOはデータセットを使用しない
-                            _ => false,
-                        };
 
-                        let dimse_message = DimseMessage {
+                        context_id_to_dimse_message.insert(
                             context_id,
-                            abstract_syntax_uid: abstract_syntax.to_string(),
-                            transfer_syntax_uid,
-                            command_set_buf: vec![],
-                            data_set_buf: vec![],
-                            is_command_received: false,
-                            is_data_received,
-                        };
-                        context_id_to_dimse_message.insert(context_id, dimse_message);
+                            generate_empty_dimse_message(
+                                context_id,
+                                abstract_syntax,
+                                transfer_syntax_uid,
+                            ),
+                        );
                     }
 
                     pc
@@ -459,6 +464,27 @@ async fn handle_association_establishment(
     info!("アソシエーション要求を受諾しました (呼出元=\"{calling_ae_title}\")");
 
     Some((a_associate_rq, context_id_to_dimse_message))
+}
+
+fn generate_empty_dimse_message(
+    context_id: u8,
+    abstract_syntax_uid: &str,
+    transfer_syntax_uid: &'static str,
+) -> DimseMessage {
+    let is_data_received = match abstract_syntax_uid {
+        VERIFICATION => true, // C-ECHOはデータセットを使用しないため、すでにデータセットを受信したものとみなす
+        _ => false,
+    };
+
+    DimseMessage {
+        context_id,
+        abstract_syntax_uid: abstract_syntax_uid.to_string(),
+        transfer_syntax_uid,
+        command_set_buf: vec![],
+        data_set_buf: vec![],
+        is_command_received: false,
+        is_data_received,
+    }
 }
 
 fn is_abstract_syntax_supported(
