@@ -241,14 +241,14 @@ impl Display for Pn {
         if let Some(ref single_byte) = self.single_byte_name {
             component_groups.push(single_byte.to_string());
         } else {
-            component_groups.push("".to_string());
+            component_groups.push(String::new());
         }
 
         if let Some(ref phonetic) = self.phonetic_name {
             if let Some(ref ideographic) = self.ideographic_name {
                 component_groups.push(ideographic.to_string());
             } else {
-                component_groups.push("".to_string());
+                component_groups.push(String::new());
             }
 
             component_groups.push(phonetic.to_string());

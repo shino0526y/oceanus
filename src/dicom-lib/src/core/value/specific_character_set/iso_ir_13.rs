@@ -69,7 +69,7 @@ fn generate_string_for_char_set(
     char_set: CharSet,
 ) -> String {
     if length == 0 {
-        return "".to_string();
+        return String::new();
     }
 
     match char_set {

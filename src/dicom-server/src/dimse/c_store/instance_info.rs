@@ -35,7 +35,7 @@ fn extract_single_value<T: Display, E: Error>(
                     if let Some(v) = v {
                         v.to_string()
                     } else {
-                        "".to_string()
+                        String::new()
                     }
                 })
                 .collect::<Vec<_>>()

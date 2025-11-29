@@ -72,7 +72,7 @@ fn generate_string_for_escape_sequence_lossy(
     escape_sequence: u32,
 ) -> String {
     if length == 0 {
-        return "".to_string();
+        return String::new();
     }
 
     match escape_sequence {

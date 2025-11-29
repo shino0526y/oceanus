@@ -152,17 +152,17 @@ pub async fn handle_c_store(
     let study_date_time = {
         let study_date = match &instance_info.study.date {
             Some(date) => date.to_string(),
-            None => "".to_string(),
+            None => String::new(),
         };
         let study_time = match &instance_info.study.time {
             Some(time) => time.to_string(),
-            None => "".to_string(),
+            None => String::new(),
         };
         match (!study_date.is_empty(), !study_time.is_empty()) {
             (true, true) => format!("{}T{}", study_date, study_time),
             (true, false) => study_date,
             (false, true) => study_time,
-            (false, false) => "".to_string(),
+            (false, false) => String::new(),
         }
     };
     let accession_number = &instance_info.study.accession_number;
@@ -170,12 +170,12 @@ pub async fn handle_c_store(
     let modality = &instance_info.series.modality;
     let series_number = match &instance_info.series.number {
         Some(number) => number.to_string(),
-        None => "".to_string(),
+        None => String::new(),
     };
     let sop_instance_uid = &instance_info.sop_instance.instance_uid;
     let instance_number = match &instance_info.sop_instance.number {
         Some(number) => number.to_string(),
-        None => "".to_string(),
+        None => String::new(),
     };
 
     // DBへ情報を保存

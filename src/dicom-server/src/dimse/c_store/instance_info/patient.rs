@@ -56,10 +56,10 @@ impl Patient {
                         {
                             single_byte.to_string()
                         } else {
-                            "".to_string()
+                            String::new()
                         };
-                        name_kanji = "".to_string();
-                        name_hiragana = "".to_string();
+                        name_kanji = String::new();
+                        name_hiragana = String::new();
                     }
                     SpecificCharacterSet::Iso2022Ir6AndIso2022Ir87
                     | SpecificCharacterSet::IsoIr192 => {
@@ -68,17 +68,17 @@ impl Patient {
                         {
                             single_byte.to_string()
                         } else {
-                            "".to_string()
+                            String::new()
                         };
                         name_kanji = if let Some(ideographic) = patients_name.ideographic_name() {
                             ideographic.to_string()
                         } else {
-                            "".to_string()
+                            String::new()
                         };
                         name_hiragana = if let Some(phonetic) = patients_name.phonetic_name() {
                             phonetic.to_string()
                         } else {
-                            "".to_string()
+                            String::new()
                         };
                     }
                     SpecificCharacterSet::Iso2022Ir6AndIso2022Ir13AndIso2022Ir87 => {
@@ -87,40 +87,40 @@ impl Patient {
                         {
                             single_byte.to_string()
                         } else {
-                            "".to_string()
+                            String::new()
                         };
                         name_kanji = if let Some(ideographic) = patients_name.ideographic_name() {
                             ideographic.to_string()
                         } else {
-                            "".to_string()
+                            String::new()
                         };
-                        name_hiragana = "".to_string(); // TODO: 半角カタカナをひらがなに変換する処理の実装
+                        name_hiragana = String::new(); // TODO: 半角カタカナをひらがなに変換する処理の実装
                     }
                     SpecificCharacterSet::Iso2022Ir13AndIso2022Ir87 => {
                         // 例: "ﾔﾏﾀﾞ^ﾀﾛｳ=山田^太郎=やまだ^たろう"
-                        name_alphabet = "".to_string();
+                        name_alphabet = String::new();
                         name_kanji = if let Some(ideographic) = patients_name.ideographic_name() {
                             ideographic.to_string()
                         } else {
-                            "".to_string()
+                            String::new()
                         };
                         name_hiragana = if let Some(phonetic) = patients_name.phonetic_name() {
                             phonetic.to_string()
                         } else {
-                            "".to_string()
+                            String::new()
                         };
                     }
                     SpecificCharacterSet::IsoIr13 => {
                         // 例: "ﾔﾏﾀﾞ^ﾀﾛｳ"
-                        name_alphabet = "".to_string();
-                        name_kanji = "".to_string();
-                        name_hiragana = "".to_string(); // TODO: 半角カタカナをひらがなに変換する処理の実装
+                        name_alphabet = String::new();
+                        name_kanji = String::new();
+                        name_hiragana = String::new(); // TODO: 半角カタカナをひらがなに変換する処理の実装
                     }
                 }
             } else {
-                name_alphabet = "".to_string();
-                name_kanji = "".to_string();
-                name_hiragana = "".to_string();
+                name_alphabet = String::new();
+                name_kanji = String::new();
+                name_hiragana = String::new();
             }
         }
 

@@ -198,7 +198,7 @@ fn read_child_element_in_encapsulated_pixel_data_explicit_vr_le(
 ) -> Result<ElementInDataSet, Error> {
     let position = cur.position();
     let tag = read_tag(cur)?;
-    let vr = "".to_string();
+    let vr = String::new();
     let value_length = {
         let mut buf = [0; 4];
         cur.read_exact(&mut buf)?;
@@ -234,7 +234,7 @@ fn read_tag(cur: &mut Cursor<&[u8]>) -> Result<Tag, Error> {
 
 fn read_vr(cur: &mut Cursor<&[u8]>, tag: Tag) -> Result<String, Error> {
     match tag {
-        ITEM_TAG | ITEM_DELIMITATION_TAG | SEQUENCE_DELIMITATION_TAG => Ok("".to_string()),
+        ITEM_TAG | ITEM_DELIMITATION_TAG | SEQUENCE_DELIMITATION_TAG => Ok(String::new()),
         _ => {
             let mut buf = [0; 2];
             cur.read_exact(&mut buf)?;

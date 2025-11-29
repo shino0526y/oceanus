@@ -26,7 +26,7 @@ fn generate_string_lossy(bytes: &[u8], char_set: SpecificCharacterSet) -> String
 
 fn generate_person_name_strings_lossy(bytes: &[u8], char_set: SpecificCharacterSet) -> Vec<String> {
     if bytes.is_empty() {
-        return vec!["".to_string()];
+        return vec![String::new()];
     }
 
     match char_set {
