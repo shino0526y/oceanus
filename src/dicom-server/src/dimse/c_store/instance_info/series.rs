@@ -22,11 +22,7 @@ impl Series {
             .code()
             .to_string();
 
-        let number = if let Some(series_number) = series_number {
-            Some(series_number.value())
-        } else {
-            None
-        };
+        let number = series_number.map(|series_number| series_number.value());
 
         Ok(Series {
             instance_uid,

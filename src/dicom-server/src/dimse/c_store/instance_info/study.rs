@@ -29,17 +29,8 @@ impl Study {
         }
         .to_string();
 
-        let date = if let Some(study_date) = study_date {
-            Some(*study_date.date())
-        } else {
-            None
-        };
-
-        let time = if let Some(study_time) = study_time {
-            Some(*study_time.time())
-        } else {
-            None
-        };
+        let date = study_date.map(|study_date| *study_date.date());
+        let time = study_time.map(|study_time| *study_time.time());
 
         let accession_number = if let Some(accession_number) = &accession_number {
             accession_number.string()

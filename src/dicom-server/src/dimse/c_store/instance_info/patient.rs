@@ -124,11 +124,7 @@ impl Patient {
             }
         }
 
-        let birth_date = if let Some(birth_date) = patients_birth_date {
-            Some(*birth_date.date())
-        } else {
-            None
-        };
+        let birth_date = patients_birth_date.map(|birth_date| *birth_date.date());
 
         let sex = if let Some(patients_sex) = patients_sex {
             match patients_sex.code() {

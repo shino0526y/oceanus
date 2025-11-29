@@ -22,11 +22,7 @@ impl SopInstance {
             .uid()
             .to_string();
 
-        let number = if let Some(instance_number) = instance_number {
-            Some(instance_number.value())
-        } else {
-            None
-        };
+        let number = instance_number.map(|instance_number| instance_number.value());
 
         Ok(SopInstance {
             instance_uid,
