@@ -8,7 +8,7 @@ pub(crate) fn generate_string_lossy(bytes: &[u8]) -> String {
 }
 
 pub(crate) fn generate_person_name_strings_lossy(bytes: &[u8]) -> Vec<String> {
-    let mut values = vec![];
+    let mut values = Vec::new();
 
     let mut escape_sequence = jis_x_0201_romaji::ESCAPE_SEQUENCE;
     let mut start_index = 0;

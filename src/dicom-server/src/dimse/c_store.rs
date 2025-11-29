@@ -199,5 +199,5 @@ pub async fn handle_c_store(
     let command_set_to_be_sent: CommandSet = c_store_rsp.into();
     let command_set_buf = command_set_to_be_sent.into();
 
-    Ok((command_set_buf, vec![]))
+    Ok((command_set_buf, Vec::new()))
 }

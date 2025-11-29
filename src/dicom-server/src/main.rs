@@ -480,8 +480,8 @@ fn generate_empty_dimse_message(
         context_id,
         abstract_syntax_uid: abstract_syntax_uid.to_string(),
         transfer_syntax_uid,
-        command_set_buf: vec![],
-        data_set_buf: vec![],
+        command_set_buf: Vec::new(),
+        data_set_buf: Vec::new(),
         is_command_received: false,
         is_data_received,
     }

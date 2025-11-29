@@ -21,7 +21,7 @@ pub fn read_explicit_vr_le(
 ) -> Result<Vec<ElementInDataSet>, Error> {
     cur.seek(SeekFrom::Start(position))?;
 
-    let mut elements = vec![];
+    let mut elements = Vec::new();
     let mut current_position = position;
     let end_position = position + length;
     while current_position < end_position {
@@ -61,7 +61,7 @@ pub fn read_explicit_vr_le(
 
                 let mut sequence_count = 1;
                 let position_before_reading = current_position;
-                let mut descendant_elements = vec![];
+                let mut descendant_elements = Vec::new();
 
                 while current_position < end_position {
                     let descendant_element_in_sequence = match read_element_implicit_vr_le(cur) {
@@ -144,7 +144,7 @@ pub fn read_implicit_vr_le(
 ) -> Result<Vec<ElementInDataSet>, Error> {
     cur.seek(SeekFrom::Start(position))?;
 
-    let mut elements = vec![];
+    let mut elements = Vec::new();
     let mut current_position = position;
     let end_position = position + length;
     while current_position < end_position {
@@ -311,7 +311,7 @@ fn read_value_field(
     value_length: u32,
 ) -> Result<Vec<u8>, Error> {
     if tag == ITEM_TAG || tag == ITEM_DELIMITATION_TAG || tag == SEQUENCE_DELIMITATION_TAG {
-        return Ok(vec![]);
+        return Ok(Vec::new());
     }
 
     let vr = match vr {
@@ -320,7 +320,7 @@ fn read_value_field(
     };
 
     if vr == "SQ" || value_length == 0xffffffff {
-        Ok(vec![])
+        Ok(Vec::new())
     } else {
         // 上記の条件に合致しなかった場合、データ要素は何かしらの値フィールドを持つ。
         let mut buf = vec![0; value_length as usize];
