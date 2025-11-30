@@ -16,10 +16,6 @@ impl Da {
         &self.values
     }
 
-    pub fn take_values(self) -> Vec<Option<DaValue>> {
-        self.values
-    }
-
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, MultiStringValueError> {
         let str = str::from_utf8(bytes).map_err(MultiStringValueError::InvalidUtf8)?;
         Self::from_string(str)

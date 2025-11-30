@@ -17,10 +17,6 @@ impl Lo {
         &self.values
     }
 
-    pub fn take_values(self) -> Vec<Option<LoValue>> {
-        self.values
-    }
-
     pub fn from_bytes_lossy(
         bytes: &[u8],
         char_set: SpecificCharacterSet,

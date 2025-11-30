@@ -18,10 +18,6 @@ impl Ul {
         &self.values
     }
 
-    pub fn take_values(self) -> Vec<UlValue> {
-        self.values
-    }
-
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, MultiNumberValueError> {
         if !bytes.len().is_multiple_of(Self::BYTES_PER_VALUE) {
             return Err(MultiNumberValueError::InvalidLength {
