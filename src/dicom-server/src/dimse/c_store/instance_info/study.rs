@@ -1,5 +1,7 @@
 use chrono::{NaiveDate, NaiveTime};
-use dicom_lib::core::value::values::{Da, Sh, Tm, Ui};
+use dicom_lib::core::value::value_representations::{
+    da::DaValue, sh::ShValue, tm::TmValue, ui::UiValue,
+};
 
 pub struct Study {
     pub instance_uid: String,
@@ -11,11 +13,11 @@ pub struct Study {
 
 impl Study {
     pub fn new(
-        study_instance_uid: Option<Ui>,
-        study_date: Option<Da>,
-        study_time: Option<Tm>,
-        study_id: Option<Sh>,
-        accession_number: Option<Sh>,
+        study_instance_uid: Option<UiValue>,
+        study_date: Option<DaValue>,
+        study_time: Option<TmValue>,
+        study_id: Option<ShValue>,
+        accession_number: Option<ShValue>,
     ) -> Result<Self, String> {
         let instance_uid = study_instance_uid
             .ok_or("Study Instance UIDが見つかりませんでした".to_string())?

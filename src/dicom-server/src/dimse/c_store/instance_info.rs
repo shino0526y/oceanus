@@ -12,39 +12,12 @@ use dicom_lib::core::{
     DataSet, Tag,
     value::{
         SpecificCharacterSet,
-        values::{Cs, Da, Is, Lo, Pn, Sh, Tm, Ui},
+        value_representations::{
+            cs::CsValue, da::DaValue, is::IsValue, lo::LoValue, pn::PnValue, sh::ShValue,
+            tm::TmValue, ui::UiValue,
+        },
     },
 };
-use std::{error::Error, fmt::Display};
-
-fn extract_single_value<T: Display, E: Error>(
-    values_parse_result: Result<Vec<Option<T>>, E>,
-    field_name: &str,
-) -> Result<Option<T>, String> {
-    let mut values =
-        values_parse_result.map_err(|e| format!("{field_name}のパースに失敗しました: {e}"))?;
-
-    if values.len() > 1 {
-        return Err(format!(
-            "{}に複数の値が含まれています ({}=\"{}\")",
-            field_name,
-            field_name,
-            values
-                .iter()
-                .map(|v| {
-                    if let Some(v) = v {
-                        v.to_string()
-                    } else {
-                        String::new()
-                    }
-                })
-                .collect::<Vec<_>>()
-                .join("\\")
-        ));
-    }
-
-    Ok(values.remove(0))
-}
 
 pub struct InstanceInfo {
     pub patient: Patient,
@@ -109,83 +82,108 @@ impl InstanceInfo {
                 }
 
                 Tag(0x0008, 0x0016) => {
-                    sop_class_uid =
-                        extract_single_value(Ui::from_buf(value_field), "SOP Class UID")?;
+                    sop_class_uid = Some(
+                        UiValue::from_bytes(value_field)
+                            .map_err(|e| format!("SOP Class UIDのパースに失敗しました: {e}"))?,
+                    )
                 }
 
                 Tag(0x0008, 0x0018) => {
-                    sop_instance_uid =
-                        extract_single_value(Ui::from_buf(value_field), "SOP Instance UID")?;
+                    sop_instance_uid = Some(
+                        UiValue::from_bytes(value_field)
+                            .map_err(|e| format!("SOP Instance UIDのパースに失敗しました: {e}"))?,
+                    )
                 }
 
                 Tag(0x0008, 0x0020) => {
-                    study_date = extract_single_value(Da::from_buf(value_field), "Study Date")?;
+                    study_date = Some(
+                        DaValue::from_bytes(value_field)
+                            .map_err(|e| format!("Study Dateのパースに失敗しました: {e}"))?,
+                    )
                 }
 
                 Tag(0x0008, 0x0030) => {
-                    study_time = extract_single_value(Tm::from_buf(value_field), "Study Time")?;
+                    study_time = Some(
+                        TmValue::from_bytes(value_field)
+                            .map_err(|e| format!("Study Timeのパースに失敗しました: {e}"))?,
+                    )
                 }
 
                 Tag(0x0008, 0x0050) => {
-                    accession_number = extract_single_value(
-                        Sh::from_buf_lossy(value_field, char_set),
-                        "Accession Number",
-                    )?;
+                    accession_number = Some(
+                        ShValue::from_bytes_lossy(value_field, char_set)
+                            .map_err(|e| format!("Accession Numberのパースに失敗しました: {e}"))?,
+                    )
                 }
 
                 Tag(0x0008, 0x0060) => {
-                    modality = extract_single_value(Cs::from_buf(value_field), "Modality")?;
+                    modality = Some(
+                        CsValue::from_bytes(value_field)
+                            .map_err(|e| format!("Modalityのパースに失敗しました: {e}"))?,
+                    )
                 }
 
                 Tag(0x0010, 0x0010) => {
-                    patients_name = extract_single_value(
-                        Pn::from_buf_lossy(value_field, char_set),
-                        "Patient's Name",
-                    )?;
+                    patients_name = Some(
+                        PnValue::from_bytes_lossy(value_field, char_set)
+                            .map_err(|e| format!("Patient's Nameのパースに失敗しました: {e}"))?,
+                    )
                 }
 
                 Tag(0x0010, 0x0020) => {
-                    patient_id = extract_single_value(
-                        Lo::from_buf_lossy(value_field, char_set),
-                        "Patient ID",
-                    )?;
+                    patient_id = Some(
+                        LoValue::from_bytes_lossy(value_field, char_set)
+                            .map_err(|e| format!("Patient IDのパースに失敗しました: {e}"))?,
+                    )
                 }
 
                 Tag(0x0010, 0x0030) => {
                     patients_birth_date =
-                        extract_single_value(Da::from_buf(value_field), "Patient's Birth Date")?;
+                        Some(DaValue::from_bytes(value_field).map_err(|e| {
+                            format!("Patient's Birth Dateのパースに失敗しました: {e}")
+                        })?)
                 }
 
                 Tag(0x0010, 0x0040) => {
-                    patients_sex =
-                        extract_single_value(Cs::from_buf(value_field), "Patient's Sex")?;
+                    patients_sex = Some(
+                        CsValue::from_bytes(value_field)
+                            .map_err(|e| format!("Patient's Sexのパースに失敗しました: {e}"))?,
+                    )
                 }
 
                 Tag(0x0020, 0x000d) => {
                     study_instance_uid =
-                        extract_single_value(Ui::from_buf(value_field), "Study Instance UID")?;
+                        Some(UiValue::from_bytes(value_field).map_err(|e| {
+                            format!("Study Instance UIDのパースに失敗しました: {e}")
+                        })?)
                 }
 
                 Tag(0x0020, 0x000e) => {
                     series_instance_uid =
-                        extract_single_value(Ui::from_buf(value_field), "Series Instance UID")?;
+                        Some(UiValue::from_bytes(value_field).map_err(|e| {
+                            format!("Series Instance UIDのパースに失敗しました: {e}")
+                        })?)
                 }
 
                 Tag(0x0020, 0x0010) => {
-                    study_id = extract_single_value(
-                        Sh::from_buf_lossy(value_field, char_set),
-                        "Study ID",
-                    )?;
+                    study_id = Some(
+                        ShValue::from_bytes_lossy(value_field, char_set)
+                            .map_err(|e| format!("Study IDのパースに失敗しました: {e}"))?,
+                    )
                 }
 
                 Tag(0x0020, 0x0011) => {
-                    series_number =
-                        extract_single_value(Is::from_buf(value_field), "Series Number")?;
+                    series_number = Some(
+                        IsValue::from_bytes(value_field)
+                            .map_err(|e| format!("Series Numberのパースに失敗しました: {e}"))?,
+                    )
                 }
 
                 Tag(0x0020, 0x0013) => {
-                    instance_number =
-                        extract_single_value(Is::from_buf(value_field), "Instance Number")?;
+                    instance_number = Some(
+                        IsValue::from_bytes(value_field)
+                            .map_err(|e| format!("Instance Numberのパースに失敗しました: {e}"))?,
+                    );
 
                     break;
                 }

@@ -1,7 +1,7 @@
 use chrono::NaiveDate;
 use dicom_lib::core::value::{
     SpecificCharacterSet,
-    values::{Cs, Da, Lo, Pn},
+    value_representations::{cs::CsValue, da::DaValue, lo::LoValue, pn::PnValue},
 };
 
 pub struct Patient {
@@ -32,10 +32,10 @@ impl Sex {
 impl Patient {
     pub fn new(
         char_set: SpecificCharacterSet,
-        patients_name: Option<Pn>,
-        patient_id: Option<Lo>,
-        patients_birth_date: Option<Da>,
-        patients_sex: Option<Cs>,
+        patients_name: Option<PnValue>,
+        patient_id: Option<LoValue>,
+        patients_birth_date: Option<DaValue>,
+        patients_sex: Option<CsValue>,
     ) -> Result<Self, String> {
         let id = if let Some(patient_id) = &patient_id {
             patient_id.string()

@@ -1,4 +1,4 @@
-use dicom_lib::core::value::values::{Is, Ui};
+use dicom_lib::core::value::value_representations::{is::IsValue, ui::UiValue};
 
 pub struct SopInstance {
     pub instance_uid: String,
@@ -8,9 +8,9 @@ pub struct SopInstance {
 
 impl SopInstance {
     pub fn new(
-        class_uid: Option<Ui>,
-        instance_uid: Option<Ui>,
-        instance_number: Option<Is>,
+        class_uid: Option<UiValue>,
+        instance_uid: Option<UiValue>,
+        instance_number: Option<IsValue>,
     ) -> Result<Self, String> {
         let instance_uid = instance_uid
             .ok_or("SOP Instance UIDが見つかりませんでした".to_string())?

@@ -42,14 +42,14 @@ mod tests {
             let expected = "｡｢｣､･ｦｧｨｩｪｫｬｭｮｯｰｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝﾞﾟ";
 
             let actual = {
-                let buf = [
+                let bytes = [
                     0xa1, 0xa2, 0xa3, 0xa4, 0xa5, 0xa6, 0xa7, 0xa8, 0xa9, 0xaa, 0xab, 0xac, 0xad,
                     0xae, 0xaf, 0xb0, 0xb1, 0xb2, 0xb3, 0xb4, 0xb5, 0xb6, 0xb7, 0xb8, 0xb9, 0xba,
                     0xbb, 0xbc, 0xbd, 0xbe, 0xbf, 0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7,
                     0xc8, 0xc9, 0xca, 0xcb, 0xcc, 0xcd, 0xce, 0xcf, 0xd0, 0xd1, 0xd2, 0xd3, 0xd4,
                     0xd5, 0xd6, 0xd7, 0xd8, 0xd9, 0xda, 0xdb, 0xdc, 0xdd, 0xde, 0xdf,
                 ];
-                generate_string_lossy(&buf, 0, buf.len())
+                generate_string_lossy(&bytes, 0, bytes.len())
             };
 
             assert_eq!(expected, actual);
@@ -60,7 +60,7 @@ mod tests {
             let expected = "�ｽ��ｽ��ｽ��ｽ��ｽ�";
 
             let actual = {
-                let buf = [
+                let bytes = [
                     // UTF-8のバイト列
                     0xef, 0xbd, 0xe1, // 'ｱ'
                     0xef, 0xbd, 0xe2, // 'ｲ'
@@ -68,7 +68,7 @@ mod tests {
                     0xef, 0xbd, 0xe4, // 'ｴ'
                     0xef, 0xbd, 0xe5, // 'ｵ'
                 ];
-                generate_string_lossy(&buf, 0, buf.len())
+                generate_string_lossy(&bytes, 0, bytes.len())
             };
 
             assert_eq!(expected, actual);

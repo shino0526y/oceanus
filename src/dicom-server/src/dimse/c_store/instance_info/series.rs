@@ -1,4 +1,4 @@
-use dicom_lib::core::value::values::{Cs, Is, Ui};
+use dicom_lib::core::value::value_representations::{cs::CsValue, is::IsValue, ui::UiValue};
 
 pub struct Series {
     pub instance_uid: String,
@@ -8,9 +8,9 @@ pub struct Series {
 
 impl Series {
     pub fn new(
-        modality: Option<Cs>,
-        series_instance_uid: Option<Ui>,
-        series_number: Option<Is>,
+        modality: Option<CsValue>,
+        series_instance_uid: Option<UiValue>,
+        series_number: Option<IsValue>,
     ) -> Result<Self, String> {
         let instance_uid = series_instance_uid
             .ok_or("Series Instance UIDが見つかりませんでした".to_string())?

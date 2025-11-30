@@ -1,5 +1,5 @@
 mod specific_character_set;
-pub mod values;
+pub mod value_representations;
 
 pub use specific_character_set::SpecificCharacterSet;
 use specific_character_set::{

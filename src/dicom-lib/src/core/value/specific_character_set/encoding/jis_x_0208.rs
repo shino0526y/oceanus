@@ -6925,12 +6925,12 @@ mod tests {
             let expected = "あア亜";
 
             let actual = {
-                let buf = [
+                let bytes = [
                     0x24, 0x22, // 'あ'
                     0x25, 0x22, // 'ア'
                     0x30, 0x21, // '亜'
                 ];
-                generate_string_lossy(&buf, 0, buf.len())
+                generate_string_lossy(&bytes, 0, bytes.len())
             };
 
             assert_eq!(expected, actual);
@@ -6941,13 +6941,13 @@ mod tests {
             let expected = "���";
 
             let actual = {
-                let buf = [
+                let bytes = [
                     // Shift_JISのバイト列
                     0x82, 0xa0, // 'あ'
                     0x83, 0x41, // 'ア'
                     0x88, 0x9f, // '亜'
                 ];
-                generate_string_lossy(&buf, 0, buf.len())
+                generate_string_lossy(&bytes, 0, bytes.len())
             };
 
             assert_eq!(expected, actual);
