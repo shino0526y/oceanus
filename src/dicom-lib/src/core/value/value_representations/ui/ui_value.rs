@@ -67,6 +67,23 @@ impl UiValue {
             });
         }
 
+        // 各コンポーネントの検証
+        for component in str.split('.') {
+            // 空のコンポーネントは上記の連続ドットチェックで検出済み
+            if component.is_empty() {
+                continue;
+            }
+
+            // 各コンポーネントの最初の桁が0でないことを確認（ただし単一の0は許可）
+            // https://dicom.nema.org/medical/dicom/2025c/output/chtml/part05/chapter_9.html#sect_9.1
+            if component.len() > 1 && component.starts_with('0') {
+                return Err(UiValueError::ComponentStartsWithZero {
+                    string: str.to_string(),
+                    component: component.to_string(),
+                });
+            }
+        }
+
         Ok(Self(str.to_string()))
     }
 }
@@ -102,6 +119,11 @@ pub enum UiValueError {
 
     #[error("文字列に連続した'.'が含まれています (文字列=\"{string}\")")]
     ConsecutiveDots { string: String },
+
+    #[error(
+        "コンポーネントが0で始まっています (文字列=\"{string}\", コンポーネント=\"{component}\")"
+    )]
+    ComponentStartsWithZero { string: String, component: String },
 
     #[error("バイト列をUTF-8として解釈できません: {0}")]
     InvalidUtf8(#[from] Utf8Error),
@@ -150,6 +172,20 @@ mod tests {
             let input = "1234567890.1234567890.1234567890.1234567890.1234567890.123456789";
             assert_eq!(input.len(), 64);
             let expected = UiValue(input.to_string());
+
+            // Act
+            let actual = UiValue::from_string(input).unwrap();
+
+            // Assert
+            assert_eq!(expected, actual);
+        }
+
+        // 正常系: コンポーネントに単一の0を含む
+        //         https://dicom.nema.org/medical/dicom/2025c/output/chtml/part05/chapter_9.html#sect_9.1
+        {
+            // Arrange
+            let input = "1.2.840.10008.1.1.0";
+            let expected = UiValue("1.2.840.10008.1.1.0".to_string());
 
             // Act
             let actual = UiValue::from_string(input).unwrap();
@@ -264,6 +300,25 @@ mod tests {
             match result.unwrap_err() {
                 UiValueError::ConsecutiveDots { string } => {
                     assert_eq!(string, input);
+                }
+                _ => panic!("期待されたエラーではありません"),
+            }
+        }
+
+        // 準正常系: コンポーネントが0で始まる(ComponentStartsWithZero)
+        //           https://dicom.nema.org/medical/dicom/2025c/output/chtml/part05/chapter_9.html#sect_9.1
+        {
+            // Arrange
+            let input = "1.2.840.10008.1.1.00";
+
+            // Act
+            let result = UiValue::from_string(input);
+
+            // Assert
+            match result.unwrap_err() {
+                UiValueError::ComponentStartsWithZero { string, component } => {
+                    assert_eq!(string, input);
+                    assert_eq!(component, "00");
                 }
                 _ => panic!("期待されたエラーではありません"),
             }
