@@ -69,11 +69,6 @@ impl UiValue {
 
         // 各コンポーネントの検証
         for component in str.split('.') {
-            // 空のコンポーネントは上記の連続ドットチェックで検出済み
-            if component.is_empty() {
-                continue;
-            }
-
             // 各コンポーネントの最初の桁が0でないことを確認（ただし単一の0は許可）
             // https://dicom.nema.org/medical/dicom/2025c/output/chtml/part05/chapter_9.html#sect_9.1
             if component.len() > 1 && component.starts_with('0') {
