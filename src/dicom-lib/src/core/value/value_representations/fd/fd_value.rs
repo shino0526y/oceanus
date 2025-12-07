@@ -27,6 +27,10 @@ impl FdValue {
 
         Ok(Self(value))
     }
+
+    pub fn to_bytes(&self) -> [u8; 8] {
+        self.0.to_le_bytes()
+    }
 }
 
 impl Display for FdValue {

@@ -53,3 +53,44 @@ impl DataElement {
         }
     }
 }
+
+impl Into<Vec<u8>> for DataElement {
+    fn into(mut self) -> Vec<u8> {
+        let mut bytes = Vec::with_capacity(self.size as usize);
+
+        match self.encoding {
+            Encoding::ImplicitVrLittleEndian => {
+                bytes.extend_from_slice(&self.tag.into() as &[u8; 4]); // Tag
+                bytes.extend_from_slice(&self.value_length.to_le_bytes()); // Value Length
+                bytes.append(&mut self.value_field); // Value Field
+            }
+
+            Encoding::ExplicitVrLittleEndian => {
+                debug_assert!(self.vr.is_some());
+                let vr = self.vr.as_ref().unwrap();
+                debug_assert!(vr == "" || vr.len() == 2);
+
+                bytes.extend_from_slice(&self.tag.into() as &[u8; 4]); // Tag
+                bytes.extend_from_slice(vr.as_bytes()); // VR
+                match vr.as_str() {
+                    "" => {
+                        bytes.extend_from_slice(&self.value_length.to_le_bytes()); // Value Length
+                    }
+                    "AE" | "AS" | "AT" | "CS" | "DA" | "DS" | "DT" | "FL" | "FD" | "IS" | "LO"
+                    | "LT" | "PN" | "SH" | "SL" | "SS" | "ST" | "TM" | "UI" | "UL" | "US" => {
+                        bytes.extend_from_slice(&(self.value_length as u16).to_le_bytes()); // Value Length
+                    }
+                    _ => {
+                        bytes.extend_from_slice(&[0x00, 0x00]); // Reserved
+                        bytes.extend_from_slice(&self.value_length.to_le_bytes()); // Value Length
+                    }
+                }
+                bytes.append(&mut self.value_field); // Value Field
+            }
+
+            Encoding::ExplicitVrBigEndian => unimplemented!(),
+        }
+
+        bytes
+    }
+}

@@ -45,6 +45,18 @@ impl AeValue {
 
         Ok(Self(trimmed.to_string()))
     }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut bytes = self.to_bytes_without_padding();
+        if !bytes.len().is_multiple_of(2) {
+            bytes.push(b' ');
+        }
+        bytes
+    }
+
+    fn to_bytes_without_padding(&self) -> Vec<u8> {
+        self.0.as_bytes().to_vec()
+    }
 }
 
 impl Display for AeValue {

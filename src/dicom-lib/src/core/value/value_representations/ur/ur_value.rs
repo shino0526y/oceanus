@@ -32,6 +32,14 @@ impl UrValue {
 
         Ok(Self(trimmed.to_string()))
     }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut bytes = self.0.as_bytes().to_vec();
+        if !bytes.len().is_multiple_of(2) {
+            bytes.push(b' ');
+        }
+        bytes
+    }
 }
 
 impl Display for UrValue {

@@ -27,6 +27,10 @@ impl UlValue {
 
         Ok(Self(value))
     }
+
+    pub fn to_bytes(&self) -> [u8; 4] {
+        self.0.to_le_bytes()
+    }
 }
 
 impl Display for UlValue {

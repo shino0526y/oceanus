@@ -27,3 +27,9 @@ impl ElementInDataSet {
         self.element.size()
     }
 }
+
+impl Into<Vec<u8>> for ElementInDataSet {
+    fn into(self) -> Vec<u8> {
+        self.element.into()
+    }
+}

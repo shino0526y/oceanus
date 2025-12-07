@@ -15,12 +15,17 @@ use std::{
 
 pub struct DataSet {
     pub(super) encoding: Encoding,
-    pub(super) data_elements: Vec<ElementInDataSet>,
+    pub(crate) data_elements: Vec<ElementInDataSet>,
+    size: usize,
 }
 
 impl DataSet {
     pub fn encoding(&self) -> Encoding {
         self.encoding
+    }
+
+    pub fn size(&self) -> usize {
+        self.size
     }
 
     pub fn get_position(&self, index: usize) -> u64 {
@@ -86,6 +91,7 @@ impl DataSet {
         Ok(DataSet {
             encoding,
             data_elements,
+            size: len as usize,
         })
     }
 }
@@ -95,6 +101,16 @@ impl Index<usize> for DataSet {
 
     fn index(&self, index: usize) -> &Self::Output {
         &self.data_elements[index].element
+    }
+}
+
+impl Into<Vec<u8>> for DataSet {
+    fn into(self) -> Vec<u8> {
+        let mut bytes = Vec::with_capacity(self.size);
+        for element_in_data_set in self.data_elements {
+            bytes.append(&mut element_in_data_set.into());
+        }
+        bytes
     }
 }
 
