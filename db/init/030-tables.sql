@@ -10,9 +10,9 @@ CREATE TABLE application_entities(
 
 CREATE TABLE patients(
     id varchar(16) PRIMARY KEY,
-    name_alphabet varchar(64) NOT NULL DEFAULT '',
-    name_kanji varchar(64) NOT NULL DEFAULT '',
-    name_hiragana varchar(64) NOT NULL DEFAULT '',
+    name_alphabet varchar(64) NOT NULL,
+    name_kanji varchar(64) NOT NULL,
+    name_hiragana varchar(64) NOT NULL,
     birth_date date,
     sex smallint CHECK (sex >= 0 AND sex <= 2),
     created_at timestamptz NOT NULL DEFAULT now(),
@@ -23,10 +23,10 @@ CREATE TABLE patients(
 CREATE TABLE studies(
     patient_id varchar(16) REFERENCES patients(id),
     instance_uid varchar(64) PRIMARY KEY,
-    id varchar(16) NOT NULL DEFAULT '',
+    id varchar(16) NOT NULL,
     study_date date,
     study_time time,
-    accession_number varchar(16) NOT NULL DEFAULT '',
+    accession_number varchar(16) NOT NULL,
     ae_title varchar(16) NOT NULL REFERENCES application_entities(title),
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
@@ -36,7 +36,7 @@ CREATE TABLE studies(
 CREATE TABLE series(
     study_instance_uid varchar(64) NOT NULL REFERENCES studies(instance_uid),
     instance_uid varchar(64) PRIMARY KEY,
-    modality varchar(16) NOT NULL DEFAULT '',
+    modality varchar(16) NOT NULL,
     series_number integer,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
@@ -45,7 +45,7 @@ CREATE TABLE series(
 
 CREATE TABLE sop_instances(
     series_instance_uid varchar(64) NOT NULL REFERENCES series(instance_uid),
-    class_uid varchar(64) NOT NULL DEFAULT '',
+    class_uid varchar(64) NOT NULL,
     instance_uid varchar(64) PRIMARY KEY,
     transfer_syntax_uid varchar(64) NOT NULL,
     size integer NOT NULL CHECK (size >= 0 AND size <= 2147483647),
