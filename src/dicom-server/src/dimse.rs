@@ -36,8 +36,8 @@ fn buf_to_command_set(command_set_buf: Vec<u8>) -> Result<CommandSet, Reason> {
     }
 }
 
-fn buf_to_data_set(buf: Vec<u8>, encoding: Encoding) -> Result<DataSet, Reason> {
-    let mut cur = Cursor::new(buf.as_ref());
+fn buf_to_data_set(buf: &[u8], encoding: Encoding) -> Result<DataSet, Reason> {
+    let mut cur = Cursor::new(buf);
     match DataSet::read_from_cur(&mut cur, encoding) {
         Ok(val) => Ok(val),
         Err(e) => {

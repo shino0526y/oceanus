@@ -19,6 +19,10 @@ pub struct Args {
     /// ログレベル
     #[arg(long = "log-level", env = "LOG_LEVEL", value_enum, default_value_t = LogLevel::Info)]
     pub log_level: LogLevel,
+
+    /// ストレージディレクトリ
+    #[arg(long = "storage-dir", env = "STORAGE_DIR")]
+    pub storage_dir: String,
 }
 
 #[derive(ValueEnum, Clone, Copy, Debug)]
