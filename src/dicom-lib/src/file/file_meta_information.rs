@@ -39,6 +39,7 @@ pub struct FileMetaInformation {
 }
 
 impl FileMetaInformation {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         media_storage_sop_class_uid: UiValue,
         media_storage_sop_instance_uid: UiValue,
@@ -124,7 +125,7 @@ impl FileMetaInformation {
         }
 
         // Implementation Version Name
-        implementation_version_name.as_ref().map(|v| {
+        if let Some(v) = implementation_version_name.as_ref() {
             let mut value_field = v.string().as_bytes().to_vec();
             if !value_field.len().is_multiple_of(2) {
                 value_field.push(b' ');
@@ -135,10 +136,10 @@ impl FileMetaInformation {
                 value_length: value_field.len() as u32,
                 value_field,
             })
-        });
+        }
 
         // Source Application Entity Title
-        source_application_entity_title.as_ref().map(|v| {
+        if let Some(v) = source_application_entity_title.as_ref() {
             let value_field = v.to_bytes();
             meta_data_elements.push(MetaDataElement {
                 tag: Tag(0x0002, 0x0016),
@@ -146,10 +147,10 @@ impl FileMetaInformation {
                 value_length: value_field.len() as u32,
                 value_field,
             });
-        });
+        }
 
         // Sending Application Entity Title
-        sending_application_entity_title.as_ref().map(|v| {
+        if let Some(v) = sending_application_entity_title.as_ref() {
             let value_field = v.to_bytes();
             meta_data_elements.push(MetaDataElement {
                 tag: Tag(0x0002, 0x0017),
@@ -157,10 +158,10 @@ impl FileMetaInformation {
                 value_length: value_field.len() as u32,
                 value_field,
             });
-        });
+        }
 
         // Receiving Application Entity Title
-        receiving_application_entity_title.as_ref().map(|v| {
+        if let Some(v) = receiving_application_entity_title.as_ref() {
             let value_field = v.to_bytes();
             meta_data_elements.push(MetaDataElement {
                 tag: Tag(0x0002, 0x0018),
@@ -168,10 +169,10 @@ impl FileMetaInformation {
                 value_length: value_field.len() as u32,
                 value_field,
             });
-        });
+        }
 
         // Source Presentation Address
-        source_presentation_address.as_ref().map(|v| {
+        if let Some(v) = source_presentation_address.as_ref() {
             let value_field = v.to_bytes();
             meta_data_elements.push(MetaDataElement {
                 tag: Tag(0x0002, 0x0026),
@@ -179,10 +180,10 @@ impl FileMetaInformation {
                 value_length: value_field.len() as u32,
                 value_field,
             });
-        });
+        }
 
         // Sending Presentation Address
-        sending_presentation_address.as_ref().map(|v| {
+        if let Some(v) = sending_presentation_address.as_ref() {
             let value_field = v.to_bytes();
             meta_data_elements.push(MetaDataElement {
                 tag: Tag(0x0002, 0x0027),
@@ -190,10 +191,10 @@ impl FileMetaInformation {
                 value_length: value_field.len() as u32,
                 value_field,
             });
-        });
+        }
 
         // Receiving Presentation Address
-        receiving_presentation_address.as_ref().map(|v| {
+        if let Some(v) = receiving_presentation_address.as_ref() {
             let value_field = v.to_bytes();
             meta_data_elements.push(MetaDataElement {
                 tag: Tag(0x0002, 0x0028),
@@ -201,10 +202,10 @@ impl FileMetaInformation {
                 value_length: value_field.len() as u32,
                 value_field,
             });
-        });
+        }
 
         // RTV Meta Information Version
-        rtv_meta_information_version.as_ref().map(|v| {
+        if let Some(v) = rtv_meta_information_version.as_ref() {
             let value_field = v.to_bytes();
             meta_data_elements.push(MetaDataElement {
                 tag: Tag(0x0002, 0x0031),
@@ -212,10 +213,10 @@ impl FileMetaInformation {
                 value_length: value_field.len() as u32,
                 value_field,
             });
-        });
+        }
 
         // RTV Communication SOP Class UID
-        rtv_communication_sop_class_uid.as_ref().map(|v| {
+        if let Some(v) = rtv_communication_sop_class_uid.as_ref() {
             let value_field = v.to_bytes();
             meta_data_elements.push(MetaDataElement {
                 tag: Tag(0x0002, 0x0032),
@@ -223,10 +224,10 @@ impl FileMetaInformation {
                 value_length: value_field.len() as u32,
                 value_field,
             });
-        });
+        }
 
         // RTV Communication SOP Instance UID
-        rtv_communication_sop_instance_uid.as_ref().map(|v| {
+        if let Some(v) = rtv_communication_sop_instance_uid.as_ref() {
             let value_field = v.to_bytes();
             meta_data_elements.push(MetaDataElement {
                 tag: Tag(0x0002, 0x0033),
@@ -234,10 +235,10 @@ impl FileMetaInformation {
                 value_length: value_field.len() as u32,
                 value_field,
             });
-        });
+        }
 
         // RTV Source Identifier
-        rtv_source_identifier.as_ref().map(|v| {
+        if let Some(v) = rtv_source_identifier.as_ref() {
             let value_field = v.to_bytes();
             meta_data_elements.push(MetaDataElement {
                 tag: Tag(0x0002, 0x0035),
@@ -245,10 +246,10 @@ impl FileMetaInformation {
                 value_length: value_field.len() as u32,
                 value_field,
             });
-        });
+        }
 
         // RTV Flow Identifier
-        rtv_flow_identifier.as_ref().map(|v| {
+        if let Some(v) = rtv_flow_identifier.as_ref() {
             let value_field = v.to_bytes();
             meta_data_elements.push(MetaDataElement {
                 tag: Tag(0x0002, 0x0036),
@@ -256,10 +257,10 @@ impl FileMetaInformation {
                 value_length: value_field.len() as u32,
                 value_field,
             });
-        });
+        }
 
         // RTV Flow RTP Sampling Rate
-        rtv_flow_rtp_sampling_rate.as_ref().map(|v| {
+        if let Some(v) = rtv_flow_rtp_sampling_rate.as_ref() {
             let value_field = v.to_bytes().to_vec();
             meta_data_elements.push(MetaDataElement {
                 tag: Tag(0x0002, 0x0037),
@@ -267,10 +268,10 @@ impl FileMetaInformation {
                 value_length: value_field.len() as u32,
                 value_field,
             });
-        });
+        }
 
         // RTV Flow Actual Frame Duration
-        rtv_flow_actual_frame_duration.as_ref().map(|v| {
+        if let Some(v) = rtv_flow_actual_frame_duration.as_ref() {
             let value_field = v.to_bytes().to_vec();
             meta_data_elements.push(MetaDataElement {
                 tag: Tag(0x0002, 0x0038),
@@ -278,10 +279,10 @@ impl FileMetaInformation {
                 value_length: value_field.len() as u32,
                 value_field,
             });
-        });
+        }
 
         // Private Information Creator UID
-        private_information_creator_uid.as_ref().map(|v| {
+        if let Some(v) = private_information_creator_uid.as_ref() {
             let value_field = v.to_bytes();
             meta_data_elements.push(MetaDataElement {
                 tag: Tag(0x0002, 0x0100),
@@ -289,10 +290,10 @@ impl FileMetaInformation {
                 value_length: value_field.len() as u32,
                 value_field,
             });
-        });
+        }
 
         // Private Information
-        private_information.as_ref().map(|v| {
+        if let Some(v) = private_information.as_ref() {
             let value_field = v.to_bytes();
             meta_data_elements.push(MetaDataElement {
                 tag: Tag(0x0002, 0x0102),
@@ -300,7 +301,7 @@ impl FileMetaInformation {
                 value_length: value_field.len() as u32,
                 value_field,
             });
-        });
+        }
 
         // File Meta Information Group Lengthをセットする
         let file_meta_information_group_length: u32 = meta_data_elements
@@ -431,7 +432,7 @@ impl FileMetaInformation {
     }
 
     pub fn size(&self) -> usize {
-        debug_assert!(self.meta_data_elements.len() > 0);
+        debug_assert!(!self.meta_data_elements.is_empty());
         debug_assert!(self.meta_data_elements[0].tag == Tag(0x0002, 0x0000));
 
         self.file_meta_information_group_length.value() as usize + self.meta_data_elements[0].size()
@@ -447,10 +448,10 @@ impl<'a> IntoIterator for &'a FileMetaInformation {
     }
 }
 
-impl Into<Vec<u8>> for FileMetaInformation {
-    fn into(self) -> Vec<u8> {
-        let mut bytes = Vec::with_capacity(self.size());
-        for element in self.meta_data_elements {
+impl From<FileMetaInformation> for Vec<u8> {
+    fn from(val: FileMetaInformation) -> Vec<u8> {
+        let mut bytes = Vec::with_capacity(val.size());
+        for element in val.meta_data_elements {
             bytes.append(&mut element.into());
         }
         bytes

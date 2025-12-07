@@ -23,7 +23,7 @@ impl File {
                             + meta_information.size() as u64;
         data_set.data_elements.iter_mut().for_each(|e| {
             e.position = position;
-            position += e.size() as u64;
+            position += e.size();
         });
 
         Self {
@@ -40,13 +40,15 @@ impl File {
     }
 }
 
-impl Into<Vec<u8>> for File {
-    fn into(self) -> Vec<u8> {
-        let mut buf = Vec::with_capacity(self.size());
+impl From<File> for Vec<u8> {
+    fn from(val: File) -> Vec<u8> {
+        let mut buf = Vec::with_capacity(val.size());
+
         buf.extend_from_slice(&[0u8; 128]); // Preamble
         buf.extend_from_slice(b"DICM"); // Prefix
-        buf.append(&mut self.meta_information.into()); // File Meta Information
-        buf.append(&mut self.data_set.into()); // Data Set
+        buf.append(&mut val.meta_information.into()); // File Meta Information
+        buf.append(&mut val.data_set.into()); // Data Set
+
         buf
     }
 }

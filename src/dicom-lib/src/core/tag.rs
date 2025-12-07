@@ -36,11 +36,11 @@ impl From<Tag> for Vec<u8> {
     }
 }
 
-impl Into<[u8; 4]> for Tag {
-    fn into(self) -> [u8; 4] {
+impl From<Tag> for [u8; 4] {
+    fn from(v: Tag) -> [u8; 4] {
         let mut bytes = [0u8; 4];
-        bytes[0..2].copy_from_slice(&self.group().to_le_bytes());
-        bytes[2..4].copy_from_slice(&self.element().to_le_bytes());
+        bytes[0..2].copy_from_slice(&v.group().to_le_bytes());
+        bytes[2..4].copy_from_slice(&v.element().to_le_bytes());
         bytes
     }
 }

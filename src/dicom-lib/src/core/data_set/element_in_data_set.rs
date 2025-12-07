@@ -28,8 +28,8 @@ impl ElementInDataSet {
     }
 }
 
-impl Into<Vec<u8>> for ElementInDataSet {
-    fn into(self) -> Vec<u8> {
-        self.element.into()
+impl From<ElementInDataSet> for Vec<u8> {
+    fn from(v: ElementInDataSet) -> Vec<u8> {
+        v.element.into()
     }
 }

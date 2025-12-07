@@ -104,12 +104,14 @@ impl Index<usize> for DataSet {
     }
 }
 
-impl Into<Vec<u8>> for DataSet {
-    fn into(self) -> Vec<u8> {
-        let mut bytes = Vec::with_capacity(self.size);
-        for element_in_data_set in self.data_elements {
+impl From<DataSet> for Vec<u8> {
+    fn from(v: DataSet) -> Vec<u8> {
+        let mut bytes = Vec::with_capacity(v.size);
+
+        for element_in_data_set in v.data_elements {
             bytes.append(&mut element_in_data_set.into());
         }
+
         bytes
     }
 }

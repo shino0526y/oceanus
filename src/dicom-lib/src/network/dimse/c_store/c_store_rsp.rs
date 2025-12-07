@@ -50,7 +50,7 @@ impl From<CStoreRsp> for CommandSet {
     fn from(val: CStoreRsp) -> Self {
         let affected_sop_class_uid = {
             let mut uid = val.affected_sop_class_uid;
-            if uid.len() % 2 != 0 {
+            if !uid.len().is_multiple_of(2) {
                 uid.push('\0');
             };
             Command {
@@ -76,7 +76,7 @@ impl From<CStoreRsp> for CommandSet {
         };
         let affected_sop_instance_uid = {
             let mut uid = val.affected_sop_instance_uid;
-            if uid.len() % 2 != 0 {
+            if !uid.len().is_multiple_of(2) {
                 uid.push('\0');
             };
             Command {
