@@ -9,7 +9,7 @@ pub struct DataElement {
     pub(crate) vr: Option<Vr>,
     pub(crate) value_length: u32,
     pub(crate) value_field: Vec<u8>,
-    pub(crate) size: u64,
+    pub(crate) size: usize,
 }
 
 impl DataElement {
@@ -29,7 +29,7 @@ impl DataElement {
         &self.value_field
     }
 
-    pub fn size(&self) -> u64 {
+    pub fn size(&self) -> usize {
         self.size
     }
 
@@ -69,7 +69,7 @@ impl DataElement {
                     }
                 }
             },
-        } + value_field.len() as u64;
+        } + value_field.len();
 
         Self {
             tag,
@@ -83,7 +83,7 @@ impl DataElement {
 
 impl From<DataElement> for Vec<u8> {
     fn from(mut v: DataElement) -> Vec<u8> {
-        let mut bytes = Vec::with_capacity(v.size as usize);
+        let mut bytes = Vec::with_capacity(v.size);
 
         match v.vr {
             None => {

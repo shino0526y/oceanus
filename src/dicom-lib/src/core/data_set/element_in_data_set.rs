@@ -23,7 +23,7 @@ impl ElementInDataSet {
         self.element.value_field()
     }
 
-    pub fn size(&self) -> u64 {
+    pub fn size(&self) -> usize {
         self.element.size()
     }
 }

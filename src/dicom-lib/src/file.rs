@@ -23,7 +23,7 @@ impl File {
                             + meta_information.size() as u64;
         data_set.data_elements.iter_mut().for_each(|e| {
             e.position = position;
-            position += e.size();
+            position += e.size() as u64;
         });
 
         Self {

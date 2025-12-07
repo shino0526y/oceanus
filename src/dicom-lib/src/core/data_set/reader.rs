@@ -174,7 +174,7 @@ fn read_element_implicit_vr_le(cur: &mut Cursor<&[u8]>) -> Result<ElementInDataS
             vr: None,
             value_length,
             value_field,
-            size,
+            size: size as usize,
         },
         position,
         parent_index: None, // 現時点では意味のない値
@@ -198,7 +198,7 @@ fn read_element_explicit_vr_le(
             vr,
             value_length,
             value_field,
-            size,
+            size: size as usize,
         },
         position,
         parent_index: None, // 現時点では意味のない値
@@ -230,7 +230,7 @@ fn read_child_element_in_encapsulated_pixel_data_explicit_vr_le(
             vr,
             value_length,
             value_field,
-            size,
+            size: size as usize,
         },
         position,
         parent_index: None, // 現時点では意味のない値

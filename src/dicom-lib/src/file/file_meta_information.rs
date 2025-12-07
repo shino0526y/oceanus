@@ -431,8 +431,7 @@ impl FileMetaInformation {
         debug_assert!(!self.meta_data_elements.is_empty());
         debug_assert!(self.meta_data_elements[0].tag == Tag(0x0002, 0x0000));
 
-        self.file_meta_information_group_length.value() as usize
-            + self.meta_data_elements[0].size() as usize
+        self.file_meta_information_group_length.value() as usize + self.meta_data_elements[0].size()
     }
 }
 
