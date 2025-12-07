@@ -1,13 +1,15 @@
-use super::encoding::Encoding;
+pub mod vr;
+
+pub use vr::Vr;
+
 use crate::core::tag::Tag;
 
 pub struct DataElement {
-    tag: Tag,
-    vr: Option<String>,
-    value_length: u32,
-    value_field: Vec<u8>,
-    encoding: Encoding,
-    size: u64,
+    pub(crate) tag: Tag,
+    pub(crate) vr: Option<Vr>,
+    pub(crate) value_length: u32,
+    pub(crate) value_field: Vec<u8>,
+    pub(crate) size: u64,
 }
 
 impl DataElement {
@@ -15,8 +17,8 @@ impl DataElement {
         self.tag
     }
 
-    pub fn vr(&self) -> Option<&str> {
-        self.vr.as_deref()
+    pub fn vr(&self) -> Option<Vr> {
+        self.vr
     }
 
     pub fn value_length(&self) -> u32 {
@@ -27,28 +29,53 @@ impl DataElement {
         &self.value_field
     }
 
-    pub fn encoding(&self) -> Encoding {
-        self.encoding
-    }
-
     pub fn size(&self) -> u64 {
         self.size
     }
 
-    pub(crate) fn new(
-        tag: Tag,
-        vr: Option<String>,
-        value_length: u32,
-        value_field: Vec<u8>,
-        encoding: Encoding,
-        size: u64,
-    ) -> Self {
+    pub fn new(tag: Tag, vr: Option<Vr>, value_length: u32, value_field: Vec<u8>) -> Self {
+        let size = 4 // Tag
+        + match vr {
+            None => 4, // Value Length
+            Some(vr) => {
+                2 // VR
+                + match vr {
+                    Vr::Ae
+                    | Vr::As
+                    | Vr::At
+                    | Vr::Cs
+                    | Vr::Da
+                    | Vr::Ds
+                    | Vr::Dt
+                    | Vr::Fl
+                    | Vr::Fd
+                    | Vr::Is
+                    | Vr::Lo
+                    | Vr::Lt
+                    | Vr::Pn
+                    | Vr::Sh
+                    | Vr::Sl
+                    | Vr::Ss
+                    | Vr::St
+                    | Vr::Tm
+                    | Vr::Ui
+                    | Vr::Ul
+                    | Vr::Us => {
+                        2 // Value Length
+                    }
+                    _ => {
+                        2 // Reserved
+                        + 4 // Value Length
+                    }
+                }
+            },
+        } + value_field.len() as u64;
+
         Self {
             tag,
             vr,
             value_length,
             value_field,
-            encoding,
             size,
         }
     }
@@ -58,26 +85,38 @@ impl From<DataElement> for Vec<u8> {
     fn from(mut v: DataElement) -> Vec<u8> {
         let mut bytes = Vec::with_capacity(v.size as usize);
 
-        match v.encoding {
-            Encoding::ImplicitVrLittleEndian => {
+        match v.vr {
+            None => {
                 bytes.extend_from_slice(&v.tag.into() as &[u8; 4]); // Tag
                 bytes.extend_from_slice(&v.value_length.to_le_bytes()); // Value Length
                 bytes.append(&mut v.value_field); // Value Field
             }
 
-            Encoding::ExplicitVrLittleEndian => {
-                debug_assert!(v.vr.is_some());
-                let vr = v.vr.as_ref().unwrap();
-                debug_assert!(vr.is_empty() || vr.len() == 2);
-
+            Some(vr) => {
                 bytes.extend_from_slice(&v.tag.into() as &[u8; 4]); // Tag
-                bytes.extend_from_slice(vr.as_bytes()); // VR
-                match vr.as_str() {
-                    "" => {
-                        bytes.extend_from_slice(&v.value_length.to_le_bytes()); // Value Length
-                    }
-                    "AE" | "AS" | "AT" | "CS" | "DA" | "DS" | "DT" | "FL" | "FD" | "IS" | "LO"
-                    | "LT" | "PN" | "SH" | "SL" | "SS" | "ST" | "TM" | "UI" | "UL" | "US" => {
+                bytes.extend_from_slice(&vr.into() as &[u8; 2]); // VR
+                match vr {
+                    Vr::Ae
+                    | Vr::As
+                    | Vr::At
+                    | Vr::Cs
+                    | Vr::Da
+                    | Vr::Ds
+                    | Vr::Dt
+                    | Vr::Fl
+                    | Vr::Fd
+                    | Vr::Is
+                    | Vr::Lo
+                    | Vr::Lt
+                    | Vr::Pn
+                    | Vr::Sh
+                    | Vr::Sl
+                    | Vr::Ss
+                    | Vr::St
+                    | Vr::Tm
+                    | Vr::Ui
+                    | Vr::Ul
+                    | Vr::Us => {
                         bytes.extend_from_slice(&(v.value_length as u16).to_le_bytes()); // Value Length
                     }
                     _ => {
@@ -87,8 +126,6 @@ impl From<DataElement> for Vec<u8> {
                 }
                 bytes.append(&mut v.value_field); // Value Field
             }
-
-            Encoding::ExplicitVrBigEndian => unimplemented!(),
         }
 
         bytes

@@ -1,13 +1,14 @@
 use crate::{
     core::{
         DataElement, Tag,
+        data_element::Vr,
         data_set::{
+            DataSetParseError,
             constants::{
                 ITEM_DELIMITATION_TAG, ITEM_TAG, PIXEL_DATA_TAG, SEQUENCE_DELIMITATION_TAG,
             },
             element_in_data_set::ElementInDataSet,
         },
-        encoding::Encoding,
     },
     dictionaries::tag_dictionary,
 };
@@ -18,7 +19,7 @@ pub fn read_explicit_vr_le(
     position: u64,
     length: u64,
     index_base: usize,
-) -> Result<Vec<ElementInDataSet>, Error> {
+) -> Result<Vec<ElementInDataSet>, DataSetParseError> {
     cur.seek(SeekFrom::Start(position))?;
 
     let mut elements = Vec::new();
@@ -28,7 +29,7 @@ pub fn read_explicit_vr_le(
         let element = read_element_explicit_vr_le(cur)?;
         let tag = element.tag();
         let value_length = element.value_length();
-        let is_un = element.vr() == Some("UN");
+        let is_un = element.vr() == Some(Vr::Un);
         elements.push(element);
 
         current_position = cur.position();
@@ -76,8 +77,8 @@ pub fn read_explicit_vr_le(
 
                     let tag = descendant_element_in_sequence.tag();
                     let value_length = descendant_element_in_sequence.value_length();
-                    let is_un_or_sq = descendant_element_in_sequence.vr() == Some("UN")
-                        || descendant_element_in_sequence.vr() == Some("SQ");
+                    let is_un_or_sq = descendant_element_in_sequence.vr() == Some(Vr::Un)
+                        || descendant_element_in_sequence.vr() == Some(Vr::Sq);
                     descendant_elements.push(descendant_element_in_sequence);
 
                     if value_length == 0xffffffff && is_un_or_sq {
@@ -109,8 +110,8 @@ pub fn read_explicit_vr_le(
                     let descendant_element_in_sequence = read_element_explicit_vr_le(cur)?;
                     let tag = descendant_element_in_sequence.tag();
                     let value_length = descendant_element_in_sequence.value_length();
-                    let is_un_or_sq = descendant_element_in_sequence.vr() == Some("UN")
-                        || descendant_element_in_sequence.vr() == Some("SQ");
+                    let is_un_or_sq = descendant_element_in_sequence.vr() == Some(Vr::Un)
+                        || descendant_element_in_sequence.vr() == Some(Vr::Sq);
                     descendant_elements.push(descendant_element_in_sequence);
 
                     current_position = cur.position();
@@ -165,28 +166,40 @@ fn read_element_implicit_vr_le(cur: &mut Cursor<&[u8]>) -> Result<ElementInDataS
     let tag = read_tag(cur)?;
     let value_length = read_value_length_implicit_vr_le(cur)?;
     let value_field = read_value_field(cur, tag, None, value_length)?;
-    let encoding = Encoding::ImplicitVrLittleEndian;
     let size = cur.position() - position;
 
     let element = ElementInDataSet {
-        element: DataElement::new(tag, None, value_length, value_field, encoding, size),
+        element: DataElement {
+            tag,
+            vr: None,
+            value_length,
+            value_field,
+            size,
+        },
         position,
         parent_index: None, // 現時点では意味のない値
     };
     Ok(element)
 }
 
-fn read_element_explicit_vr_le(cur: &mut Cursor<&[u8]>) -> Result<ElementInDataSet, Error> {
+fn read_element_explicit_vr_le(
+    cur: &mut Cursor<&[u8]>,
+) -> Result<ElementInDataSet, DataSetParseError> {
     let position = cur.position();
     let tag = read_tag(cur)?;
     let vr = read_vr(cur, tag)?;
-    let value_length = read_value_length_explicit_vr_le(cur, tag, &vr)?;
-    let value_field = read_value_field(cur, tag, Some(&vr), value_length)?;
-    let encoding = Encoding::ExplicitVrLittleEndian;
+    let value_length = read_value_length_explicit_vr_le(cur, &vr)?;
+    let value_field = read_value_field(cur, tag, vr, value_length)?;
     let size = cur.position() - position;
 
     let element = ElementInDataSet {
-        element: DataElement::new(tag, Some(vr), value_length, value_field, encoding, size),
+        element: DataElement {
+            tag,
+            vr,
+            value_length,
+            value_field,
+            size,
+        },
         position,
         parent_index: None, // 現時点では意味のない値
     };
@@ -198,7 +211,7 @@ fn read_child_element_in_encapsulated_pixel_data_explicit_vr_le(
 ) -> Result<ElementInDataSet, Error> {
     let position = cur.position();
     let tag = read_tag(cur)?;
-    let vr = String::new();
+    let vr = None;
     let value_length = {
         let mut buf = [0; 4];
         cur.read_exact(&mut buf)?;
@@ -209,11 +222,16 @@ fn read_child_element_in_encapsulated_pixel_data_explicit_vr_le(
         cur.read_exact(&mut buf)?;
         buf
     };
-    let encoding = Encoding::ExplicitVrLittleEndian;
     let size = cur.position() - position;
 
     let element = ElementInDataSet {
-        element: DataElement::new(tag, Some(vr), value_length, value_field, encoding, size),
+        element: DataElement {
+            tag,
+            vr,
+            value_length,
+            value_field,
+            size,
+        },
         position,
         parent_index: None, // 現時点では意味のない値
     };
@@ -232,14 +250,14 @@ fn read_tag(cur: &mut Cursor<&[u8]>) -> Result<Tag, Error> {
     Ok(Tag(tag_group, tag_element))
 }
 
-fn read_vr(cur: &mut Cursor<&[u8]>, tag: Tag) -> Result<String, Error> {
+fn read_vr(cur: &mut Cursor<&[u8]>, tag: Tag) -> Result<Option<Vr>, DataSetParseError> {
     match tag {
-        ITEM_TAG | ITEM_DELIMITATION_TAG | SEQUENCE_DELIMITATION_TAG => Ok(String::new()),
+        ITEM_TAG | ITEM_DELIMITATION_TAG | SEQUENCE_DELIMITATION_TAG => Ok(None),
         _ => {
             let mut buf = [0; 2];
             cur.read_exact(&mut buf)?;
-            let vr_string = String::from_utf8_lossy(&buf);
-            Ok(vr_string.to_string())
+            let vr = Vr::try_from(buf)?;
+            Ok(Some(vr))
         }
     }
 }
@@ -254,21 +272,39 @@ fn read_value_length_implicit_vr_le(cur: &mut Cursor<&[u8]>) -> Result<u32, Erro
 
 fn read_value_length_explicit_vr_le(
     cur: &mut Cursor<&[u8]>,
-    tag: Tag,
-    vr: &str,
+    vr: &Option<Vr>,
 ) -> Result<u32, Error> {
-    match tag {
-        ITEM_TAG | ITEM_DELIMITATION_TAG | SEQUENCE_DELIMITATION_TAG => {
+    match vr {
+        None => {
             let mut buf = [0; 4];
             cur.read_exact(&mut buf)?;
 
             let value_length = u32::from_le_bytes(buf);
             Ok(value_length)
         }
-        _ => {
+        Some(vr) => {
             match vr {
-                "AE" | "AS" | "AT" | "CS" | "DA" | "DS" | "DT" | "FD" | "FL" | "IS" | "LO"
-                | "LT" | "PN" | "SH" | "SL" | "SS" | "ST" | "TM" | "UI" | "UL" | "US" => {
+                Vr::Ae
+                | Vr::As
+                | Vr::At
+                | Vr::Cs
+                | Vr::Da
+                | Vr::Ds
+                | Vr::Dt
+                | Vr::Fd
+                | Vr::Fl
+                | Vr::Is
+                | Vr::Lo
+                | Vr::Lt
+                | Vr::Pn
+                | Vr::Sh
+                | Vr::Sl
+                | Vr::Ss
+                | Vr::St
+                | Vr::Tm
+                | Vr::Ui
+                | Vr::Ul
+                | Vr::Us => {
                     // 上記のVRである場合、読み取るサイズは2バイト。
                     let mut buf = [0; 2];
                     cur.read_exact(&mut buf)?;
@@ -276,8 +312,7 @@ fn read_value_length_explicit_vr_le(
                     let value_length = u16::from_le_bytes(buf) as u32;
                     Ok(value_length)
                 }
-                "OB" | "OD" | "OF" | "OL" | "OV" | "OW" | "SQ" | "SV" | "UC" | "UN" | "UR"
-                | "UT" | "UV" => {
+                _ => {
                     // 上記のVRである場合、読み取るサイズは4バイト。
                     // なお、ストリームには2バイトの予約済み領域が含まれるため、読み取り位置を2バイトずらす。
                     cur.seek_relative(2)?;
@@ -287,18 +322,6 @@ fn read_value_length_explicit_vr_le(
                     let value_length = u32::from_le_bytes(buf);
                     Ok(value_length)
                 }
-                _ => {
-                    // タグ辞書からVRを取得する。
-                    // VRを取得できない場合（プライベートもしくは不明なタグ）、そのVRを"UN"とみなす。
-                    let estimated_vr = match tag_dictionary::search(tag) {
-                        Some(item) => item.vr,
-                        None => "UN",
-                    };
-                    // 取得されたVRは"SS or US"といった複数のVRの文字列である可能性がある。
-                    // そのため、VR文字列の先頭2文字を切り出し、それをVRとして採用する。
-                    // 採用されたVRをこのメソッド自身に渡し、再帰呼び出しした結果を返す。
-                    read_value_length_explicit_vr_le(cur, tag, &estimated_vr[0..2])
-                }
             }
         }
     }
@@ -307,7 +330,7 @@ fn read_value_length_explicit_vr_le(
 fn read_value_field(
     cur: &mut Cursor<&[u8]>,
     tag: Tag,
-    vr: Option<&str>,
+    vr: Option<Vr>,
     value_length: u32,
 ) -> Result<Vec<u8>, Error> {
     if tag == ITEM_TAG || tag == ITEM_DELIMITATION_TAG || tag == SEQUENCE_DELIMITATION_TAG {
@@ -316,10 +339,14 @@ fn read_value_field(
 
     let vr = match vr {
         Some(vr) => vr,
-        None => tag_dictionary::search(tag).map_or("UN", |item| &item.vr[0..2]),
+        None => tag_dictionary::search(tag).map_or(Vr::Un, |item| {
+            let vr_bytes = item.vr.as_bytes();
+            Vr::try_from([vr_bytes[0], vr_bytes[1]])
+                .expect("標準DICOMタグ辞書は2バイト以上の長さで正しいタグを保有しているはず")
+        }),
     };
 
-    if vr == "SQ" || value_length == 0xffffffff {
+    if vr == Vr::Sq || value_length == 0xffffffff {
         Ok(Vec::new())
     } else {
         // 上記の条件に合致しなかった場合、データ要素は何かしらの値フィールドを持つ。
@@ -361,7 +388,7 @@ fn calculate_descendants_count(elements: &[ElementInDataSet], index: usize) -> u
         // 子孫要素の有無に関わらず、親要素自身は値フィールドを持たない。
         // そのため、値フィールドの長さが0でないデータ要素の子孫は存在しないことになる。
         return 0;
-    } else if elements[index].vr() != Some("SQ")
+    } else if elements[index].vr() != Some(Vr::Sq)
         && elements[index].tag() != ITEM_TAG
         && elements[index].value_length() != 0xffffffff
     {

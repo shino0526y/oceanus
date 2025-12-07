@@ -1,4 +1,4 @@
-mod data_element;
+pub mod data_element;
 mod data_set;
 mod encoding;
 mod tag;

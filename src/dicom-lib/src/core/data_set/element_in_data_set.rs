@@ -1,4 +1,4 @@
-use crate::core::{DataElement, tag::Tag};
+use crate::core::{DataElement, data_element::Vr, tag::Tag};
 
 pub(crate) struct ElementInDataSet {
     pub(crate) element: DataElement,
@@ -11,7 +11,7 @@ impl ElementInDataSet {
         self.element.tag()
     }
 
-    pub fn vr(&self) -> Option<&str> {
+    pub fn vr(&self) -> Option<Vr> {
         self.element.vr()
     }
 

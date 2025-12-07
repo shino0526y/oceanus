@@ -1,9 +1,6 @@
-mod meta_data_element;
-
-pub use meta_data_element::MetaDataElement;
-
 use crate::core::{
-    Tag,
+    DataElement, Tag,
+    data_element::Vr,
     value::value_representations::{
         Ob, ae::AeValue, fd::FdValue, sh::ShValue, ui::UiValue, ul::UlValue, ur::UrValue,
     },
@@ -12,7 +9,7 @@ use std::slice::Iter;
 
 // https://dicom.nema.org/medical/dicom/2025c/output/chtml/part10/chapter_7.html
 pub struct FileMetaInformation {
-    meta_data_elements: Vec<MetaDataElement>,
+    meta_data_elements: Vec<DataElement>,
 
     file_meta_information_group_length: UlValue,
     file_meta_information_version: Ob,
@@ -65,63 +62,62 @@ impl FileMetaInformation {
         let mut meta_data_elements = Vec::new();
 
         // File Meta Information Group Length
-        meta_data_elements.push(MetaDataElement {
-            tag: Tag(0x0002, 0x0000),
-            vr: "UL",
-            value_length: 4,
-            value_field: Vec::new(),
-        });
+        meta_data_elements.push(DataElement::new(
+            Tag(0x0002, 0x0000),
+            Some(Vr::Ul),
+            4,
+            Vec::new(),
+        ));
 
         // File Meta Information Version
-        meta_data_elements.push(MetaDataElement {
-            tag: Tag(0x0002, 0x0001),
-            vr: "OB",
-            value_length: 2u32,
-            value_field: vec![0x00, 0x01],
-        });
-
+        meta_data_elements.push(DataElement::new(
+            Tag(0x0002, 0x0001),
+            Some(Vr::Ob),
+            2u32,
+            vec![0x00, 0x01],
+        ));
         // Media Storage SOP Class UID
         {
             let value_field = media_storage_sop_class_uid.to_bytes();
-            meta_data_elements.push(MetaDataElement {
-                tag: Tag(0x0002, 0x0002),
-                vr: "UI",
-                value_length: value_field.len() as u32,
+            meta_data_elements.push(DataElement::new(
+                Tag(0x0002, 0x0002),
+                Some(Vr::Ui),
+                value_field.len() as u32,
                 value_field,
-            });
+            ));
         }
 
         // Media Storage SOP Instance UID
         {
             let value_field = media_storage_sop_instance_uid.to_bytes();
-            meta_data_elements.push(MetaDataElement {
-                tag: Tag(0x0002, 0x0003),
-                vr: "UI",
-                value_length: value_field.len() as u32,
+            meta_data_elements.push(DataElement::new(
+                Tag(0x0002, 0x0003),
+                Some(Vr::Ui),
+                value_field.len() as u32,
                 value_field,
-            });
+            ));
         }
 
         // Transfer Syntax UID
         {
             let value_field = transfer_syntax_uid.to_bytes();
-            meta_data_elements.push(MetaDataElement {
-                tag: Tag(0x0002, 0x0010),
-                vr: "UI",
-                value_length: value_field.len() as u32,
+            meta_data_elements.push(DataElement::new(
+                Tag(0x0002, 0x0010),
+                Some(Vr::Ui),
+                value_field.len() as u32,
                 value_field,
-            });
+            ));
         }
 
         // Implementation Class UID
         {
             let value_field = implementation_class_uid.to_bytes();
-            meta_data_elements.push(MetaDataElement {
-                tag: Tag(0x0002, 0x0012),
-                vr: "UI",
-                value_length: value_field.len() as u32,
+            meta_data_elements.push(DataElement::new(
+                Tag(0x0002, 0x0012),
+                Some(Vr::Ui),
+                value_field.len() as u32,
                 value_field,
-            });
+            ));
         }
 
         // Implementation Version Name
@@ -130,177 +126,177 @@ impl FileMetaInformation {
             if !value_field.len().is_multiple_of(2) {
                 value_field.push(b' ');
             }
-            meta_data_elements.push(MetaDataElement {
-                tag: Tag(0x0002, 0x0013),
-                vr: "SH",
-                value_length: value_field.len() as u32,
+            meta_data_elements.push(DataElement::new(
+                Tag(0x0002, 0x0013),
+                Some(Vr::Sh),
+                value_field.len() as u32,
                 value_field,
-            })
+            ));
         }
 
         // Source Application Entity Title
         if let Some(v) = source_application_entity_title.as_ref() {
             let value_field = v.to_bytes();
-            meta_data_elements.push(MetaDataElement {
-                tag: Tag(0x0002, 0x0016),
-                vr: "AE",
-                value_length: value_field.len() as u32,
+            meta_data_elements.push(DataElement::new(
+                Tag(0x0002, 0x0016),
+                Some(Vr::Ae),
+                value_field.len() as u32,
                 value_field,
-            });
+            ));
         }
 
         // Sending Application Entity Title
         if let Some(v) = sending_application_entity_title.as_ref() {
             let value_field = v.to_bytes();
-            meta_data_elements.push(MetaDataElement {
-                tag: Tag(0x0002, 0x0017),
-                vr: "AE",
-                value_length: value_field.len() as u32,
+            meta_data_elements.push(DataElement::new(
+                Tag(0x0002, 0x0017),
+                Some(Vr::Ae),
+                value_field.len() as u32,
                 value_field,
-            });
+            ));
         }
 
         // Receiving Application Entity Title
         if let Some(v) = receiving_application_entity_title.as_ref() {
             let value_field = v.to_bytes();
-            meta_data_elements.push(MetaDataElement {
-                tag: Tag(0x0002, 0x0018),
-                vr: "AE",
-                value_length: value_field.len() as u32,
+            meta_data_elements.push(DataElement::new(
+                Tag(0x0002, 0x0018),
+                Some(Vr::Ae),
+                value_field.len() as u32,
                 value_field,
-            });
+            ));
         }
 
         // Source Presentation Address
         if let Some(v) = source_presentation_address.as_ref() {
             let value_field = v.to_bytes();
-            meta_data_elements.push(MetaDataElement {
-                tag: Tag(0x0002, 0x0026),
-                vr: "UR",
-                value_length: value_field.len() as u32,
+            meta_data_elements.push(DataElement::new(
+                Tag(0x0002, 0x0026),
+                Some(Vr::Ur),
+                value_field.len() as u32,
                 value_field,
-            });
+            ));
         }
 
         // Sending Presentation Address
         if let Some(v) = sending_presentation_address.as_ref() {
             let value_field = v.to_bytes();
-            meta_data_elements.push(MetaDataElement {
-                tag: Tag(0x0002, 0x0027),
-                vr: "UR",
-                value_length: value_field.len() as u32,
+            meta_data_elements.push(DataElement::new(
+                Tag(0x0002, 0x0027),
+                Some(Vr::Ur),
+                value_field.len() as u32,
                 value_field,
-            });
+            ));
         }
 
         // Receiving Presentation Address
         if let Some(v) = receiving_presentation_address.as_ref() {
             let value_field = v.to_bytes();
-            meta_data_elements.push(MetaDataElement {
-                tag: Tag(0x0002, 0x0028),
-                vr: "UR",
-                value_length: value_field.len() as u32,
+            meta_data_elements.push(DataElement::new(
+                Tag(0x0002, 0x0028),
+                Some(Vr::Ur),
+                value_field.len() as u32,
                 value_field,
-            });
+            ));
         }
 
         // RTV Meta Information Version
         if let Some(v) = rtv_meta_information_version.as_ref() {
             let value_field = v.to_bytes();
-            meta_data_elements.push(MetaDataElement {
-                tag: Tag(0x0002, 0x0031),
-                vr: "OB",
-                value_length: value_field.len() as u32,
+            meta_data_elements.push(DataElement::new(
+                Tag(0x0002, 0x0031),
+                Some(Vr::Ob),
+                value_field.len() as u32,
                 value_field,
-            });
+            ));
         }
 
         // RTV Communication SOP Class UID
         if let Some(v) = rtv_communication_sop_class_uid.as_ref() {
             let value_field = v.to_bytes();
-            meta_data_elements.push(MetaDataElement {
-                tag: Tag(0x0002, 0x0032),
-                vr: "UI",
-                value_length: value_field.len() as u32,
+            meta_data_elements.push(DataElement::new(
+                Tag(0x0002, 0x0032),
+                Some(Vr::Ui),
+                value_field.len() as u32,
                 value_field,
-            });
+            ));
         }
 
         // RTV Communication SOP Instance UID
         if let Some(v) = rtv_communication_sop_instance_uid.as_ref() {
             let value_field = v.to_bytes();
-            meta_data_elements.push(MetaDataElement {
-                tag: Tag(0x0002, 0x0033),
-                vr: "UI",
-                value_length: value_field.len() as u32,
+            meta_data_elements.push(DataElement::new(
+                Tag(0x0002, 0x0033),
+                Some(Vr::Ui),
+                value_field.len() as u32,
                 value_field,
-            });
+            ));
         }
 
         // RTV Source Identifier
         if let Some(v) = rtv_source_identifier.as_ref() {
             let value_field = v.to_bytes();
-            meta_data_elements.push(MetaDataElement {
-                tag: Tag(0x0002, 0x0035),
-                vr: "OB",
-                value_length: value_field.len() as u32,
+            meta_data_elements.push(DataElement::new(
+                Tag(0x0002, 0x0035),
+                Some(Vr::Ob),
+                value_field.len() as u32,
                 value_field,
-            });
+            ));
         }
 
         // RTV Flow Identifier
         if let Some(v) = rtv_flow_identifier.as_ref() {
             let value_field = v.to_bytes();
-            meta_data_elements.push(MetaDataElement {
-                tag: Tag(0x0002, 0x0036),
-                vr: "OB",
-                value_length: value_field.len() as u32,
+            meta_data_elements.push(DataElement::new(
+                Tag(0x0002, 0x0036),
+                Some(Vr::Ob),
+                value_field.len() as u32,
                 value_field,
-            });
+            ));
         }
 
         // RTV Flow RTP Sampling Rate
         if let Some(v) = rtv_flow_rtp_sampling_rate.as_ref() {
             let value_field = v.to_bytes().to_vec();
-            meta_data_elements.push(MetaDataElement {
-                tag: Tag(0x0002, 0x0037),
-                vr: "UL",
-                value_length: value_field.len() as u32,
+            meta_data_elements.push(DataElement::new(
+                Tag(0x0002, 0x0037),
+                Some(Vr::Ul),
+                value_field.len() as u32,
                 value_field,
-            });
+            ));
         }
 
         // RTV Flow Actual Frame Duration
         if let Some(v) = rtv_flow_actual_frame_duration.as_ref() {
             let value_field = v.to_bytes().to_vec();
-            meta_data_elements.push(MetaDataElement {
-                tag: Tag(0x0002, 0x0038),
-                vr: "FD",
-                value_length: value_field.len() as u32,
+            meta_data_elements.push(DataElement::new(
+                Tag(0x0002, 0x0038),
+                Some(Vr::Fd),
+                value_field.len() as u32,
                 value_field,
-            });
+            ));
         }
 
         // Private Information Creator UID
         if let Some(v) = private_information_creator_uid.as_ref() {
             let value_field = v.to_bytes();
-            meta_data_elements.push(MetaDataElement {
-                tag: Tag(0x0002, 0x0100),
-                vr: "UI",
-                value_length: value_field.len() as u32,
+            meta_data_elements.push(DataElement::new(
+                Tag(0x0002, 0x0100),
+                Some(Vr::Ui),
+                value_field.len() as u32,
                 value_field,
-            });
+            ));
         }
 
         // Private Information
         if let Some(v) = private_information.as_ref() {
             let value_field = v.to_bytes();
-            meta_data_elements.push(MetaDataElement {
-                tag: Tag(0x0002, 0x0102),
-                vr: "OB",
-                value_length: value_field.len() as u32,
+            meta_data_elements.push(DataElement::new(
+                Tag(0x0002, 0x0102),
+                Some(Vr::Ob),
+                value_field.len() as u32,
                 value_field,
-            });
+            ));
         }
 
         // File Meta Information Group Lengthをセットする
@@ -339,7 +335,7 @@ impl FileMetaInformation {
         }
     }
 
-    pub fn iter(&self) -> Iter<'_, MetaDataElement> {
+    pub fn iter(&self) -> Iter<'_, DataElement> {
         self.meta_data_elements.iter()
     }
 
@@ -435,13 +431,14 @@ impl FileMetaInformation {
         debug_assert!(!self.meta_data_elements.is_empty());
         debug_assert!(self.meta_data_elements[0].tag == Tag(0x0002, 0x0000));
 
-        self.file_meta_information_group_length.value() as usize + self.meta_data_elements[0].size()
+        self.file_meta_information_group_length.value() as usize
+            + self.meta_data_elements[0].size() as usize
     }
 }
 
 impl<'a> IntoIterator for &'a FileMetaInformation {
-    type Item = &'a MetaDataElement;
-    type IntoIter = Iter<'a, MetaDataElement>;
+    type Item = &'a DataElement;
+    type IntoIter = Iter<'a, DataElement>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.meta_data_elements.iter()
