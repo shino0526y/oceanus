@@ -47,6 +47,8 @@ CREATE TABLE sop_instances(
     series_instance_uid varchar(64) NOT NULL REFERENCES series(instance_uid),
     class_uid varchar(64) NOT NULL DEFAULT '',
     instance_uid varchar(64) PRIMARY KEY,
+    transfer_syntax_uid varchar(64) NOT NULL,
+    size integer NOT NULL CHECK (size >= 0 AND size <= 2147483647),
     path text NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),

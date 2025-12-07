@@ -30,8 +30,15 @@ use tracing::{error, info};
 async fn save_instance_to_db(
     instance_info: &InstanceInfo,
     ae_title: &str,
+    transfer_syntax_uid: &str,
+    size: usize,
     path: &str,
 ) -> Result<(), String> {
+    assert!(
+        size <= 2147483647,
+        "サイズは0から2147483647の範囲である必要があります"
+    );
+
     let mut transaction = DB_POOL
         .get()
         .unwrap()
@@ -100,16 +107,20 @@ async fn save_instance_to_db(
 
     query!(
         r#"
-        INSERT INTO sop_instances (series_instance_uid, class_uid, instance_uid, path)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO sop_instances (series_instance_uid, class_uid, instance_uid, transfer_syntax_uid, size, path)
+        VALUES ($1, $2, $3, $4, $5, $6)
         ON CONFLICT (instance_uid) DO UPDATE SET
             series_instance_uid = EXCLUDED.series_instance_uid,
             class_uid = EXCLUDED.class_uid,
+            transfer_syntax_uid = EXCLUDED.transfer_syntax_uid,
+            size = EXCLUDED.size,
             path = EXCLUDED.path
         "#,
         instance_info.series.instance_uid,
         instance_info.sop_instance.class_uid,
         instance_info.sop_instance.instance_uid,
+        transfer_syntax_uid,
+        size as i32,
         path,
     )
     .execute(&mut *transaction)
@@ -241,15 +252,24 @@ pub async fn handle_c_store(
     };
 
     // データセットをファイルとして保存
-    let file = File::new(file_meta_info, data_set_received);
+    let file_buf: Vec<u8> = File::new(file_meta_info, data_set_received).into();
+    let file_size = file_buf.len();
     let path = generate_success_path(&instance_info);
-    if let Err(e) = save_file_to_storage(file.into(), &path).await {
+    if let Err(e) = save_file_to_storage(file_buf, &path).await {
         let path = path.to_str().unwrap();
         error!("データセットをファイルとして保存できませんでした (パス=\"{path}\"): {e}");
         return Err(Reason::ReasonNotSpecified);
     }
     // DBへ情報を保存
-    if let Err(e) = save_instance_to_db(&instance_info, ae_title, path.to_str().unwrap()).await {
+    if let Err(e) = save_instance_to_db(
+        &instance_info,
+        ae_title,
+        transfer_syntax_uid,
+        file_size,
+        path.to_str().unwrap(),
+    )
+    .await
+    {
         error!("データベースへの情報の保存に失敗しました: {e}");
         return Err(Reason::ReasonNotSpecified);
     }
