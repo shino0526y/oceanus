@@ -28,7 +28,7 @@ use dicom_lib::{
                     self, SourceAndReason,
                     source::{service_provider_acse, service_user},
                 },
-                a_associate_rq::{self},
+                a_associate_rq,
                 p_data_tf::PresentationDataValue,
             },
             receive_a_associate_rq, receive_a_release_rq, receive_p_data_tf, send_a_abort,
@@ -410,7 +410,7 @@ async fn handle_association_establishment(
                         TransferSyntax::new(IMPLICIT_VR_LITTLE_ENDIAN).unwrap(),
                     )
                 } else {
-                    let transfer_syntax_uid = IMPLICIT_VR_LITTLE_ENDIAN;
+                    let transfer_syntax_uid = choose_transfer_syntax_uid(presentation_context);
                     let pc = a_associate_ac::PresentationContext::new(
                         presentation_context.context_id(),
                         ResultReason::Acceptance,
@@ -506,6 +506,22 @@ fn is_transfer_syntax_supported(
                 .iter()
                 .any(|ts| ts.name() == *transfer_syntax)
         })
+}
+
+fn choose_transfer_syntax_uid(
+    presentation_context: &a_associate_rq::PresentationContext,
+) -> &'static str {
+    let transfer_syntax_uids = presentation_context
+        .transfer_syntaxes()
+        .iter()
+        .map(|uid| uid.name())
+        .collect::<Vec<_>>();
+    let uids = SUPPORTED_TRANSFER_SYNTAX_UIDS
+        .iter()
+        .filter(|uid| transfer_syntax_uids.contains(uid))
+        .collect::<Vec<&&str>>();
+
+    uids[0] // 最初にサポートされている転送構文を選択
 }
 
 async fn reject_association(
