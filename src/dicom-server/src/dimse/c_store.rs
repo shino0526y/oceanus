@@ -18,7 +18,8 @@ use dicom_lib::{
     file::{File, file_meta_information::FileMetaInformation},
     network::{
         CommandSet,
-        dimse::c_store::{CStoreRq, CStoreRsp, c_store_rsp::Status},
+        dimse::c_store::{CStoreRq, CStoreRsp},
+        service_class::storage::Status,
         upper_layer_protocol::pdu::a_abort::Reason,
     },
 };
@@ -281,7 +282,7 @@ pub async fn handle_c_store(
 
     let c_store_rsp = CStoreRsp::new(
         c_store_rq.message_id(),
-        Status::Success,
+        Status::Success.into(),
         affected_sop_class_uid,
         affected_sop_instance_uid,
     );

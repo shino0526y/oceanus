@@ -1,86 +1,127 @@
-/// C-STORE-RSPのステータスコード
+pub mod code;
+
+/// C-STOREのステータスコード
 ///
-/// ## 参考文献
-/// - <https://dicom.nema.org/medical/dicom/2025c/output/chtml/part04/sect_b.2.3.html>
+/// # 参考リンク
 /// - <https://dicom.nema.org/medical/dicom/2025c/output/chtml/part07/chapter_9.html#sect_9.1.1.1.9>
 /// - <https://dicom.nema.org/medical/dicom/2025c/output/chtml/part07/chapter_C.html>
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Status {
+    // ----- 成功 (0000) -----
     /// 成功 (0x0000)
     ///
-    /// 合成SOPインスタンスが正常に保存されたことを示します。
+    /// 複合SOPインスタンスが正常に保存されたことを示す。
     Success,
 
-    /// 警告（Service Class に固有; 0xb000..=0xbfff）
+    // ----- 警告 (0001 or 0Bxxx or 0107 or 0116) -----
+    /// 警告 (0x0001 or 0x0b000〜0x0bfff or 0x0107 or 0x0116)
     ///
-    /// 合成SOPインスタンスの保存は行われましたが、推定されるエラーが検出されたことを示します。
-    ///
-    /// 例: 0xb000（データ要素の強制変換）、0xb006（要素破棄）、0xb007（データセットとSOPクラスの不一致）など。
-    Warning(u16),
+    /// DIMSEサービスユーザーが複合SOPインスタンスを保存できたが、潜在的なエラーを検出したことを示す。
+    Warning(code::Warning),
 
-    /// 拒否: リソース不足（Service Class に固有; 0xa700..=0xa7ff）
+    // ----- 失敗 (Axxx or Cxxx or 01xx (0107と0116を除く) or 02xx) -----
+    /// 拒否: リソース不足 (0xa700〜0xa7ff)
     ///
-    /// 実行側 DIMSE サービスユーザがリソース不足のため、合成SOPインスタンスを保存できなかったことを示します。
-    RefusedOutOfResources(u16),
+    /// DIMSEサービスユーザーが複合SOPインスタンスの保存をリソース不足のために実行できなかったことを示す。
+    ///
+    /// なお、C-STOREを利用するStorage Service ClassとNon-Patient Object Storage Service Classがステータスの具体的な値を定めている。
+    /// - <https://dicom.nema.org/medical/dicom/2025c/output/chtml/part04/sect_B.2.3.html#table_B.2-1>
+    /// - <https://dicom.nema.org/medical/dicom/2025c/output/chtml/part04/sect_GG.4.2.html#table_GG.4-1>
+    OutOfResources(code::OutOfResources),
 
-    /// エラー: データセットがSOPクラスと一致しない（Service Class に固有; 0xa900..=0xa9ff）
+    /// エラー: データセットがSOPクラスと一致しない (0xa900〜0xa9ff)
     ///
-    /// データセットがSOPクラスに適合しないため、合成SOPインスタンスを保存できなかったことを示します。
-    ErrorDataSetMismatch(u16),
+    /// データセットがSOPクラスと一致しないため、DIMSEサービスユーザーが複合SOPインスタンスを保存できなかったことを示す。
+    ///
+    /// なお、C-STOREを利用するStorage Service ClassとNon-Patient Object Storage Service Classがステータスの具体的な値を定めている。
+    /// - <https://dicom.nema.org/medical/dicom/2025c/output/chtml/part04/sect_B.2.3.html#table_B.2-1>
+    /// - <https://dicom.nema.org/medical/dicom/2025c/output/chtml/part04/sect_GG.4.2.html#table_GG.4-1>
+    DataSetDoesNotMatchSopClass(code::DataSetDoesNotMatchSopClass),
 
-    /// エラー: 解釈不能（Service Class に固有; 0xc000..=0xcfff）
+    /// エラー: 理解できない (0xc000〜0xcfff)
     ///
-    /// 一部のデータ要素を理解できないため、合成SOPインスタンスを保存できなかったことを示します。
-    ErrorCannotUnderstand(u16),
+    /// DIMSEサービスユーザーが特定のデータ要素を理解できないため、複合SOPインスタンスを保存できなかったことを示す。
+    ///
+    /// なお、C-STOREを利用するStorage Service ClassとNon-Patient Object Storage Service Classがステータスの具体的な値を定めている。
+    /// - <https://dicom.nema.org/medical/dicom/2025c/output/chtml/part04/sect_B.2.3.html#table_B.2-1>
+    /// - <https://dicom.nema.org/medical/dicom/2025c/output/chtml/part04/sect_GG.4.2.html#table_GG.4-1>
+    CannotUnderstand(code::CannotUnderstand),
 
-    /// 拒否: SOPクラス非対応（0x0122）
+    /// 不正なSOPインスタンス (0x0117)
     ///
-    /// 実行側 DIMSE サービスユーザが、SOPクラスがサポートされていないため保存できなかったことを示します。
-    RefusedSopClassNotSupported,
-
-    /// 拒否: 非認可（0x0124）
-    ///
-    /// ピアの DIMSE サービスユーザに、合成SOPインスタンスの保存を行う権限がなかったことを示します。
-    RefusedNotAuthorized,
-
-    /// 無効なSOPインスタンス（0x0117）
-    ///
-    /// 指定された SOP Instance UID が UID 構成規則の違反を含意することを示します。
+    /// 指定されたSOPインスタンスUIDがUID構築ルールに違反していることを示す。
     InvalidSopInstance,
 
-    /// 重複呼び出し（0x0210）
+    /// 拒否: SOPクラスがサポートされていない (0x0122)
     ///
-    /// 指定された Message ID (0000,0110) が他の通知または操作に割り当て済みであることを示します。
+    /// SOPクラスがサポートされていないため、DIMSEサービスユーザーが複合SOPインスタンスを保存できなかったことを示す。
+    SopClassNotSupported,
+
+    /// 拒否: 認証されていない (0x0124)
+    ///
+    /// ピアDIMSEサービスユーザーが複合SOPインスタンスの保存を許可されていなかったことを示す。
+    NotAuthorized,
+
+    /// 重複した呼び出し (0x0210)
+    ///
+    /// 指定された`Message ID (0000,0110)`が他の通知または操作に割り当てられていることを示す。
     DuplicateInvocation,
 
-    /// 未認識の操作（0x0211）
+    /// 認識されない操作 (0x0211)
     ///
-    /// 操作が DIMSE サービスユーザ間で合意されているものではないことを示します。
+    /// DIMSEサービスユーザー間で合意された操作のいずれでもない操作が指定されたことを示す。
     UnrecognizedOperation,
 
-    /// 誤った引数（0x0212）
+    /// 誤った引数 (0x0212)
     ///
-    /// 供給されたパラメータの一つが、DIMSEサービスユーザ間のアソシエーションで使用合意されていないことを示します。
+    /// DIMSEサービスユーザー間のアソシエーションで使用することに合意されていないパラメータが指定されたことを示す。
     MistypedArgument,
+
+    /// その他の失敗
+    ///
+    /// 上記のどれにも当てはまらない失敗ステータス。将来の拡張のために予約されている。
+    OtherFailure(code::OtherFailure),
 }
 
 impl TryFrom<u16> for Status {
-    type Error = &'static str;
+    type Error = String;
 
     fn try_from(val: u16) -> Result<Self, Self::Error> {
         match val {
+            // 成功 (0000)
             0x0000 => Ok(Status::Success),
-            0x0122 => Ok(Status::RefusedSopClassNotSupported),
-            0x0124 => Ok(Status::RefusedNotAuthorized),
-            0x0117 => Ok(Status::InvalidSopInstance),
-            0x0210 => Ok(Status::DuplicateInvocation),
-            0x0211 => Ok(Status::UnrecognizedOperation),
-            0x0212 => Ok(Status::MistypedArgument),
-            c if (0xb000..=0xbfff).contains(&c) => Ok(Status::Warning(c)),
-            c if (0xa700..=0xa7ff).contains(&c) => Ok(Status::RefusedOutOfResources(c)),
-            c if (0xa900..=0xa9ff).contains(&c) => Ok(Status::ErrorDataSetMismatch(c)),
-            c if (0xc000..=0xcfff).contains(&c) => Ok(Status::ErrorCannotUnderstand(c)),
-            _ => Err("不正なステータスコードです"),
+            // 警告 (0001 or 0Bxxx or 0107 or 0116)
+            v if v == 0x0001 || (0xb000..=0xbfff).contains(&v) || v == 0x0107 || v == 0x0116 => {
+                Ok(Status::Warning(code::Warning(v)))
+            }
+            // 失敗 (Axxx or Cxxx or 01xx (0107と0116を除く) or 02xx)
+            v if (0xa000..=0xafff).contains(&v)
+                || (0xc000..=0xcfff).contains(&v)
+                || ((0x0100..=0x01ff).contains(&v) && v != 0x0107 && v != 0x0116)
+                || (0x0200..=0x02ff).contains(&v) =>
+            {
+                match v {
+                    0x0117 => Ok(Status::InvalidSopInstance),
+                    0x0122 => Ok(Status::SopClassNotSupported),
+                    0x0124 => Ok(Status::NotAuthorized),
+                    0x0210 => Ok(Status::DuplicateInvocation),
+                    0x0211 => Ok(Status::UnrecognizedOperation),
+                    0x0212 => Ok(Status::MistypedArgument),
+                    v if (0xa700..=0xa7ff).contains(&v) => {
+                        Ok(Status::OutOfResources(code::OutOfResources(v)))
+                    }
+                    v if (0xa900..=0xa9ff).contains(&v) => Ok(Status::DataSetDoesNotMatchSopClass(
+                        code::DataSetDoesNotMatchSopClass(v),
+                    )),
+                    v if (0xc000..=0xcfff).contains(&v) => {
+                        Ok(Status::CannotUnderstand(code::CannotUnderstand(v)))
+                    }
+                    _ => Ok(Status::OtherFailure(code::OtherFailure(v))),
+                }
+            }
+            _ => Err(format!(
+                "C-STOREで定義されていないステータスコードです (コード={val:#06X})"
+            )),
         }
     }
 }
@@ -89,16 +130,17 @@ impl From<Status> for u16 {
     fn from(val: Status) -> Self {
         match val {
             Status::Success => 0x0000,
-            Status::RefusedSopClassNotSupported => 0x0122,
-            Status::RefusedNotAuthorized => 0x0124,
+            Status::Warning(code) => code.0,
+            Status::OutOfResources(code) => code.0,
+            Status::DataSetDoesNotMatchSopClass(code) => code.0,
+            Status::CannotUnderstand(code) => code.0,
             Status::InvalidSopInstance => 0x0117,
+            Status::SopClassNotSupported => 0x0122,
+            Status::NotAuthorized => 0x0124,
             Status::DuplicateInvocation => 0x0210,
             Status::UnrecognizedOperation => 0x0211,
             Status::MistypedArgument => 0x0212,
-            Status::Warning(v) => v,
-            Status::RefusedOutOfResources(v) => v,
-            Status::ErrorDataSetMismatch(v) => v,
-            Status::ErrorCannotUnderstand(v) => v,
+            Status::OtherFailure(code) => code.0,
         }
     }
 }
