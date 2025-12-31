@@ -516,12 +516,15 @@ fn choose_transfer_syntax_uid(
         .iter()
         .map(|uid| uid.name())
         .collect::<Vec<_>>();
-    let uids = SUPPORTED_TRANSFER_SYNTAX_UIDS
-        .iter()
-        .filter(|uid| transfer_syntax_uids.contains(uid))
-        .collect::<Vec<&&str>>();
 
-    uids[0] // 最初にサポートされている転送構文を選択
+    // サポートされている転送構文UIDの中から最初にマッチしたもの（優先度が高いもの）を取り出す
+    let uid = SUPPORTED_TRANSFER_SYNTAX_UIDS
+        .iter()
+        .find(|uid| transfer_syntax_uids.contains(uid));
+
+    // 取り出した転送構文UIDを返す
+    // 見つからなかった場合はImplicit VR Little Endian（デフォルトの転送構文UID）を返す
+    uid.unwrap_or(&IMPLICIT_VR_LITTLE_ENDIAN)
 }
 
 async fn reject_association(
