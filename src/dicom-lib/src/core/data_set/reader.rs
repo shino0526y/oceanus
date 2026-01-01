@@ -3,7 +3,7 @@ use crate::{
         DataElement, Tag,
         data_element::Vr,
         data_set::{
-            DataSetParseError,
+            self,
             constants::{
                 ITEM_DELIMITATION_TAG, ITEM_TAG, PIXEL_DATA_TAG, SEQUENCE_DELIMITATION_TAG,
             },
@@ -19,7 +19,7 @@ pub fn read_explicit_vr_le(
     position: u64,
     length: u64,
     index_base: usize,
-) -> Result<Vec<ElementInDataSet>, DataSetParseError> {
+) -> Result<Vec<ElementInDataSet>, data_set::ParseError> {
     cur.seek(SeekFrom::Start(position))?;
 
     let mut elements = Vec::new();
@@ -184,7 +184,7 @@ fn read_element_implicit_vr_le(cur: &mut Cursor<&[u8]>) -> Result<ElementInDataS
 
 fn read_element_explicit_vr_le(
     cur: &mut Cursor<&[u8]>,
-) -> Result<ElementInDataSet, DataSetParseError> {
+) -> Result<ElementInDataSet, data_set::ParseError> {
     let position = cur.position();
     let tag = read_tag(cur)?;
     let vr = read_vr(cur, tag)?;
@@ -250,7 +250,7 @@ fn read_tag(cur: &mut Cursor<&[u8]>) -> Result<Tag, Error> {
     Ok(Tag(tag_group, tag_element))
 }
 
-fn read_vr(cur: &mut Cursor<&[u8]>, tag: Tag) -> Result<Option<Vr>, DataSetParseError> {
+fn read_vr(cur: &mut Cursor<&[u8]>, tag: Tag) -> Result<Option<Vr>, data_set::ParseError> {
     match tag {
         ITEM_TAG | ITEM_DELIMITATION_TAG | SEQUENCE_DELIMITATION_TAG => Ok(None),
         _ => {

@@ -17,7 +17,7 @@ pub struct DataSet {
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum DataSetParseError {
+pub enum ParseError {
     #[error("I/Oエラーが発生しました: {0}")]
     IoError(#[from] std::io::Error),
 
@@ -80,10 +80,7 @@ impl DataSet {
         self.data_elements.is_empty()
     }
 
-    pub fn from_cur(
-        cur: &mut Cursor<&[u8]>,
-        encoding: Encoding,
-    ) -> Result<Self, DataSetParseError> {
+    pub fn from_cur(cur: &mut Cursor<&[u8]>, encoding: Encoding) -> Result<Self, ParseError> {
         let len = cur.get_ref().len() as u64 - cur.position();
         let data_elements = match encoding {
             Encoding::ExplicitVrLittleEndian => {
