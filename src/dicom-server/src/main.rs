@@ -60,6 +60,7 @@ use tracing_subscriber::fmt::time::LocalTime;
 static CONNECTION_COUNTER: AtomicU64 = AtomicU64::new(1);
 static SERVER_AE_TITLE: OnceLock<String> = OnceLock::new();
 static DB_POOL: OnceLock<Pool<Postgres>> = OnceLock::new();
+static HOME_DIR: OnceLock<String> = OnceLock::new();
 static STORAGE_DIR: OnceLock<String> = OnceLock::new();
 
 #[tokio::main]
@@ -69,6 +70,7 @@ async fn main() {
     // コマンドライン引数の解析
     let args = Args::parse();
     SERVER_AE_TITLE.set(args.ae_title).unwrap();
+    HOME_DIR.set(args.home_dir).unwrap();
     STORAGE_DIR.set(args.storage_dir).unwrap();
 
     print!(

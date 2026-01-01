@@ -20,6 +20,10 @@ pub struct Args {
     #[arg(long = "log-level", env = "LOG_LEVEL", value_enum, default_value_t = LogLevel::Info)]
     pub log_level: LogLevel,
 
+    /// ホームディレクトリ
+    #[arg(long = "home-dir", env = "HOME_DIR")]
+    pub home_dir: String,
+
     /// ストレージディレクトリ
     #[arg(long = "storage-dir", env = "STORAGE_DIR")]
     pub storage_dir: String,

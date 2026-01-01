@@ -1,17 +1,15 @@
 mod instance_info;
 
+use super::save_file;
 use crate::{
     DB_POOL, SERVER_AE_TITLE, STORAGE_DIR,
-    constants::{EXPLICIT_VR_BIG_ENDIAN, IMPLEMENTATION_CLASS_UID, IMPLEMENTATION_VERSION_NAME},
-    dimse::{
-        DimseMessage, buf_to_command_set, buf_to_data_set, c_store::instance_info::InstanceInfo,
-    },
+    constants::{IMPLEMENTATION_CLASS_UID, IMPLEMENTATION_VERSION_NAME},
+    dimse::{DimseMessage, c_store::instance_info::InstanceInfo},
 };
 use chrono::Datelike;
 use dicom_lib::{
-    constants::transfer_syntax_uids::IMPLICIT_VR_LITTLE_ENDIAN,
     core::{
-        Encoding,
+        DataSet,
         value::value_representations::{ae::AeValue, sh::ShValue, ui::UiValue},
     },
     dictionaries::SOP_CLASS_DICTIONARY,
@@ -25,7 +23,6 @@ use dicom_lib::{
 };
 use sqlx::query;
 use std::path::{Path, PathBuf};
-use tokio::fs;
 use tracing::{error, info};
 
 async fn save_instance_to_db(
@@ -137,12 +134,12 @@ async fn save_instance_to_db(
 }
 
 pub async fn handle_c_store(
-    mut dimse_message: DimseMessage,
+    command_set: CommandSet,
+    data_set: DataSet,
+    dimse_message: DimseMessage,
     ae_title: &str,
 ) -> Result<(Vec<u8>, Vec<u8>), Reason> {
-    let command_set_received = buf_to_command_set(dimse_message.command_set_buf)?;
-
-    let c_store_rq = match CStoreRq::try_from(command_set_received) {
+    let c_store_rq = match CStoreRq::try_from(command_set) {
         Ok(val) => val,
         Err(e) => {
             error!("C-STORE-RQのパースに失敗しました: {e}");
@@ -160,45 +157,16 @@ pub async fn handle_c_store(
         ae_title,
     );
 
-    let data_set_received = {
-        let encoding = match transfer_syntax_uid {
-            IMPLICIT_VR_LITTLE_ENDIAN => Encoding::ImplicitVrLittleEndian,
-            EXPLICIT_VR_BIG_ENDIAN => {
-                unimplemented!("Explicit VR Big Endianのサポートは未実装です")
-            }
-            _ => {
-                // 暗黙的VRリトルエンディアンと明示的VRビッグエンディアン以外の転送構文に対応するエンコーディングは明示的VRリトルエンディアン
-                Encoding::ExplicitVrLittleEndian
-            }
-        };
-
-        match buf_to_data_set(dimse_message.data_set_buf.as_ref(), encoding) {
-            Ok(val) => val,
-            Err(e) => {
-                // ファイルに保存
-                let mut buf: Vec<u8> = file_meta_info.into();
-                buf.append(&mut dimse_message.data_set_buf);
-                let path = generate_failure_path(affected_sop_instance_uid);
-                save_file_to_storage(buf, &path).await.unwrap_or_else(|e| {
-                    let path = path.to_str().unwrap();
-                    error!("パースに失敗したデータセットをファイルとして保存できませんでした (パス=\"{path}\")): {e}");
-                });
-
-                return Err(e);
-            }
-        }
-    };
-
     let instance_info = {
-        let info = InstanceInfo::from_data_set(&data_set_received);
+        let info = InstanceInfo::from_data_set(&data_set);
         if let Err(e) = &info {
             error!("データセットからのインスタンス情報の抽出に失敗しました: {e}");
 
             // データセットをファイルとして保存
-            let file = File::new(file_meta_info, data_set_received);
-            let path = generate_failure_path(affected_sop_instance_uid);
-            if let Err(e) = save_file_to_storage(file.into(), &path).await {
-                let path = path.to_str().unwrap();
+            let file = File::new(file_meta_info, data_set);
+            let path_buf = generate_failure_path(affected_sop_instance_uid);
+            if let Err(e) = save_file(file.into(), &path_buf).await {
+                let path = path_buf.to_str().unwrap();
                 error!(
                     "インスタンス情報の抽出に失敗したデータセットをファイルとして保存できませんでした (パス=\"{path}\")): {e}"
                 );
@@ -253,11 +221,11 @@ pub async fn handle_c_store(
     };
 
     // データセットをファイルとして保存
-    let file_buf: Vec<u8> = File::new(file_meta_info, data_set_received).into();
+    let file_buf: Vec<u8> = File::new(file_meta_info, data_set).into();
     let file_size = file_buf.len();
-    let path = generate_success_path(&instance_info);
-    if let Err(e) = save_file_to_storage(file_buf, &path).await {
-        let path = path.to_str().unwrap();
+    let path_buf = generate_success_path(&instance_info);
+    if let Err(e) = save_file(file_buf, &path_buf).await {
+        let path = path_buf.to_str().unwrap();
         error!("データセットをファイルとして保存できませんでした (パス=\"{path}\"): {e}");
         return Err(Reason::ReasonNotSpecified);
     }
@@ -267,7 +235,7 @@ pub async fn handle_c_store(
         ae_title,
         transfer_syntax_uid,
         file_size,
-        path.to_str().unwrap(),
+        path_buf.to_str().unwrap(),
     )
     .await
     {
@@ -343,26 +311,5 @@ fn generate_success_path(info: &InstanceInfo) -> PathBuf {
 fn generate_failure_path(affected_sop_instance_uid: &str) -> PathBuf {
     Path::new(STORAGE_DIR.get().unwrap())
         .join("failures")
-        .join(format!("{}.dcm", affected_sop_instance_uid))
-}
-
-async fn save_file_to_storage(buf: Vec<u8>, path: &Path) -> Result<(), String> {
-    // ディレクトリが存在しない場合は作成
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).await.map_err(|e| {
-            format!(
-                "ディレクトリの作成に失敗しました (パス=\"{}\"): {e}",
-                parent.to_str().unwrap()
-            )
-        })?;
-    }
-
-    // ファイルに書き込み
-    fs::write(path, buf).await.map_err(|e| {
-        format!(
-            "ファイルの書き込みに失敗しました (パス=\"{}\"): {e}",
-            path.to_str().unwrap()
-        )
-    })?;
-    Ok(())
+        .join(format!("{affected_sop_instance_uid}.dcm"))
 }

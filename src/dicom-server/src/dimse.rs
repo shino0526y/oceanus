@@ -1,20 +1,28 @@
 pub mod c_echo;
 pub mod c_store;
 
-use crate::dimse::c_echo::handle_c_echo;
 use dicom_lib::{
-    constants::sop_class_uids::{
-        COMPUTED_RADIOGRAPHY_IMAGE_STORAGE, CT_IMAGE_STORAGE,
-        DIGITAL_MAMMOGRAPHY_X_RAY_IMAGE_STORAGE_FOR_PRESENTATION,
-        DIGITAL_X_RAY_IMAGE_STORAGE_FOR_PRESENTATION, MR_IMAGE_STORAGE,
-        SECONDARY_CAPTURE_IMAGE_STORAGE, VERIFICATION, X_RAY_ANGIOGRAPHIC_IMAGE_STORAGE,
-        X_RAY_RADIOFLUOROSCOPIC_IMAGE_STORAGE,
+    constants::{
+        sop_class_uids::{
+            COMPUTED_RADIOGRAPHY_IMAGE_STORAGE, CT_IMAGE_STORAGE,
+            DIGITAL_MAMMOGRAPHY_X_RAY_IMAGE_STORAGE_FOR_PRESENTATION,
+            DIGITAL_X_RAY_IMAGE_STORAGE_FOR_PRESENTATION, MR_IMAGE_STORAGE,
+            SECONDARY_CAPTURE_IMAGE_STORAGE, VERIFICATION, X_RAY_ANGIOGRAPHIC_IMAGE_STORAGE,
+            X_RAY_RADIOFLUOROSCOPIC_IMAGE_STORAGE,
+        },
+        transfer_syntax_uids::IMPLICIT_VR_LITTLE_ENDIAN,
     },
     core::{DataSet, Encoding},
     network::{CommandSet, upper_layer_protocol::pdu::a_abort::Reason},
 };
-use std::io::Cursor;
-use tracing::error;
+use std::{
+    io::Cursor,
+    path::{Path, PathBuf},
+};
+use tokio::fs;
+use tracing::{error, info};
+
+use crate::{HOME_DIR, constants::EXPLICIT_VR_BIG_ENDIAN};
 
 pub struct DimseMessage {
     pub context_id: u8,
@@ -26,8 +34,9 @@ pub struct DimseMessage {
     pub is_data_received: bool,
 }
 
-fn buf_to_command_set(command_set_buf: Vec<u8>) -> Result<CommandSet, Reason> {
-    match CommandSet::try_from(command_set_buf) {
+fn buf_to_command_set(buf: &[u8]) -> Result<CommandSet, Reason> {
+    let mut cur = Cursor::new(buf);
+    match CommandSet::from_cur(&mut cur) {
         Ok(val) => Ok(val),
         Err(e) => {
             error!("コマンドセットのパースに失敗しました: {e}");
@@ -51,8 +60,35 @@ pub async fn handle_dimse_message(
     dimse_message: DimseMessage,
     ae_title: &str,
 ) -> Result<(Vec<u8>, Vec<u8>), Reason> {
+    let command_set = match buf_to_command_set(&dimse_message.command_set_buf) {
+        Ok(val) => val,
+        Err(e) => {
+            match dump(
+                dimse_message.command_set_buf,
+                ae_title,
+                DumpType::CommandSet,
+            )
+            .await
+            {
+                Ok(path) => {
+                    info!(
+                        "パースに失敗したコマンドセットをダンプファイルとして保存しました: {}",
+                        path.to_str().unwrap()
+                    );
+                }
+                Err(e) => {
+                    error!(
+                        "パースに失敗したコマンドセットをダンプファイルとして保存できませんでした: {}",
+                        e
+                    );
+                }
+            }
+            return Err(e);
+        }
+    };
+
     match dimse_message.abstract_syntax_uid.as_str() {
-        VERIFICATION => handle_c_echo(dimse_message),
+        VERIFICATION => c_echo::handle_c_echo(command_set, dimse_message.context_id),
         COMPUTED_RADIOGRAPHY_IMAGE_STORAGE
         | DIGITAL_X_RAY_IMAGE_STORAGE_FOR_PRESENTATION
         | DIGITAL_MAMMOGRAPHY_X_RAY_IMAGE_STORAGE_FOR_PRESENTATION
@@ -61,8 +97,81 @@ pub async fn handle_dimse_message(
         | SECONDARY_CAPTURE_IMAGE_STORAGE
         | X_RAY_ANGIOGRAPHIC_IMAGE_STORAGE
         | X_RAY_RADIOFLUOROSCOPIC_IMAGE_STORAGE => {
-            c_store::handle_c_store(dimse_message, ae_title).await
+            let data_set = {
+                let encoding = match dimse_message.transfer_syntax_uid {
+                    IMPLICIT_VR_LITTLE_ENDIAN => Encoding::ImplicitVrLittleEndian,
+                    EXPLICIT_VR_BIG_ENDIAN => {
+                        unimplemented!("Explicit VR Big Endianのサポートは未実装です")
+                    }
+                    _ => {
+                        // 暗黙的VRリトルエンディアンと明示的VRビッグエンディアン以外の転送構文に対応するエンコーディングは明示的VRリトルエンディアン
+                        Encoding::ExplicitVrLittleEndian
+                    }
+                };
+
+                match buf_to_data_set(dimse_message.data_set_buf.as_ref(), encoding) {
+                    Ok(val) => val,
+                    Err(e) => {
+                        match dump(dimse_message.data_set_buf, ae_title, DumpType::DataSet).await {
+                            Ok(path) => {
+                                info!(
+                                    "パースに失敗したデータセットをダンプファイルとして保存しました: {}",
+                                    path.to_str().unwrap()
+                                );
+                            }
+                            Err(e) => {
+                                error!(
+                                    "パースに失敗したデータセットをダンプファイルとして保存できませんでした: {}",
+                                    e
+                                );
+                            }
+                        }
+                        return Err(e);
+                    }
+                }
+            };
+            c_store::handle_c_store(command_set, data_set, dimse_message, ae_title).await
         }
         _ => unreachable!(),
     }
+}
+
+enum DumpType {
+    CommandSet,
+    DataSet,
+}
+
+async fn dump(buf: Vec<u8>, ae_title: &str, dump_type: DumpType) -> Result<PathBuf, String> {
+    let now = chrono::Utc::now().format("%Y%m%d%H%M%S%6f").to_string();
+    let dump_type = match dump_type {
+        DumpType::CommandSet => "commandset",
+        DumpType::DataSet => "dataset",
+    };
+
+    let path_buf = Path::new(HOME_DIR.get().unwrap())
+        .join("dump")
+        .join(format!("{now}_{ae_title}_{dump_type}.dump"));
+
+    save_file(buf, &path_buf).await?;
+    Ok(path_buf)
+}
+
+async fn save_file(buf: Vec<u8>, path: &Path) -> Result<(), String> {
+    // ディレクトリが存在しない場合は作成
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).await.map_err(|e| {
+            format!(
+                "ディレクトリの作成に失敗しました (パス=\"{}\"): {e}",
+                parent.to_str().unwrap()
+            )
+        })?;
+    }
+
+    fs::write(path, buf).await.map_err(|e| {
+        format!(
+            "ファイルの書き込みに失敗しました (パス=\"{}\"): {e}",
+            path.to_str().unwrap()
+        )
+    })?;
+    Ok(())
 }

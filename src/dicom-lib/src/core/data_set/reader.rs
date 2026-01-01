@@ -163,7 +163,7 @@ pub fn read_implicit_vr_le(
 
 fn read_element_implicit_vr_le(cur: &mut Cursor<&[u8]>) -> Result<ElementInDataSet, Error> {
     let position = cur.position();
-    let tag = read_tag(cur)?;
+    let tag = Tag::from_cur(cur)?;
     let value_length = read_value_length_implicit_vr_le(cur)?;
     let value_field = read_value_field(cur, tag, None, value_length)?;
     let size = cur.position() - position;
@@ -186,7 +186,7 @@ fn read_element_explicit_vr_le(
     cur: &mut Cursor<&[u8]>,
 ) -> Result<ElementInDataSet, data_set::ParseError> {
     let position = cur.position();
-    let tag = read_tag(cur)?;
+    let tag = Tag::from_cur(cur)?;
     let vr = read_vr(cur, tag)?;
     let value_length = read_value_length_explicit_vr_le(cur, &vr)?;
     let value_field = read_value_field(cur, tag, vr, value_length)?;
@@ -210,7 +210,7 @@ fn read_child_element_in_encapsulated_pixel_data_explicit_vr_le(
     cur: &mut Cursor<&[u8]>,
 ) -> Result<ElementInDataSet, Error> {
     let position = cur.position();
-    let tag = read_tag(cur)?;
+    let tag = Tag::from_cur(cur)?;
     let vr = None;
     let value_length = {
         let mut buf = [0; 4];
@@ -236,18 +236,6 @@ fn read_child_element_in_encapsulated_pixel_data_explicit_vr_le(
         parent_index: None, // 現時点では意味のない値
     };
     Ok(element)
-}
-
-fn read_tag(cur: &mut Cursor<&[u8]>) -> Result<Tag, Error> {
-    let mut tag_group_buf = [0; 2];
-    cur.read_exact(&mut tag_group_buf)?;
-
-    let mut tag_element_buf = [0; 2];
-    cur.read_exact(&mut tag_element_buf)?;
-
-    let tag_group = u16::from_le_bytes(tag_group_buf);
-    let tag_element = u16::from_le_bytes(tag_element_buf);
-    Ok(Tag(tag_group, tag_element))
 }
 
 fn read_vr(cur: &mut Cursor<&[u8]>, tag: Tag) -> Result<Option<Vr>, data_set::ParseError> {

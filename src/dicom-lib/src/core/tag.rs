@@ -1,4 +1,7 @@
-use std::fmt::{Display, Formatter};
+use std::{
+    fmt::{Display, Formatter},
+    io::{Cursor, Read},
+};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Tag(pub u16, pub u16);
@@ -10,6 +13,21 @@ impl Tag {
 
     pub fn element(self) -> u16 {
         self.1
+    }
+
+    pub(crate) fn from_cur(cur: &mut Cursor<&[u8]>) -> std::io::Result<Self> {
+        let tag_group = {
+            let mut buf = [0u8; 2];
+            cur.read_exact(&mut buf)?;
+            u16::from_le_bytes(buf)
+        };
+        let tag_element = {
+            let mut buf = [0u8; 2];
+            cur.read_exact(&mut buf)?;
+            u16::from_le_bytes(buf)
+        };
+
+        Ok(Tag(tag_group, tag_element))
     }
 }
 
