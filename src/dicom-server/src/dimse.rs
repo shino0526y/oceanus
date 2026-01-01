@@ -72,7 +72,7 @@ pub async fn handle_dimse_message(
             {
                 Ok(path) => {
                     info!(
-                        "パースに失敗したコマンドセットをダンプファイルとして保存しました: {}",
+                        "パースに失敗したコマンドセットをダンプファイルとして保存しました (パス=\"{}\")",
                         path.to_str().unwrap()
                     );
                 }
@@ -115,7 +115,7 @@ pub async fn handle_dimse_message(
                         match dump(dimse_message.data_set_buf, ae_title, DumpType::DataSet).await {
                             Ok(path) => {
                                 info!(
-                                    "パースに失敗したデータセットをダンプファイルとして保存しました: {}",
+                                    "パースに失敗したデータセットをダンプファイルとして保存しました (パス=\"{}\")",
                                     path.to_str().unwrap()
                                 );
                             }
