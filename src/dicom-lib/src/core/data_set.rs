@@ -80,7 +80,7 @@ impl DataSet {
         self.data_elements.is_empty()
     }
 
-    pub fn from_cur(cur: &mut Cursor<&[u8]>, encoding: Encoding) -> Result<Self, ParseError> {
+    pub fn read_from_cur(cur: &mut Cursor<&[u8]>, encoding: Encoding) -> Result<Self, ParseError> {
         let len = cur.get_ref().len() as u64 - cur.position();
         let data_elements = match encoding {
             Encoding::ExplicitVrLittleEndian => {
@@ -143,7 +143,7 @@ mod tests {
     use tokio::{fs, io::AsyncSeekExt};
 
     #[tokio::test]
-    async fn test_from_cur() {
+    async fn test_read_from_cur() {
         #[rustfmt::skip]
         let expected = vec![
             (0, 0x00000160, Tag(0x0008, 0x0005), Some(Vr::Cs), 10, 10, 18, None, 0, 0),
@@ -233,7 +233,7 @@ mod tests {
             let buf = fs::read("../../data/dicom/GENECG").await.unwrap();
             let mut cur = Cursor::new(buf.as_ref());
             cur.seek(SeekFrom::Current(0x00000160)).await.unwrap();
-            DataSet::from_cur(&mut cur, Encoding::ExplicitVrLittleEndian).unwrap()
+            DataSet::read_from_cur(&mut cur, Encoding::ExplicitVrLittleEndian).unwrap()
         };
         let actual = {
             data_set

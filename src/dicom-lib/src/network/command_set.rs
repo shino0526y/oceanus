@@ -57,7 +57,7 @@ impl CommandSet {
         Ok(Self { size, commands })
     }
 
-    pub fn from_cur(cur: &mut Cursor<&[u8]>) -> Result<Self, ParseError> {
+    pub fn read_from_cur(cur: &mut Cursor<&[u8]>) -> Result<Self, ParseError> {
         let mut commands = vec![];
 
         let size = cur.get_ref().len();

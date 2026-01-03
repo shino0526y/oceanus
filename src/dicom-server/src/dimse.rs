@@ -35,7 +35,7 @@ pub struct DimseMessage {
 
 fn parse_command_set(buf: &[u8]) -> Result<CommandSet, Reason> {
     let mut cur = Cursor::new(buf);
-    match CommandSet::from_cur(&mut cur) {
+    match CommandSet::read_from_cur(&mut cur) {
         Ok(val) => Ok(val),
         Err(e) => {
             error!("コマンドセットのパースに失敗しました: {e}");
@@ -46,7 +46,7 @@ fn parse_command_set(buf: &[u8]) -> Result<CommandSet, Reason> {
 
 fn parse_data_set(buf: &[u8], encoding: Encoding) -> Result<DataSet, Reason> {
     let mut cur = Cursor::new(buf);
-    match DataSet::from_cur(&mut cur, encoding) {
+    match DataSet::read_from_cur(&mut cur, encoding) {
         Ok(val) => Ok(val),
         Err(e) => {
             error!("データセットのパースに失敗しました: {e}");
