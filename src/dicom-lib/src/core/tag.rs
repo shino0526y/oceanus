@@ -1,7 +1,10 @@
-use std::fmt::{Display, Formatter};
+use std::{
+    fmt::{Display, Formatter},
+    io::Read,
+};
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Tag(u16, u16);
+pub struct Tag(pub u16, pub u16);
 
 impl Tag {
     pub fn group(self) -> u16 {
@@ -12,8 +15,22 @@ impl Tag {
         self.1
     }
 
-    pub fn new(group: u16, element: u16) -> Self {
-        Tag(group, element)
+    pub(crate) fn read_from<R>(r: &mut R) -> std::io::Result<Self>
+    where
+        R: Read,
+    {
+        let tag_group = {
+            let mut buf = [0u8; 2];
+            r.read_exact(&mut buf)?;
+            u16::from_le_bytes(buf)
+        };
+        let tag_element = {
+            let mut buf = [0u8; 2];
+            r.read_exact(&mut buf)?;
+            u16::from_le_bytes(buf)
+        };
+
+        Ok(Tag(tag_group, tag_element))
     }
 }
 
@@ -36,6 +53,15 @@ impl From<Tag> for Vec<u8> {
         bytes.extend(tag.group().to_le_bytes());
         bytes.extend(tag.element().to_le_bytes());
 
+        bytes
+    }
+}
+
+impl From<Tag> for [u8; 4] {
+    fn from(v: Tag) -> [u8; 4] {
+        let mut bytes = [0u8; 4];
+        bytes[0..2].copy_from_slice(&v.group().to_le_bytes());
+        bytes[2..4].copy_from_slice(&v.element().to_le_bytes());
         bytes
     }
 }

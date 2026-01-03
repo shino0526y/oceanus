@@ -1,8 +1,13 @@
-use crate::dimse::{DimseHandler, c_echo::handle_c_echo};
 use dicom_lib::constants::{
-    sop_class_uids::VERIFICATION, transfer_syntax_uids::IMPLICIT_VR_LITTLE_ENDIAN,
+    sop_class_uids::{
+        COMPUTED_RADIOGRAPHY_IMAGE_STORAGE, CT_IMAGE_STORAGE,
+        DIGITAL_MAMMOGRAPHY_X_RAY_IMAGE_STORAGE_FOR_PRESENTATION,
+        DIGITAL_X_RAY_IMAGE_STORAGE_FOR_PRESENTATION, MR_IMAGE_STORAGE,
+        SECONDARY_CAPTURE_IMAGE_STORAGE, VERIFICATION, X_RAY_ANGIOGRAPHIC_IMAGE_STORAGE,
+        X_RAY_RADIOFLUOROSCOPIC_IMAGE_STORAGE,
+    },
+    transfer_syntax_uids::{EXPLICIT_VR_LITTLE_ENDIAN, IMPLICIT_VR_LITTLE_ENDIAN},
 };
-use phf::{Map, phf_map};
 
 // <root>.<app>.<type>.<version>
 // root: 1.3.6.1.4.1.64183 (https://www.iana.org/assignments/enterprise-numbers/)
@@ -15,10 +20,18 @@ pub const IMPLEMENTATION_VERSION_NAME: &str = concat!("OCEANUS_", env!("CARGO_PK
 
 pub const MAXIMUM_LENGTH: u32 = 0; // 制限なし
 
-pub const SUPPORTED_ABSTRACT_SYNTAX_UIDS: &[&str] = &[VERIFICATION];
-pub const SUPPORTED_TRANSFER_SYNTAX_UIDS: &[&str] = &[IMPLICIT_VR_LITTLE_ENDIAN];
-
-pub const ABSTRACT_SYNTAX_UID_TO_HANDLER: Map<&'static str, DimseHandler> = phf_map! {
-    // NOTE: phf_mapはキーとしてリテラルしか扱えない
-    "1.2.840.10008.1.1" => handle_c_echo // Verification
-};
+pub const SUPPORTED_ABSTRACT_SYNTAX_UIDS: &[&str] = &[
+    // Verification
+    VERIFICATION,
+    // Storage
+    COMPUTED_RADIOGRAPHY_IMAGE_STORAGE,
+    DIGITAL_X_RAY_IMAGE_STORAGE_FOR_PRESENTATION,
+    DIGITAL_MAMMOGRAPHY_X_RAY_IMAGE_STORAGE_FOR_PRESENTATION,
+    CT_IMAGE_STORAGE,
+    MR_IMAGE_STORAGE,
+    SECONDARY_CAPTURE_IMAGE_STORAGE,
+    X_RAY_ANGIOGRAPHIC_IMAGE_STORAGE,
+    X_RAY_RADIOFLUOROSCOPIC_IMAGE_STORAGE,
+];
+pub const SUPPORTED_TRANSFER_SYNTAX_UIDS: &[&str] = // NOTE: 順序は優先度順
+    &[EXPLICIT_VR_LITTLE_ENDIAN, IMPLICIT_VR_LITTLE_ENDIAN];

@@ -4,13 +4,24 @@ pub mod utils;
 pub use command::Command;
 
 use crate::core::Tag;
-use std::{ops::Index, slice::Iter};
-
-const INVALID_BUFFER_LENGTH_ERROR_MESSAGE: &str = "バッファの長さが不正です";
+use std::{
+    io::{Cursor, Read},
+    ops::Index,
+    slice::Iter,
+};
 
 pub struct CommandSet {
     pub(crate) size: usize,
     pub(crate) commands: Vec<Command>,
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum ParseError {
+    #[error("I/Oエラーが発生しました: {0}")]
+    IoError(#[from] std::io::Error),
+
+    #[error("タググループが0000ではありません (タグ={0})")]
+    InvalidTagGroup(Tag),
 }
 
 impl CommandSet {
@@ -45,6 +56,36 @@ impl CommandSet {
 
         Ok(Self { size, commands })
     }
+
+    pub fn read_from_cur(cur: &mut Cursor<&[u8]>) -> Result<Self, ParseError> {
+        let mut commands = vec![];
+
+        let size = cur.get_ref().len();
+        let mut offset = 0;
+        while offset < size {
+            let tag = Tag::read_from(cur)?;
+            if tag.group() != 0x0000 {
+                return Err(ParseError::InvalidTagGroup(tag));
+            }
+            let value_length = {
+                let mut buf = [0u8; 4];
+                cur.read_exact(&mut buf)?;
+                u32::from_le_bytes(buf)
+            };
+            let value_field = {
+                let mut buf = vec![0u8; value_length as usize];
+                cur.read_exact(&mut buf)?;
+                buf
+            };
+
+            let command = Command { tag, value_field };
+
+            offset += command.size();
+            commands.push(command);
+        }
+
+        Ok(CommandSet { size, commands })
+    }
 }
 
 impl Index<usize> for CommandSet {
@@ -61,50 +102,6 @@ impl<'a> IntoIterator for &'a CommandSet {
 
     fn into_iter(self) -> Self::IntoIter {
         self.commands.iter()
-    }
-}
-
-impl TryFrom<Vec<u8>> for CommandSet {
-    type Error = String;
-
-    fn try_from(buf: Vec<u8>) -> Result<Self, Self::Error> {
-        let mut commands = vec![];
-
-        let mut offset = 0;
-        while offset < buf.len() {
-            if buf.len() < offset + 8 {
-                return Err(INVALID_BUFFER_LENGTH_ERROR_MESSAGE.to_string());
-            }
-
-            let tag_group = u16::from_le_bytes([buf[offset], buf[offset + 1]]);
-            if tag_group != 0x0000 {
-                return Err(format!(
-                    "タググループは0x0000でなければなりません (タググループ=0x{tag_group:04X})"
-                ));
-            }
-            let tag_element = u16::from_le_bytes([buf[offset + 2], buf[offset + 3]]);
-            let value_length = u32::from_le_bytes([
-                buf[offset + 4],
-                buf[offset + 5],
-                buf[offset + 6],
-                buf[offset + 7],
-            ]);
-            let value_field = buf[offset + 8..offset + 8 + value_length as usize].to_vec();
-            if value_length as usize != value_field.len() {
-                return Err(INVALID_BUFFER_LENGTH_ERROR_MESSAGE.to_string());
-            }
-
-            let command = Command {
-                tag: Tag::new(tag_group, tag_element),
-                value_field,
-            };
-
-            offset += command.size();
-            commands.push(command);
-        }
-        let size = buf.len();
-
-        Ok(CommandSet { size, commands })
     }
 }
 

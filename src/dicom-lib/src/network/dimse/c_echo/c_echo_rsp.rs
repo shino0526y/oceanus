@@ -40,23 +40,23 @@ impl CEchoRsp {
 impl From<CEchoRsp> for CommandSet {
     fn from(val: CEchoRsp) -> Self {
         let affected_sop_class_uid = Command {
-            tag: Tag::new(0x0000, 0x0002),
+            tag: Tag(0x0000, 0x0002),
             value_field: format!("{}{}", VERIFICATION, '\0').into_bytes(),
         };
         let command_field = Command {
-            tag: Tag::new(0x0000, 0x0100),
+            tag: Tag(0x0000, 0x0100),
             value_field: 0x8030u16.to_le_bytes().to_vec(),
         };
         let message_id_being_responded_to = Command {
-            tag: Tag::new(0x0000, 0x0120),
+            tag: Tag(0x0000, 0x0120),
             value_field: val.message_id.to_le_bytes().to_vec(),
         };
         let command_data_set_type = Command {
-            tag: Tag::new(0x0000, 0x0800),
+            tag: Tag(0x0000, 0x0800),
             value_field: 0x0101u16.to_le_bytes().to_vec(),
         };
         let status = Command {
-            tag: Tag::new(0x0000, 0x0900),
+            tag: Tag(0x0000, 0x0900),
             value_field: (val.status as u16).to_le_bytes().to_vec(),
         };
         let group_length = affected_sop_class_uid.size()
@@ -65,7 +65,7 @@ impl From<CEchoRsp> for CommandSet {
             + command_data_set_type.size()
             + status.size();
         let command_group_length = Command {
-            tag: Tag::new(0x0000, 0x0000),
+            tag: Tag(0x0000, 0x0000),
             value_field: (group_length as u32).to_le_bytes().to_vec(),
         };
         let size = group_length + command_group_length.size();

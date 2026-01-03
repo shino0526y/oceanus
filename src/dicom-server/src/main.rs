@@ -2,7 +2,11 @@ mod args;
 mod constants;
 mod dimse;
 
-use crate::{args::Args, constants::*, dimse::DimseMessage};
+use crate::{
+    args::Args,
+    constants::*,
+    dimse::{DimseMessage, handle_dimse_message},
+};
 use clap::Parser;
 use dicom_lib::{
     constants::{sop_class_uids::VERIFICATION, transfer_syntax_uids::IMPLICIT_VR_LITTLE_ENDIAN},
@@ -24,7 +28,7 @@ use dicom_lib::{
                     self, SourceAndReason,
                     source::{service_provider_acse, service_user},
                 },
-                a_associate_rq::{self},
+                a_associate_rq,
                 p_data_tf::PresentationDataValue,
             },
             receive_a_associate_rq, receive_a_release_rq, receive_p_data_tf, send_a_abort,
@@ -56,6 +60,8 @@ use tracing_subscriber::fmt::time::LocalTime;
 static CONNECTION_COUNTER: AtomicU64 = AtomicU64::new(1);
 static SERVER_AE_TITLE: OnceLock<String> = OnceLock::new();
 static DB_POOL: OnceLock<Pool<Postgres>> = OnceLock::new();
+static HOME_DIR: OnceLock<String> = OnceLock::new();
+static STORAGE_DIR: OnceLock<String> = OnceLock::new();
 
 #[tokio::main]
 async fn main() {
@@ -64,6 +70,8 @@ async fn main() {
     // コマンドライン引数の解析
     let args = Args::parse();
     SERVER_AE_TITLE.set(args.ae_title).unwrap();
+    HOME_DIR.set(args.home_dir).unwrap();
+    STORAGE_DIR.set(args.storage_dir).unwrap();
 
     print!(
         r"
@@ -188,6 +196,11 @@ async fn handle_association(mut socket: TcpStream) {
 
             match reception {
                 PDataTfReception::PDataTf(val) => val,
+                PDataTfReception::AReleaseRq(_) => {
+                    debug!("A-RELEASE-RQを受信しました");
+                    release(&mut buf_reader).await;
+                    return;
+                }
                 PDataTfReception::AAbort(a_abort) => {
                     debug!(
                         "A-ABORTを受信しました: (Source={:02X} Reason={:02X})",
@@ -235,12 +248,24 @@ async fn handle_association(mut socket: TcpStream) {
                 continue;
             }
 
+            // DIMSEメッセージを取り出し、空のDIMSEメッセージを生成し登録しなおす。
+            // これにより、同じPresentation Context IDで複数のDIMSEメッセージを処理できるようにする。
             let dimse_message = context_id_to_dimse_message.remove(&context_id).unwrap();
-            let handler = ABSTRACT_SYNTAX_UID_TO_HANDLER
-                .get(&dimse_message.abstract_syntax_uid)
-                .unwrap();
+            context_id_to_dimse_message.insert(
+                context_id,
+                generate_empty_dimse_message(
+                    context_id,
+                    &dimse_message.abstract_syntax_uid,
+                    dimse_message.transfer_syntax_uid,
+                ),
+            );
 
-            let (command_set_buf, data_set_buf) = match handler(dimse_message) {
+            let (command_set_buf, data_set_buf) = match handle_dimse_message(
+                dimse_message,
+                a_associate_rq.calling_ae_title(),
+            )
+            .await
+            {
                 Ok(val) => val,
                 Err(reason) => {
                     abort(&mut buf_reader, reason).await;
@@ -387,7 +412,7 @@ async fn handle_association_establishment(
                         TransferSyntax::new(IMPLICIT_VR_LITTLE_ENDIAN).unwrap(),
                     )
                 } else {
-                    let transfer_syntax_uid = IMPLICIT_VR_LITTLE_ENDIAN;
+                    let transfer_syntax_uid = choose_transfer_syntax_uid(presentation_context);
                     let pc = a_associate_ac::PresentationContext::new(
                         presentation_context.context_id(),
                         ResultReason::Acceptance,
@@ -397,21 +422,15 @@ async fn handle_association_establishment(
                     {
                         let context_id = pc.context_id();
                         let abstract_syntax = presentation_context.abstract_syntax().name();
-                        let is_data_received = match abstract_syntax {
-                            VERIFICATION => true, // C-ECHOはデータセットを使用しない
-                            _ => false,
-                        };
 
-                        let dimse_message = DimseMessage {
+                        context_id_to_dimse_message.insert(
                             context_id,
-                            abstract_syntax_uid: abstract_syntax.to_string(),
-                            _transfer_syntax_uid: transfer_syntax_uid,
-                            command_set_buf: vec![],
-                            data_set_buf: vec![],
-                            is_command_received: false,
-                            is_data_received,
-                        };
-                        context_id_to_dimse_message.insert(context_id, dimse_message);
+                            generate_empty_dimse_message(
+                                context_id,
+                                abstract_syntax,
+                                transfer_syntax_uid,
+                            ),
+                        );
                     }
 
                     pc
@@ -451,6 +470,27 @@ async fn handle_association_establishment(
     Some((a_associate_rq, context_id_to_dimse_message))
 }
 
+fn generate_empty_dimse_message(
+    context_id: u8,
+    abstract_syntax_uid: &str,
+    transfer_syntax_uid: &'static str,
+) -> DimseMessage {
+    let is_data_received = match abstract_syntax_uid {
+        VERIFICATION => true, // C-ECHOはデータセットを使用しないため、すでにデータセットを受信したものとみなす
+        _ => false,
+    };
+
+    DimseMessage {
+        context_id,
+        abstract_syntax_uid: abstract_syntax_uid.to_string(),
+        transfer_syntax_uid,
+        command_set_buf: Vec::new(),
+        data_set_buf: Vec::new(),
+        is_command_received: false,
+        is_data_received,
+    }
+}
+
 fn is_abstract_syntax_supported(
     presentation_context: &a_associate_rq::PresentationContext,
 ) -> bool {
@@ -468,6 +508,25 @@ fn is_transfer_syntax_supported(
                 .iter()
                 .any(|ts| ts.name() == *transfer_syntax)
         })
+}
+
+fn choose_transfer_syntax_uid(
+    presentation_context: &a_associate_rq::PresentationContext,
+) -> &'static str {
+    let transfer_syntax_uids = presentation_context
+        .transfer_syntaxes()
+        .iter()
+        .map(|uid| uid.name())
+        .collect::<Vec<_>>();
+
+    // サポートされている転送構文UIDの中から最初にマッチしたもの（優先度が高いもの）を取り出す
+    let uid = SUPPORTED_TRANSFER_SYNTAX_UIDS
+        .iter()
+        .find(|uid| transfer_syntax_uids.contains(uid));
+
+    // 取り出した転送構文UIDを返す
+    // 見つからなかった場合はImplicit VR Little Endian（デフォルトの転送構文UID）を返す
+    uid.unwrap_or(&IMPLICIT_VR_LITTLE_ENDIAN)
 }
 
 async fn reject_association(
@@ -502,11 +561,14 @@ async fn handle_association_release(buf_reader: &mut BufReader<&mut TcpStream>) 
     }
     debug!("A-RELEASE-RQを受信しました");
 
-    if let Err(e) = send_a_release_rp(buf_reader.get_mut()).await {
-        error!("A-RELEASE-RPの送信に失敗しました: {e}");
-        return;
+    release(buf_reader).await;
+}
+
+async fn release(buf_reader: &mut BufReader<&mut TcpStream>) {
+    match send_a_release_rp(&mut buf_reader.get_mut()).await {
+        Ok(()) => debug!("A-RELEASE-RPを送信しました"),
+        Err(e) => error!("A-RELEASE-RPの送信に失敗しました: {e}"),
     }
-    debug!("A-RELEASE-RPを送信しました");
 }
 
 async fn abort(buf_reader: &mut BufReader<&mut TcpStream>, reason: a_abort::Reason) {

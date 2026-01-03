@@ -1,0 +1,4 @@
+### GENECG
+
+- ダウンロード元: NEMA公式FTPサイト (ftp://medical.nema.org/MEDICAL/Dicom/DataSets/WG02/Enhanced-XA/GENECG)
+- 日付: 2025-01-29
