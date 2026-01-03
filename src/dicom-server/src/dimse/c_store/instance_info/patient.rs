@@ -1,16 +1,19 @@
 use chrono::NaiveDate;
-use dicom_lib::core::value::{
-    SpecificCharacterSet,
-    value_representations::{cs::CsValue, da::DaValue, lo::LoValue, pn::PnValue},
+use dicom_lib::{
+    core::value::{
+        SpecificCharacterSet,
+        value_representations::{cs::CsValue, da::DaValue, lo::LoValue, pn::PnValue},
+    },
+    network::service_class::storage::{Status, status::code::CannotUnderstand},
 };
 
 pub struct Patient {
-    pub id: String,
-    pub name_alphabet: String,
-    pub name_kanji: String,
-    pub name_hiragana: String,
-    pub birth_date: Option<NaiveDate>,
-    pub sex: Option<Sex>,
+    id: String,
+    name_alphabet: String,
+    name_kanji: String,
+    name_hiragana: String,
+    birth_date: Option<DaValue>,
+    sex: Option<Sex>,
 }
 
 pub enum Sex {
@@ -30,20 +33,41 @@ impl Sex {
 }
 
 impl Patient {
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+
+    pub fn name_alphabet(&self) -> &str {
+        &self.name_alphabet
+    }
+
+    pub fn name_kanji(&self) -> &str {
+        &self.name_kanji
+    }
+
+    pub fn name_hiragana(&self) -> &str {
+        &self.name_hiragana
+    }
+
+    pub fn birth_date(&self) -> Option<&NaiveDate> {
+        self.birth_date.as_ref().map(|da_value| da_value.date())
+    }
+
+    pub fn sex(&self) -> Option<&Sex> {
+        self.sex.as_ref()
+    }
+
     pub fn new(
         char_set: SpecificCharacterSet,
         patients_name: Option<PnValue>,
         patient_id: Option<LoValue>,
         patients_birth_date: Option<DaValue>,
         patients_sex: Option<CsValue>,
-    ) -> Result<Self, String> {
-        let id = if let Some(patient_id) = &patient_id {
-            patient_id.string()
-        } else {
-            ""
-        }
-        .to_string();
-
+    ) -> Result<Self, (String, Status)> {
+        let id = match patient_id {
+            Some(id) => id.string().to_string(),
+            None => String::new(),
+        };
         let name_alphabet;
         let name_kanji;
         let name_hiragana;
@@ -123,18 +147,20 @@ impl Patient {
                 name_hiragana = String::new();
             }
         }
-
-        let birth_date = patients_birth_date.map(|birth_date| *birth_date.date());
-
-        let sex = if let Some(patients_sex) = patients_sex {
-            match patients_sex.code() {
+        let birth_date = patients_birth_date;
+        let sex = match patients_sex {
+            Some(sex) => match sex.code() {
                 "M" => Some(Sex::M),
                 "F" => Some(Sex::F),
                 "O" => Some(Sex::O),
-                invalid => Err(format!("Patient's Sexの値が不正です: {}", invalid))?,
-            }
-        } else {
-            None
+                invalid => {
+                    return Err((
+                        format!("Patient's Sexの値が不正です: {}", invalid),
+                        Status::CannotUnderstand(CannotUnderstand::new(0xc000).unwrap()),
+                    ));
+                }
+            },
+            None => None,
         };
 
         Ok(Patient {

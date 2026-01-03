@@ -1,6 +1,7 @@
 pub mod c_echo;
 pub mod c_store;
 
+use crate::{HOME_DIR, constants::EXPLICIT_VR_BIG_ENDIAN};
 use dicom_lib::{
     constants::{
         sop_class_uids::{
@@ -21,8 +22,6 @@ use std::{
 };
 use tokio::fs;
 use tracing::{error, info};
-
-use crate::{HOME_DIR, constants::EXPLICIT_VR_BIG_ENDIAN};
 
 pub struct DimseMessage {
     pub context_id: u8,
@@ -141,7 +140,7 @@ enum DumpType {
     DataSet,
 }
 
-async fn dump(buf: Vec<u8>, ae_title: &str, dump_type: DumpType) -> Result<PathBuf, String> {
+async fn dump(buf: Vec<u8>, ae_title: &str, dump_type: DumpType) -> Result<PathBuf, SaveFileError> {
     let now = chrono::Utc::now().format("%Y%m%d%H%M%S%6f").to_string();
     let dump_type = match dump_type {
         DumpType::CommandSet => "commandset",
@@ -156,22 +155,37 @@ async fn dump(buf: Vec<u8>, ae_title: &str, dump_type: DumpType) -> Result<PathB
     Ok(path_buf)
 }
 
-async fn save_file(buf: Vec<u8>, path: &Path) -> Result<(), String> {
+#[derive(Debug, thiserror::Error)]
+enum SaveFileError {
+    #[error("ディレクトリの作成に失敗しました (パス=\"{path_buf}\"): {io_error}")]
+    CreateDirError {
+        path_buf: PathBuf,
+        io_error: std::io::Error,
+    },
+    #[error("ファイルの書き込みに失敗しました (パス=\"{path_buf}\"): {io_error}")]
+    WriteFileError {
+        path_buf: PathBuf,
+        io_error: std::io::Error,
+    },
+}
+
+async fn save_file(buf: Vec<u8>, path: &Path) -> Result<(), SaveFileError> {
     // ディレクトリが存在しない場合は作成
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).await.map_err(|e| {
-            format!(
-                "ディレクトリの作成に失敗しました (パス=\"{}\"): {e}",
-                parent.to_str().unwrap()
-            )
-        })?;
+        fs::create_dir_all(parent)
+            .await
+            .map_err(|e| SaveFileError::CreateDirError {
+                path_buf: parent.to_path_buf(),
+                io_error: e,
+            })?;
     }
 
-    fs::write(path, buf).await.map_err(|e| {
-        format!(
-            "ファイルの書き込みに失敗しました (パス=\"{}\"): {e}",
-            path.to_str().unwrap()
-        )
-    })?;
+    fs::write(path, buf)
+        .await
+        .map_err(|e| SaveFileError::WriteFileError {
+            path_buf: path.to_path_buf(),
+            io_error: e,
+        })?;
+
     Ok(())
 }

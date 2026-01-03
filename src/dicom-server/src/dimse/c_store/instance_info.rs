@@ -8,15 +8,18 @@ pub use series::Series;
 pub use sop_instance::SopInstance;
 pub use study::Study;
 
-use dicom_lib::core::{
-    DataSet, Tag,
-    value::{
-        SpecificCharacterSet,
-        value_representations::{
-            cs::CsValue, da::DaValue, is::IsValue, lo::LoValue, pn::PnValue, sh::ShValue,
-            tm::TmValue, ui::UiValue,
+use dicom_lib::{
+    core::{
+        DataSet, Tag,
+        value::{
+            SpecificCharacterSet,
+            value_representations::{
+                cs::CsValue, da::DaValue, is::IsValue, lo::LoValue, pn::PnValue, sh::ShValue,
+                tm::TmValue, ui::UiValue,
+            },
         },
     },
+    network::service_class::storage::{Status, status::code::CannotUnderstand},
 };
 
 pub struct InstanceInfo {
@@ -27,7 +30,7 @@ pub struct InstanceInfo {
 }
 
 impl InstanceInfo {
-    pub fn from_data_set(data_set: &DataSet) -> Result<Self, String> {
+    pub fn from_data_set(data_set: &DataSet) -> Result<Self, (String, Status)> {
         let mut char_set = SpecificCharacterSet::None;
 
         // Patient Module
@@ -77,113 +80,155 @@ impl InstanceInfo {
 
             match element.tag() {
                 Tag(0x0008, 0x0005) => {
-                    char_set = SpecificCharacterSet::try_from(value_field)
-                        .map_err(|e| format!("Specific Character Setのパースに失敗しました: {e}"))?
+                    char_set = SpecificCharacterSet::try_from(value_field).map_err(|e| {
+                        (
+                            format!("Specific Character Setのパースに失敗しました: {e}"),
+                            Status::CannotUnderstand(CannotUnderstand::new(0xc000).unwrap()),
+                        )
+                    })?
                 }
 
                 Tag(0x0008, 0x0016) => {
-                    sop_class_uid = Some(
-                        UiValue::from_bytes(value_field)
-                            .map_err(|e| format!("SOP Class UIDのパースに失敗しました: {e}"))?,
-                    )
+                    sop_class_uid = Some(UiValue::from_bytes(value_field).map_err(|e| {
+                        (
+                            format!("SOP Class UIDのパースに失敗しました: {e}"),
+                            Status::CannotUnderstand(CannotUnderstand::new(0xc000).unwrap()),
+                        )
+                    })?)
                 }
 
                 Tag(0x0008, 0x0018) => {
-                    sop_instance_uid = Some(
-                        UiValue::from_bytes(value_field)
-                            .map_err(|e| format!("SOP Instance UIDのパースに失敗しました: {e}"))?,
-                    )
+                    sop_instance_uid = Some(UiValue::from_bytes(value_field).map_err(|e| {
+                        (
+                            format!("SOP Instance UIDのパースに失敗しました: {e}"),
+                            Status::CannotUnderstand(CannotUnderstand::new(0xc000).unwrap()),
+                        )
+                    })?)
                 }
 
                 Tag(0x0008, 0x0020) => {
-                    study_date = Some(
-                        DaValue::from_bytes(value_field)
-                            .map_err(|e| format!("Study Dateのパースに失敗しました: {e}"))?,
-                    )
+                    study_date = Some(DaValue::from_bytes(value_field).map_err(|e| {
+                        (
+                            format!("Study Dateのパースに失敗しました: {e}"),
+                            Status::CannotUnderstand(CannotUnderstand::new(0xc000).unwrap()),
+                        )
+                    })?)
                 }
 
                 Tag(0x0008, 0x0030) => {
-                    study_time = Some(
-                        TmValue::from_bytes(value_field)
-                            .map_err(|e| format!("Study Timeのパースに失敗しました: {e}"))?,
-                    )
+                    study_time = Some(TmValue::from_bytes(value_field).map_err(|e| {
+                        (
+                            format!("Study Timeのパースに失敗しました: {e}"),
+                            Status::CannotUnderstand(CannotUnderstand::new(0xc000).unwrap()),
+                        )
+                    })?)
                 }
 
                 Tag(0x0008, 0x0050) => {
                     accession_number = Some(
-                        ShValue::from_bytes_lossy(value_field, char_set)
-                            .map_err(|e| format!("Accession Numberのパースに失敗しました: {e}"))?,
+                        ShValue::from_bytes_lossy(value_field, char_set).map_err(|e| {
+                            (
+                                format!("Accession Numberのパースに失敗しました: {e}"),
+                                Status::CannotUnderstand(CannotUnderstand::new(0xc000).unwrap()),
+                            )
+                        })?,
                     )
                 }
 
                 Tag(0x0008, 0x0060) => {
-                    modality = Some(
-                        CsValue::from_bytes(value_field)
-                            .map_err(|e| format!("Modalityのパースに失敗しました: {e}"))?,
-                    )
+                    modality = Some(CsValue::from_bytes(value_field).map_err(|e| {
+                        (
+                            format!("Modalityのパースに失敗しました: {e}"),
+                            Status::CannotUnderstand(CannotUnderstand::new(0xc000).unwrap()),
+                        )
+                    })?)
                 }
 
                 Tag(0x0010, 0x0010) => {
-                    patients_name = Some(
-                        PnValue::from_bytes_lossy(value_field, char_set)
-                            .map_err(|e| format!("Patient's Nameのパースに失敗しました: {e}"))?,
-                    )
+                    patients_name = Some(PnValue::from_bytes_lossy(value_field, char_set).map_err(
+                        |e| {
+                            (
+                                format!("Patient's Nameのパースに失敗しました: {e}"),
+                                Status::CannotUnderstand(CannotUnderstand::new(0xc000).unwrap()),
+                            )
+                        },
+                    )?)
                 }
 
                 Tag(0x0010, 0x0020) => {
-                    patient_id = Some(
-                        LoValue::from_bytes_lossy(value_field, char_set)
-                            .map_err(|e| format!("Patient IDのパースに失敗しました: {e}"))?,
-                    )
+                    patient_id = Some(LoValue::from_bytes_lossy(value_field, char_set).map_err(
+                        |e| {
+                            (
+                                format!("Patient IDのパースに失敗しました: {e}"),
+                                Status::CannotUnderstand(CannotUnderstand::new(0xc000).unwrap()),
+                            )
+                        },
+                    )?)
                 }
 
                 Tag(0x0010, 0x0030) => {
-                    patients_birth_date =
-                        Some(DaValue::from_bytes(value_field).map_err(|e| {
-                            format!("Patient's Birth Dateのパースに失敗しました: {e}")
-                        })?)
+                    patients_birth_date = Some(DaValue::from_bytes(value_field).map_err(|e| {
+                        (
+                            format!("Patient's Birth Dateのパースに失敗しました: {e}"),
+                            Status::CannotUnderstand(CannotUnderstand::new(0xc000).unwrap()),
+                        )
+                    })?)
                 }
 
                 Tag(0x0010, 0x0040) => {
-                    patients_sex = Some(
-                        CsValue::from_bytes(value_field)
-                            .map_err(|e| format!("Patient's Sexのパースに失敗しました: {e}"))?,
-                    )
+                    patients_sex = Some(CsValue::from_bytes(value_field).map_err(|e| {
+                        (
+                            format!("Patient's Sexのパースに失敗しました: {e}"),
+                            Status::CannotUnderstand(CannotUnderstand::new(0xc000).unwrap()),
+                        )
+                    })?)
                 }
 
                 Tag(0x0020, 0x000d) => {
-                    study_instance_uid =
-                        Some(UiValue::from_bytes(value_field).map_err(|e| {
-                            format!("Study Instance UIDのパースに失敗しました: {e}")
-                        })?)
+                    study_instance_uid = Some(UiValue::from_bytes(value_field).map_err(|e| {
+                        (
+                            format!("Study Instance UIDのパースに失敗しました: {e}"),
+                            Status::CannotUnderstand(CannotUnderstand::new(0xc000).unwrap()),
+                        )
+                    })?)
                 }
 
                 Tag(0x0020, 0x000e) => {
-                    series_instance_uid =
-                        Some(UiValue::from_bytes(value_field).map_err(|e| {
-                            format!("Series Instance UIDのパースに失敗しました: {e}")
-                        })?)
+                    series_instance_uid = Some(UiValue::from_bytes(value_field).map_err(|e| {
+                        (
+                            format!("Series Instance UIDのパースに失敗しました: {e}"),
+                            Status::CannotUnderstand(CannotUnderstand::new(0xc000).unwrap()),
+                        )
+                    })?)
                 }
 
                 Tag(0x0020, 0x0010) => {
-                    study_id = Some(
-                        ShValue::from_bytes_lossy(value_field, char_set)
-                            .map_err(|e| format!("Study IDのパースに失敗しました: {e}"))?,
-                    )
+                    study_id = Some(ShValue::from_bytes_lossy(value_field, char_set).map_err(
+                        |e| {
+                            (
+                                format!("Study IDのパースに失敗しました: {e}"),
+                                Status::CannotUnderstand(CannotUnderstand::new(0xc000).unwrap()),
+                            )
+                        },
+                    )?)
                 }
 
                 Tag(0x0020, 0x0011) => {
-                    series_number = Some(
-                        IsValue::from_bytes(value_field)
-                            .map_err(|e| format!("Series Numberのパースに失敗しました: {e}"))?,
-                    )
+                    series_number = Some(IsValue::from_bytes(value_field).map_err(|e| {
+                        (
+                            format!("Series Numberのパースに失敗しました: {e}"),
+                            Status::CannotUnderstand(CannotUnderstand::new(0xc000).unwrap()),
+                        )
+                    })?)
                 }
 
                 Tag(0x0020, 0x0013) => {
-                    instance_number = Some(
-                        IsValue::from_bytes(value_field)
-                            .map_err(|e| format!("Instance Numberのパースに失敗しました: {e}"))?,
-                    );
+                    instance_number = Some(IsValue::from_bytes(value_field).map_err(|e| {
+                        (
+                            format!("Instance Numberのパースに失敗しました: {e}"),
+                            Status::CannotUnderstand(CannotUnderstand::new(0xc000).unwrap()),
+                        )
+                    })?);
 
                     break;
                 }
