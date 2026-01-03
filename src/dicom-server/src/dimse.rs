@@ -72,7 +72,7 @@ pub async fn handle_dimse_message(
                 Ok(path) => {
                     info!(
                         "パースに失敗したコマンドセットをダンプファイルとして保存しました (パス=\"{}\")",
-                        path.to_str().unwrap()
+                        path.display()
                     );
                 }
                 Err(e) => {
@@ -115,7 +115,7 @@ pub async fn handle_dimse_message(
                             Ok(path) => {
                                 info!(
                                     "パースに失敗したデータセットをダンプファイルとして保存しました (パス=\"{}\")",
-                                    path.to_str().unwrap()
+                                    path.display()
                                 );
                             }
                             Err(e) => {
@@ -157,12 +157,12 @@ async fn dump(buf: Vec<u8>, ae_title: &str, dump_type: DumpType) -> Result<PathB
 
 #[derive(Debug, thiserror::Error)]
 enum SaveFileError {
-    #[error("ディレクトリの作成に失敗しました (パス=\"{path_buf}\"): {io_error}")]
+    #[error("ディレクトリの作成に失敗しました (パス=\"{}\"): {io_error}", path_buf.display())]
     CreateDirError {
         path_buf: PathBuf,
         io_error: std::io::Error,
     },
-    #[error("ファイルの書き込みに失敗しました (パス=\"{path_buf}\"): {io_error}")]
+    #[error("ファイルの書き込みに失敗しました (パス=\"{}\"): {io_error}", path_buf.display())]
     WriteFileError {
         path_buf: PathBuf,
         io_error: std::io::Error,
