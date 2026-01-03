@@ -163,7 +163,7 @@ pub fn read_implicit_vr_le(
 
 fn read_element_implicit_vr_le(cur: &mut Cursor<&[u8]>) -> Result<ElementInDataSet, Error> {
     let position = cur.position();
-    let tag = Tag::from_cur(cur)?;
+    let tag = Tag::read_from(cur)?;
     let value_length = read_value_length_implicit_vr_le(cur)?;
     let value_field = read_value_field(cur, tag, None, value_length)?;
     let size = cur.position() - position;
@@ -186,7 +186,7 @@ fn read_element_explicit_vr_le(
     cur: &mut Cursor<&[u8]>,
 ) -> Result<ElementInDataSet, data_set::ParseError> {
     let position = cur.position();
-    let tag = Tag::from_cur(cur)?;
+    let tag = Tag::read_from(cur)?;
     let vr = read_vr(cur, tag)?;
     let value_length = read_value_length_explicit_vr_le(cur, &vr)?;
     let value_field = read_value_field(cur, tag, vr, value_length)?;
@@ -210,7 +210,7 @@ fn read_child_element_in_encapsulated_pixel_data_explicit_vr_le(
     cur: &mut Cursor<&[u8]>,
 ) -> Result<ElementInDataSet, Error> {
     let position = cur.position();
-    let tag = Tag::from_cur(cur)?;
+    let tag = Tag::read_from(cur)?;
     let vr = None;
     let value_length = {
         let mut buf = [0; 4];

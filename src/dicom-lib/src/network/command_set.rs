@@ -63,7 +63,7 @@ impl CommandSet {
         let size = cur.get_ref().len();
         let mut offset = 0;
         while offset < size {
-            let tag = Tag::from_cur(cur)?;
+            let tag = Tag::read_from(cur)?;
             if tag.group() != 0x0000 {
                 return Err(ParseError::InvalidTagGroup(tag));
             }

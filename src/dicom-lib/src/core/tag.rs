@@ -1,6 +1,6 @@
 use std::{
     fmt::{Display, Formatter},
-    io::{Cursor, Read},
+    io::Read,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -15,15 +15,18 @@ impl Tag {
         self.1
     }
 
-    pub(crate) fn from_cur(cur: &mut Cursor<&[u8]>) -> std::io::Result<Self> {
+    pub(crate) fn read_from<R>(r: &mut R) -> std::io::Result<Self>
+    where
+        R: Read,
+    {
         let tag_group = {
             let mut buf = [0u8; 2];
-            cur.read_exact(&mut buf)?;
+            r.read_exact(&mut buf)?;
             u16::from_le_bytes(buf)
         };
         let tag_element = {
             let mut buf = [0u8; 2];
-            cur.read_exact(&mut buf)?;
+            r.read_exact(&mut buf)?;
             u16::from_le_bytes(buf)
         };
 
