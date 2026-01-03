@@ -33,7 +33,7 @@ pub struct DimseMessage {
     pub is_data_received: bool,
 }
 
-fn buf_to_command_set(buf: &[u8]) -> Result<CommandSet, Reason> {
+fn parse_command_set(buf: &[u8]) -> Result<CommandSet, Reason> {
     let mut cur = Cursor::new(buf);
     match CommandSet::from_cur(&mut cur) {
         Ok(val) => Ok(val),
@@ -44,7 +44,7 @@ fn buf_to_command_set(buf: &[u8]) -> Result<CommandSet, Reason> {
     }
 }
 
-fn buf_to_data_set(buf: &[u8], encoding: Encoding) -> Result<DataSet, Reason> {
+fn parse_data_set(buf: &[u8], encoding: Encoding) -> Result<DataSet, Reason> {
     let mut cur = Cursor::new(buf);
     match DataSet::from_cur(&mut cur, encoding) {
         Ok(val) => Ok(val),
@@ -59,7 +59,7 @@ pub async fn handle_dimse_message(
     dimse_message: DimseMessage,
     ae_title: &str,
 ) -> Result<(Vec<u8>, Vec<u8>), Reason> {
-    let command_set = match buf_to_command_set(&dimse_message.command_set_buf) {
+    let command_set = match parse_command_set(&dimse_message.command_set_buf) {
         Ok(val) => val,
         Err(e) => {
             match dump(
@@ -108,7 +108,7 @@ pub async fn handle_dimse_message(
                     }
                 };
 
-                match buf_to_data_set(dimse_message.data_set_buf.as_ref(), encoding) {
+                match parse_data_set(dimse_message.data_set_buf.as_ref(), encoding) {
                     Ok(val) => val,
                     Err(e) => {
                         match dump(dimse_message.data_set_buf, ae_title, DumpType::DataSet).await {
