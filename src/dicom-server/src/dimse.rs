@@ -1,7 +1,7 @@
 pub mod c_echo;
 pub mod c_store;
 
-use crate::{HOME_DIR, constants::EXPLICIT_VR_BIG_ENDIAN};
+use crate::HOME_DIR;
 use dicom_lib::{
     constants::{
         sop_class_uids::{
@@ -11,7 +11,7 @@ use dicom_lib::{
             SECONDARY_CAPTURE_IMAGE_STORAGE, VERIFICATION, X_RAY_ANGIOGRAPHIC_IMAGE_STORAGE,
             X_RAY_RADIOFLUOROSCOPIC_IMAGE_STORAGE,
         },
-        transfer_syntax_uids::IMPLICIT_VR_LITTLE_ENDIAN,
+        transfer_syntax_uids::{EXPLICIT_VR_BIG_ENDIAN, IMPLICIT_VR_LITTLE_ENDIAN},
     },
     core::{DataSet, Encoding},
     network::{CommandSet, upper_layer_protocol::pdu::a_abort::Reason},
