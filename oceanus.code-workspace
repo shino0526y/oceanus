@@ -8,6 +8,9 @@
     },
     {
       "path": "./src/dicom-server"
+    },
+    {
+      "path": "./src/web-api"
     }
   ],
   "extensions": {
@@ -33,13 +36,29 @@
     "version": "2.0.0",
     "tasks": [
       {
-        "label": "rust: cargo build",
+        "label": "rust: cargo build dicom-server",
         "type": "shell",
         "command": "cargo",
         "args": [
           "build",
           "--manifest-path",
-          "${workspaceFolder:oceanus}/src/Cargo.toml"
+          "${workspaceFolder:oceanus}/src/Cargo.toml",
+          "-p",
+          "dicom-server"
+        ],
+        "group": "build",
+        "problemMatcher": ["$rustc"]
+      },
+      {
+        "label": "rust: cargo build web-api",
+        "type": "shell",
+        "command": "cargo",
+        "args": [
+          "build",
+          "--manifest-path",
+          "${workspaceFolder:oceanus}/src/Cargo.toml",
+          "-p",
+          "web-api"
         ],
         "group": "build",
         "problemMatcher": ["$rustc"]
@@ -52,10 +71,20 @@
         "type": "lldb",
         "request": "launch",
         "name": "dicom-server",
-        "preLaunchTask": "rust: cargo build",
+        "preLaunchTask": "rust: cargo build dicom-server",
         "program": "${workspaceFolder:oceanus}/src/target/debug/dicom-server",
         "args": ["--log-level", "debug"],
         "cwd": "${workspaceFolder:oceanus}/src/dicom-server",
+        "sourceLanguages": ["rust"]
+      },
+      {
+        "type": "lldb",
+        "request": "launch",
+        "name": "web-api",
+        "preLaunchTask": "rust: cargo build web-api",
+        "program": "${workspaceFolder:oceanus}/src/target/debug/web-api",
+        "args": [],
+        "cwd": "${workspaceFolder:oceanus}/src/web-api",
         "sourceLanguages": ["rust"]
       }
     ]
