@@ -4,8 +4,7 @@ CREATE TABLE application_entities(
     port integer NOT NULL CHECK (port >= 1 AND port <= 65535),
     comment text NOT NULL DEFAULT '',
     created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now(),
-    deleted_at timestamptz DEFAULT NULL
+    updated_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE patients(
@@ -16,8 +15,7 @@ CREATE TABLE patients(
     birth_date date,
     sex smallint CHECK (sex >= 0 AND sex <= 2),
     created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now(),
-    deleted_at timestamptz DEFAULT NULL
+    updated_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE studies(
@@ -29,8 +27,7 @@ CREATE TABLE studies(
     accession_number varchar(16) NOT NULL,
     ae_title varchar(16) NOT NULL REFERENCES application_entities(title),
     created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now(),
-    deleted_at timestamptz DEFAULT NULL
+    updated_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE series(
@@ -39,8 +36,7 @@ CREATE TABLE series(
     modality varchar(16) NOT NULL,
     series_number integer,
     created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now(),
-    deleted_at timestamptz DEFAULT NULL
+    updated_at timestamptz NOT NULL DEFAULT now()
 );
 
 CREATE TABLE sop_instances(
@@ -51,7 +47,6 @@ CREATE TABLE sop_instances(
     size integer NOT NULL CHECK (size >= 0 AND size <= 2147483647),
     path text NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now(),
-    deleted_at timestamptz DEFAULT NULL
+    updated_at timestamptz NOT NULL DEFAULT now()
 );
 
