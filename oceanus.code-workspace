@@ -83,7 +83,7 @@
         "name": "web-api",
         "preLaunchTask": "rust: cargo build web-api",
         "program": "${workspaceFolder:oceanus}/src/target/debug/web-api",
-        "args": [],
+        "args": ["--log-level", "debug"],
         "cwd": "${workspaceFolder:oceanus}/src/web-api",
         "sourceLanguages": ["rust"]
       }
