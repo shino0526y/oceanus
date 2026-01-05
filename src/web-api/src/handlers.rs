@@ -11,9 +11,8 @@ pub async fn list_application_entities(
     State(pool): State<Pool<Postgres>>,
 ) -> Result<Json<Vec<ApplicationEntity>>, ApiError> {
     let aes = sqlx::query_as::<_, ApplicationEntity>(
-        "SELECT title, host, port, comment, created_at, updated_at, deleted_at
+        "SELECT title, host, port, comment, created_at, updated_at
          FROM application_entities
-         WHERE deleted_at IS NULL
          ORDER BY created_at DESC",
     )
     .fetch_all(&pool)
@@ -45,7 +44,7 @@ pub async fn create_application_entity(
     let ae = sqlx::query_as::<_, ApplicationEntity>(
         "INSERT INTO application_entities (title, host, port, comment)
          VALUES ($1, $2, $3, $4)
-         RETURNING title, host, port, comment, created_at, updated_at, deleted_at",
+         RETURNING title, host, port, comment, created_at, updated_at",
     )
     .bind(&payload.title)
     .bind(&payload.host)
