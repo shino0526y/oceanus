@@ -56,11 +56,11 @@ async fn main() {
     // ルーター設定
     let app = Router::new()
         .route(
-            "/application_entities",
+            "/application-entities",
             get(handlers::list_application_entities),
         )
         .route(
-            "/application_entities",
+            "/application-entities",
             post(handlers::create_application_entity),
         )
         .layer(CorsLayer::permissive())
