@@ -13,7 +13,7 @@ CREATE TABLE patients(
     name_kanji varchar(64) NOT NULL,
     name_hiragana varchar(64) NOT NULL,
     birth_date date,
-    sex smallint CHECK (sex >= 0 AND sex <= 2),
+    sex smallint NOT NULL CHECK (sex = 0 OR sex = 1 OR sex = 2 OR sex = 9),
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );

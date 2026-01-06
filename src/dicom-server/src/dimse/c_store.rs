@@ -287,7 +287,8 @@ async fn save_instance_to_db(
             .patient
             .sex()
             .as_ref()
-            .map(|s| s.to_smallint()),
+            .map(|s| s.to_iso_5218())
+            .unwrap_or(0), // not known
     )
     .execute(&mut *transaction)
     .await
