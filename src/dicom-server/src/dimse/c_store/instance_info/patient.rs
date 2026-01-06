@@ -23,11 +23,11 @@ pub enum Sex {
 }
 
 impl Sex {
-    pub fn to_smallint(&self) -> i16 {
+    pub fn to_iso_5218(&self) -> i16 {
         match self {
-            Sex::M => 0,
-            Sex::F => 1,
-            Sex::O => 2,
+            Sex::M => 1, // male
+            Sex::F => 2, // female
+            Sex::O => 9, // not applicable
         }
     }
 }
