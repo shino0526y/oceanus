@@ -1,0 +1,3 @@
+mod application_entity_repository;
+
+pub use application_entity_repository::PostgresApplicationEntityRepository;

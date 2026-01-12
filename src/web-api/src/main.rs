@@ -1,8 +1,17 @@
 mod args;
-mod handlers;
-mod models;
+mod internal;
 
-use args::Args;
+use self::{
+    args::Args,
+    internal::{
+        application::{
+            application_entity::CreateApplicationEntityUseCase,
+            application_entity::ListApplicationEntitiesUseCase,
+        },
+        infrastructure::repository::PostgresApplicationEntityRepository,
+        presentation::handler,
+    },
+};
 use axum::{
     Router,
     routing::{get, post},
@@ -10,11 +19,17 @@ use axum::{
 use clap::Parser;
 use dotenvy::dotenv;
 use sqlx::postgres::PgPoolOptions;
-use std::{io::IsTerminal, net::Ipv4Addr, process::exit};
+use std::{io::IsTerminal, net::Ipv4Addr, process::exit, sync::Arc};
 use tokio::net::TcpListener;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing::{debug, error, info, level_filters::LevelFilter};
 use tracing_subscriber::fmt::time::LocalTime;
+
+#[derive(Clone)]
+pub struct AppState {
+    pub create_application_entity_use_case: Arc<CreateApplicationEntityUseCase>,
+    pub list_application_entities_use_case: Arc<ListApplicationEntitiesUseCase>,
+}
 
 #[tokio::main]
 async fn main() {
@@ -53,19 +68,34 @@ async fn main() {
         }
     };
 
+    // リポジトリの初期化
+    let repository = Arc::new(PostgresApplicationEntityRepository::new(pool));
+
+    // ユースケースの初期化
+    let create_application_entity_use_case =
+        Arc::new(CreateApplicationEntityUseCase::new(repository.clone()));
+    let list_application_entities_use_case =
+        Arc::new(ListApplicationEntitiesUseCase::new(repository.clone()));
+
+    // アプリケーション状態の初期化
+    let app_state = AppState {
+        create_application_entity_use_case,
+        list_application_entities_use_case,
+    };
+
     // ルーター設定
     let app = Router::new()
         .route(
             "/application-entities",
-            get(handlers::list_application_entities),
+            get(handler::application_entity::list_application_entities),
         )
         .route(
             "/application-entities",
-            post(handlers::create_application_entity),
+            post(handler::application_entity::create_application_entity),
         )
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())
-        .with_state(pool);
+        .with_state(app_state);
 
     // サーバー起動
     let port = args.port;
