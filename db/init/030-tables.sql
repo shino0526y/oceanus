@@ -1,3 +1,12 @@
+CREATE TABLE users(
+    id text PRIMARY KEY,
+    name text UNIQUE NOT NULL,
+    type smallint NOT NULL CHECK (0 <= type AND type <= 4), -- 0: 管理者, 1: 情シス, 2: 医師, 3: 技師, 4: 事務
+    password_hash text NOT NULL,
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
+);
+
 CREATE TABLE application_entities(
     title varchar(16) PRIMARY KEY,
     host text NOT NULL,
