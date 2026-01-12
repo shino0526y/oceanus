@@ -304,7 +304,14 @@ async fn save_instance_to_db(
             study_date = EXCLUDED.study_date,
             study_time = EXCLUDED.study_time,
             accession_number = EXCLUDED.accession_number,
-            ae_title = EXCLUDED.ae_title
+            ae_title = EXCLUDED.ae_title,
+            updated_at = NOW()
+        WHERE studies.patient_id IS DISTINCT FROM EXCLUDED.patient_id
+           OR studies.id IS DISTINCT FROM EXCLUDED.id
+           OR studies.study_date IS DISTINCT FROM EXCLUDED.study_date
+           OR studies.study_time IS DISTINCT FROM EXCLUDED.study_time
+           OR studies.accession_number IS DISTINCT FROM EXCLUDED.accession_number
+           OR studies.ae_title IS DISTINCT FROM EXCLUDED.ae_title
         "#,
         instance_info.patient.id(),
         instance_info.study.instance_uid(),
@@ -325,7 +332,11 @@ async fn save_instance_to_db(
         ON CONFLICT (instance_uid) DO UPDATE SET
             study_instance_uid = EXCLUDED.study_instance_uid,
             modality = EXCLUDED.modality,
-            series_number = EXCLUDED.series_number
+            series_number = EXCLUDED.series_number,
+            updated_at = NOW()
+        WHERE series.study_instance_uid IS DISTINCT FROM EXCLUDED.study_instance_uid
+           OR series.modality IS DISTINCT FROM EXCLUDED.modality
+           OR series.series_number IS DISTINCT FROM EXCLUDED.series_number
         "#,
         instance_info.study.instance_uid(),
         instance_info.series.instance_uid(),
@@ -345,7 +356,13 @@ async fn save_instance_to_db(
             class_uid = EXCLUDED.class_uid,
             transfer_syntax_uid = EXCLUDED.transfer_syntax_uid,
             size = EXCLUDED.size,
-            path = EXCLUDED.path
+            path = EXCLUDED.path,
+            updated_at = NOW()
+        WHERE sop_instances.series_instance_uid IS DISTINCT FROM EXCLUDED.series_instance_uid
+           OR sop_instances.class_uid IS DISTINCT FROM EXCLUDED.class_uid
+           OR sop_instances.transfer_syntax_uid IS DISTINCT FROM EXCLUDED.transfer_syntax_uid
+           OR sop_instances.size IS DISTINCT FROM EXCLUDED.size
+           OR sop_instances.path IS DISTINCT FROM EXCLUDED.path
         "#,
         instance_info.series.instance_uid(),
         instance_info.sop_instance.class_uid(),
