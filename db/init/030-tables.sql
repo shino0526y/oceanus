@@ -1,8 +1,8 @@
 CREATE TABLE users(
-    id text PRIMARY KEY,
-    name text UNIQUE NOT NULL,
-    type smallint NOT NULL CHECK (0 <= type AND type <= 4), -- 0: 管理者, 1: 情シス, 2: 医師, 3: 技師, 4: 事務
-    password_hash text NOT NULL,
+    id text PRIMARY KEY CHECK (id <> ''),
+    name text UNIQUE NOT NULL CHECK (name <> ''),
+    type smallint NOT NULL,
+    password_hash text NOT NULL CHECK (password_hash <> ''),
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );
