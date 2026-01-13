@@ -85,7 +85,7 @@ impl ApplicationEntityRepository for PostgresApplicationEntityRepository {
             if let Some(db_err) = e.as_database_error()
                 && db_err.is_unique_violation()
             {
-                return RepositoryError::Duplicate {
+                return RepositoryError::AlreadyExists {
                     resource: "AEタイトル".to_string(),
                     key: ae_title.to_string(),
                 };
