@@ -53,4 +53,26 @@ impl ApplicationEntity {
     pub fn updated_at(&self) -> &DateTime<Utc> {
         &self.updated_at
     }
+
+    pub fn update(
+        &mut self,
+        title: AeValue,
+        host: impl Into<String>,
+        port: Port,
+        comment: impl Into<String>,
+        updated_at: DateTime<Utc>,
+    ) {
+        assert!(
+            updated_at >= self.created_at,
+            "`updated_at`は`created_at`よりも前にはできません (created_at={}, updated_at={})",
+            self.created_at,
+            updated_at,
+        );
+
+        self.title = title;
+        self.host = host.into();
+        self.port = port;
+        self.comment = comment.into();
+        self.updated_at = updated_at;
+    }
 }

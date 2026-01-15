@@ -7,6 +7,7 @@ use self::{
         application::{
             application_entity::CreateApplicationEntityUseCase,
             application_entity::ListApplicationEntitiesUseCase,
+            application_entity::UpdateApplicationEntityUseCase,
         },
         infrastructure::repository::PostgresApplicationEntityRepository,
         presentation::handler,
@@ -14,7 +15,7 @@ use self::{
 };
 use axum::{
     Router,
-    routing::{get, post},
+    routing::{get, post, put},
 };
 use clap::Parser;
 use dotenvy::dotenv;
@@ -29,6 +30,7 @@ use tracing_subscriber::fmt::time::LocalTime;
 pub struct AppState {
     pub create_application_entity_use_case: Arc<CreateApplicationEntityUseCase>,
     pub list_application_entities_use_case: Arc<ListApplicationEntitiesUseCase>,
+    pub update_application_entity_use_case: Arc<UpdateApplicationEntityUseCase>,
 }
 
 #[tokio::main]
@@ -76,11 +78,14 @@ async fn main() {
         Arc::new(CreateApplicationEntityUseCase::new(repository.clone()));
     let list_application_entities_use_case =
         Arc::new(ListApplicationEntitiesUseCase::new(repository.clone()));
+    let update_application_entity_use_case =
+        Arc::new(UpdateApplicationEntityUseCase::new(repository.clone()));
 
     // アプリケーション状態の初期化
     let app_state = AppState {
         create_application_entity_use_case,
         list_application_entities_use_case,
+        update_application_entity_use_case,
     };
 
     // ルーター設定
@@ -92,6 +97,10 @@ async fn main() {
         .route(
             "/application-entities",
             post(handler::application_entity::create_application_entity),
+        )
+        .route(
+            "/application-entities/:ae_title",
+            put(handler::application_entity::update_application_entity),
         )
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())
