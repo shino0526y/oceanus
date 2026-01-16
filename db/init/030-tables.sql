@@ -1,7 +1,7 @@
 CREATE TABLE users(
     id text PRIMARY KEY CHECK (id <> ''),
     name text UNIQUE NOT NULL CHECK (name <> ''),
-    type smallint NOT NULL,
+    role smallint NOT NULL,
     password_hash text NOT NULL CHECK (password_hash <> ''),
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()

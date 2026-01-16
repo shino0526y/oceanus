@@ -2,7 +2,7 @@ use crate::internal::domain::{
     entity::User,
     error::RepositoryError,
     repository::UserRepository,
-    value_object::{Role, Id},
+    value_object::{Id, Role},
 };
 use chrono::{DateTime, Utc};
 use sqlx::{FromRow, Pool, Postgres};
@@ -11,7 +11,7 @@ use sqlx::{FromRow, Pool, Postgres};
 struct UserRecord {
     id: String,
     name: String,
-    r#type: i16,
+    role: i16,
     password_hash: String,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
@@ -22,7 +22,7 @@ impl TryFrom<UserRecord> for User {
 
     fn try_from(record: UserRecord) -> Result<Self, Self::Error> {
         let user_id = Id::new(record.id)?;
-        let role = Role::from_i16(record.r#type)?;
+        let role = Role::from_i16(record.role)?;
         Ok(User::new(
             user_id,
             record.name,
@@ -48,7 +48,7 @@ impl PostgresUserRepository {
 impl UserRepository for PostgresUserRepository {
     async fn find_all(&self) -> Result<Vec<User>, RepositoryError> {
         let records = sqlx::query_as::<_, UserRecord>(
-            "SELECT id, name, type, password_hash, created_at, updated_at
+            "SELECT id, name, role, password_hash, created_at, updated_at
              FROM users
              ORDER BY created_at DESC",
         )
