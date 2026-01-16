@@ -108,7 +108,7 @@ async fn main() {
             post(handler::application_entity::create_application_entity),
         )
         .route(
-            "/application-entities/:ae_title",
+            "/application-entities/{ae_title}",
             put(handler::application_entity::update_application_entity),
         )
         .route("/users", get(handler::user::list_users))
