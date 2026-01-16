@@ -8,8 +8,9 @@ use self::{
             application_entity::CreateApplicationEntityUseCase,
             application_entity::ListApplicationEntitiesUseCase,
             application_entity::UpdateApplicationEntityUseCase,
+            user::list_users_use_case::ListUsersUseCase,
         },
-        infrastructure::repository::PostgresApplicationEntityRepository,
+        infrastructure::repository::{PostgresApplicationEntityRepository, PostgresUserRepository},
         presentation::handler,
     },
 };
@@ -31,6 +32,7 @@ pub struct AppState {
     pub create_application_entity_use_case: Arc<CreateApplicationEntityUseCase>,
     pub list_application_entities_use_case: Arc<ListApplicationEntitiesUseCase>,
     pub update_application_entity_use_case: Arc<UpdateApplicationEntityUseCase>,
+    pub list_users_use_case: Arc<ListUsersUseCase>,
 }
 
 #[tokio::main]
@@ -71,21 +73,28 @@ async fn main() {
     };
 
     // リポジトリの初期化
-    let repository = Arc::new(PostgresApplicationEntityRepository::new(pool));
+    let application_entity_repository =
+        Arc::new(PostgresApplicationEntityRepository::new(pool.clone()));
+    let user_repository = Arc::new(PostgresUserRepository::new(pool.clone()));
 
     // ユースケースの初期化
-    let create_application_entity_use_case =
-        Arc::new(CreateApplicationEntityUseCase::new(repository.clone()));
-    let list_application_entities_use_case =
-        Arc::new(ListApplicationEntitiesUseCase::new(repository.clone()));
-    let update_application_entity_use_case =
-        Arc::new(UpdateApplicationEntityUseCase::new(repository.clone()));
+    let create_application_entity_use_case = Arc::new(CreateApplicationEntityUseCase::new(
+        application_entity_repository.clone(),
+    ));
+    let list_application_entities_use_case = Arc::new(ListApplicationEntitiesUseCase::new(
+        application_entity_repository.clone(),
+    ));
+    let update_application_entity_use_case = Arc::new(UpdateApplicationEntityUseCase::new(
+        application_entity_repository.clone(),
+    ));
+    let list_users_use_case = Arc::new(ListUsersUseCase::new(user_repository.clone()));
 
     // アプリケーション状態の初期化
     let app_state = AppState {
         create_application_entity_use_case,
         list_application_entities_use_case,
         update_application_entity_use_case,
+        list_users_use_case,
     };
 
     // ルーター設定
@@ -102,6 +111,7 @@ async fn main() {
             "/application-entities/:ae_title",
             put(handler::application_entity::update_application_entity),
         )
+        .route("/users", get(handler::user::list_users))
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())
         .with_state(app_state);
