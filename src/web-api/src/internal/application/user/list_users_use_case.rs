@@ -1,6 +1,4 @@
-use crate::internal::domain::{
-    entity::User, error::RepositoryError, repository::UserRepository,
-};
+use crate::internal::domain::{entity::User, error::RepositoryError, repository::UserRepository};
 use std::sync::Arc;
 
 pub struct ListUsersUseCase {
