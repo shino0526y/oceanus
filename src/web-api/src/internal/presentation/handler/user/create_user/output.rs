@@ -4,7 +4,7 @@ use serde::Serialize;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ListUsersOutputElement {
+pub struct CreateUserOutput {
     pub id: String,
     pub name: String,
     pub role: u8,
@@ -12,7 +12,7 @@ pub struct ListUsersOutputElement {
     pub updated_at: DateTime<Utc>,
 }
 
-impl From<User> for ListUsersOutputElement {
+impl From<User> for CreateUserOutput {
     fn from(user: User) -> Self {
         let role = user.role();
         Self {

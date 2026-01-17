@@ -67,4 +67,36 @@ impl UserRepository for PostgresUserRepository {
             .collect::<Vec<_>>();
         Ok(entities)
     }
+
+    async fn add(&self, user: User) -> Result<User, RepositoryError> {
+        let record = sqlx::query_as::<_, UserRecord>(
+            "INSERT INTO users (id, name, role, password_hash)
+             VALUES ($1, $2, $3, $4)
+             RETURNING id, name, role, password_hash, created_at, updated_at",
+        )
+        .bind(user.id().value())
+        .bind(user.name())
+        .bind(user.role().as_i16())
+        .bind(user.password_hash())
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| {
+            if let Some(db_err) = e.as_database_error()
+                && db_err.is_unique_violation()
+            {
+                return RepositoryError::AlreadyExists {
+                    resource: "ユーザー".to_string(),
+                    key: user.id().value().to_string(),
+                };
+            }
+            RepositoryError::Other {
+                message: format!("データベース処理でエラーが発生しました: {e}"),
+            }
+        })?;
+
+        let entity = record
+            .try_into()
+            .expect("DBレコードからエンティティへの変換は成功するはず");
+        Ok(entity)
+    }
 }

@@ -8,6 +8,7 @@ use self::{
             application_entity::CreateApplicationEntityUseCase,
             application_entity::ListApplicationEntitiesUseCase,
             application_entity::UpdateApplicationEntityUseCase,
+            user::create_user_use_case::CreateUserUseCase,
             user::list_users_use_case::ListUsersUseCase,
         },
         infrastructure::repository::{PostgresApplicationEntityRepository, PostgresUserRepository},
@@ -32,6 +33,7 @@ pub struct AppState {
     pub create_application_entity_use_case: Arc<CreateApplicationEntityUseCase>,
     pub list_application_entities_use_case: Arc<ListApplicationEntitiesUseCase>,
     pub update_application_entity_use_case: Arc<UpdateApplicationEntityUseCase>,
+    pub create_user_use_case: Arc<CreateUserUseCase>,
     pub list_users_use_case: Arc<ListUsersUseCase>,
 }
 
@@ -87,6 +89,7 @@ async fn main() {
     let update_application_entity_use_case = Arc::new(UpdateApplicationEntityUseCase::new(
         application_entity_repository.clone(),
     ));
+    let create_user_use_case = Arc::new(CreateUserUseCase::new(user_repository.clone()));
     let list_users_use_case = Arc::new(ListUsersUseCase::new(user_repository.clone()));
 
     // アプリケーション状態の初期化
@@ -94,6 +97,7 @@ async fn main() {
         create_application_entity_use_case,
         list_application_entities_use_case,
         update_application_entity_use_case,
+        create_user_use_case,
         list_users_use_case,
     };
 
@@ -111,6 +115,7 @@ async fn main() {
             "/application-entities/{ae_title}",
             put(handler::application_entity::update_application_entity),
         )
+        .route("/users", post(handler::user::create_user))
         .route("/users", get(handler::user::list_users))
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())
