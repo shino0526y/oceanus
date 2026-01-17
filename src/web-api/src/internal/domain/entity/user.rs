@@ -52,4 +52,26 @@ impl User {
     pub fn updated_at(&self) -> &DateTime<Utc> {
         &self.updated_at
     }
+
+    pub fn update(
+        &mut self,
+        id: Id,
+        name: impl Into<String>,
+        role: Role,
+        password_hash: impl Into<String>,
+        updated_at: DateTime<Utc>,
+    ) {
+        assert!(
+            updated_at >= self.created_at,
+            "`updated_at`は`created_at`よりも前にはできません (created_at={}, updated_at={})",
+            self.created_at,
+            updated_at,
+        );
+
+        self.id = id;
+        self.name = name.into();
+        self.role = role;
+        self.password_hash = password_hash.into();
+        self.updated_at = updated_at;
+    }
 }
