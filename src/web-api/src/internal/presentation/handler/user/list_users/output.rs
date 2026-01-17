@@ -16,7 +16,7 @@ impl From<User> for ListUsersOutputElement {
     fn from(user: User) -> Self {
         let role = user.role();
         Self {
-            id: user.id().value().to_string(),
+            id: user.id().value().into(),
             name: user.name().to_string(),
             role: role.as_u8(),
             created_at: *user.created_at(),

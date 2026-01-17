@@ -8,12 +8,12 @@ pub struct UpdateUserCommand {
 }
 
 impl UpdateUserCommand {
-    pub fn new(id: Id, name: String, role: Role, password: String) -> Self {
+    pub fn new(id: Id, name: impl Into<String>, role: Role, password: impl Into<String>) -> Self {
         Self {
             id,
-            name,
+            name: name.into(),
             role,
-            password,
+            password: password.into(),
         }
     }
 }

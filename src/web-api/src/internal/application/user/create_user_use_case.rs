@@ -22,15 +22,15 @@ impl CreateUserUseCase {
     pub async fn create_user(
         &self,
         id: Id,
-        name: String,
+        name: impl Into<String>,
         role: Role,
-        password: String,
+        password: impl Into<String>,
     ) -> Result<User, CreateUserError> {
         // パスワードのハッシュ化(argon2id)
         let salt = SaltString::generate(&mut OsRng);
         let argon2 = Argon2::default();
         let password_hash = argon2
-            .hash_password(password.as_bytes(), &salt)
+            .hash_password(password.into().as_bytes(), &salt)
             .map_err(|e| CreateUserError::PasswordHashError(e.to_string()))?
             .to_string();
 

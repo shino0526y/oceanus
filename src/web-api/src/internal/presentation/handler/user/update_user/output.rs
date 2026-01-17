@@ -1,4 +1,5 @@
 use crate::internal::domain::entity::User;
+use chrono::{DateTime, Utc};
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -7,18 +8,18 @@ pub struct UpdateUserOutput {
     pub id: String,
     pub name: String,
     pub role: i16,
-    pub created_at: String,
-    pub updated_at: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 impl From<User> for UpdateUserOutput {
     fn from(user: User) -> Self {
         Self {
-            id: user.id().value().to_string(),
+            id: user.id().value().into(),
             name: user.name().to_string(),
             role: user.role().as_i16(),
-            created_at: user.created_at().to_rfc3339(),
-            updated_at: user.updated_at().to_rfc3339(),
+            created_at: *user.created_at(),
+            updated_at: *user.updated_at(),
         }
     }
 }
