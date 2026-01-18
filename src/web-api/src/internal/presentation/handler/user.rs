@@ -1,6 +1,6 @@
-mod create_user;
-mod list_users;
-mod update_user;
+pub mod create_user;
+pub mod list_users;
+pub mod update_user;
 
 use self::{
     create_user::{CreateUserInput, CreateUserOutput},
@@ -23,6 +23,22 @@ use axum::{
     extract::{Path, State},
 };
 
+#[utoipa::path(
+    post,
+    path = "/users",
+    request_body = CreateUserInput,
+    responses(
+        (status = 200, description = "ユーザーの作成に成功", body = CreateUserOutput),
+        (status = 400, description = "バリデーションに失敗"),
+        (status = 401, description = "セッションが確立されていない"),
+        (status = 403, description = "CSRFトークンが無効"),
+    ),
+    security(
+        ("session_cookie" = []),
+        ("csrf_token" = [])
+    ),
+    tag = "users"
+)]
 pub async fn create_user(
     State(state): State<AppState>,
     Json(input): Json<CreateUserInput>,
@@ -45,6 +61,18 @@ pub async fn create_user(
     Ok(Json(CreateUserOutput::from(user)))
 }
 
+#[utoipa::path(
+    get,
+    path = "/users",
+    responses(
+        (status = 200, description = "ユーザーの一覧の取得に成功", body = Vec<ListUsersOutputElement>),
+        (status = 401, description = "セッションが確立されていない"),
+    ),
+    security(
+        ("session_cookie" = [])
+    ),
+    tag = "users"
+)]
 pub async fn list_users(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<ListUsersOutputElement>>, PresentationError> {
@@ -63,6 +91,25 @@ pub async fn list_users(
     Ok(Json(output))
 }
 
+#[utoipa::path(
+    put,
+    path = "/users/{id}",
+    request_body = UpdateUserInput,
+    params(
+        ("id" = String, Path, description = "ユーザーID")
+    ),
+    responses(
+        (status = 200, description = "ユーザーの更新に成功", body = UpdateUserOutput),
+        (status = 400, description = "バリデーションに失敗"),
+        (status = 401, description = "セッションが確立されていない"),
+        (status = 403, description = "CSRFトークンが無効"),
+    ),
+    security(
+        ("session_cookie" = []),
+        ("csrf_token" = [])
+    ),
+    tag = "users"
+)]
 pub async fn update_user(
     State(state): State<AppState>,
     Path(id): Path<String>,

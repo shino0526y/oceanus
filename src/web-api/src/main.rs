@@ -34,6 +34,75 @@ use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing::{debug, error, info, level_filters::LevelFilter};
 use tracing_subscriber::fmt::time::LocalTime;
 
+// Swagger UI関連
+#[cfg(debug_assertions)]
+use utoipa::{
+    OpenApi,
+    openapi::security::{ApiKey, ApiKeyValue, SecurityScheme},
+};
+
+#[cfg(debug_assertions)]
+#[derive(OpenApi)]
+#[openapi(
+    paths(
+        internal::presentation::handler::auth::login::login,
+        internal::presentation::handler::auth::logout::logout,
+        internal::presentation::handler::user::create_user,
+        internal::presentation::handler::user::list_users,
+        internal::presentation::handler::user::update_user,
+        internal::presentation::handler::application_entity::list_application_entities,
+        internal::presentation::handler::application_entity::create_application_entity,
+        internal::presentation::handler::application_entity::update_application_entity,
+    ),
+    components(schemas(
+        internal::presentation::handler::auth::login::LoginInput,
+        internal::presentation::handler::auth::login::LoginOutput,
+        internal::presentation::handler::auth::login::ErrorResponse,
+        internal::presentation::handler::auth::logout::ErrorResponse,
+        internal::presentation::handler::user::create_user::CreateUserInput,
+        internal::presentation::handler::user::create_user::CreateUserOutput,
+        internal::presentation::handler::user::list_users::ListUsersOutputElement,
+        internal::presentation::handler::user::update_user::UpdateUserInput,
+        internal::presentation::handler::user::update_user::UpdateUserOutput,
+        internal::presentation::handler::application_entity::create_application_entity::CreateApplicationEntityInput,
+        internal::presentation::handler::application_entity::create_application_entity::CreateApplicationEntityOutput,
+        internal::presentation::handler::application_entity::list_application_entities::ListApplicationEntitiesOutputElement,
+        internal::presentation::handler::application_entity::update_application_entity::UpdateApplicationEntityInput,
+        internal::presentation::handler::application_entity::update_application_entity::UpdateApplicationEntityOutput,
+    )),
+    tags(
+        (name = "auth", description = "認証API"),
+        (name = "users", description = "ユーザー管理API"),
+        (name = "application-entities", description = "Application Entity管理API")
+    ),
+    modifiers(&SecurityAddon),
+    info(
+        title = "Web API",
+        version = "1.0.0",
+        description = "DICOM Web APIサーバー",
+    )
+)]
+struct ApiDoc;
+
+#[cfg(debug_assertions)]
+struct SecurityAddon;
+
+#[cfg(debug_assertions)]
+impl utoipa::Modify for SecurityAddon {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        if let Some(components) = openapi.components.as_mut() {
+            components.add_security_scheme(
+                "csrf_token",
+                SecurityScheme::ApiKey(ApiKey::Header(ApiKeyValue::new("X-CSRF-Token"))),
+            );
+            components.add_security_scheme(
+                "session_cookie",
+                SecurityScheme::ApiKey(ApiKey::Cookie(ApiKeyValue::new("session_id"))),
+            );
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct AppState {
     pub create_application_entity_use_case: Arc<CreateApplicationEntityUseCase>,
@@ -163,6 +232,22 @@ async fn main() {
         .layer(TraceLayer::new_for_http())
         .layer(CookieManagerLayer::new())
         .with_state(app_state);
+
+    // Swagger UIの設定
+    #[cfg(debug_assertions)]
+    let app = {
+        use utoipa_swagger_ui::SwaggerUi;
+        app.merge(
+            SwaggerUi::new("/swagger-ui")
+                .url("/api-docs/openapi.json", ApiDoc::openapi())
+                .config(
+                    utoipa_swagger_ui::Config::default()
+                        .try_it_out_enabled(true)
+                        .request_snippets_enabled(true)
+                        .with_credentials(true),
+                ),
+        )
+    };
 
     // サーバー起動
     let port = args.port;

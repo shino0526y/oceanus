@@ -14,23 +14,35 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use tower_cookies::Cookies;
+use utoipa::ToSchema;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 pub struct LoginInput {
     pub user_id: String,
     pub password: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct LoginOutput {
     pub csrf_token: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ErrorResponse {
     pub error: String,
 }
 
+#[utoipa::path(
+    post,
+    path = "/login",
+    request_body = LoginInput,
+    responses(
+        (status = 200, description = "ログインに成功", body = LoginOutput),
+        (status = 400, description = "バリデーション失敗", body = ErrorResponse),
+        (status = 401, description = "認証に失敗", body = ErrorResponse)
+    ),
+    tag = "auth"
+)]
 pub async fn login(
     State(state): State<AppState>,
     cookies: Cookies,

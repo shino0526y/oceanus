@@ -1,6 +1,6 @@
-mod create_application_entity;
-mod list_application_entities;
-mod update_application_entity;
+pub mod create_application_entity;
+pub mod list_application_entities;
+pub mod update_application_entity;
 
 use self::{
     create_application_entity::{CreateApplicationEntityInput, CreateApplicationEntityOutput},
@@ -21,6 +21,19 @@ use crate::{
 use axum::{Json, extract::Path, extract::State};
 use dicom_lib::core::value::value_representations::ae::AeValue;
 
+#[utoipa::path(
+    get,
+    path = "/application-entities",
+    responses(
+        (status = 200, description = "Application Entityの一覧の取得に成功", body = Vec<ListApplicationEntitiesOutputElement>),
+        (status = 401, description = "セッションが確立されていない"),
+        (status = 403, description = "CSRFトークンが無効"),
+    ),
+    security(
+        ("session_cookie" = [])
+    ),
+    tag = "application-entities"
+)]
 pub async fn list_application_entities(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<ListApplicationEntitiesOutputElement>>, PresentationError> {
@@ -39,6 +52,22 @@ pub async fn list_application_entities(
     Ok(Json(output))
 }
 
+#[utoipa::path(
+    post,
+    path = "/application-entities",
+    request_body = CreateApplicationEntityInput,
+    responses(
+        (status = 200, description = "Application Entityの作成に成功", body = CreateApplicationEntityOutput),
+        (status = 400, description = "バリデーション失敗"),
+        (status = 401, description = "セッションが確立されていない"),
+        (status = 403, description = "CSRFトークンが無効"),
+    ),
+    security(
+        ("session_cookie" = []),
+        ("csrf_token" = [])
+    ),
+    tag = "application-entities"
+)]
 pub async fn create_application_entity(
     State(state): State<AppState>,
     Json(payload): Json<CreateApplicationEntityInput>,
@@ -63,6 +92,25 @@ pub async fn create_application_entity(
     Ok(Json(output))
 }
 
+#[utoipa::path(
+    put,
+    path = "/application-entities/{ae_title}",
+    request_body = UpdateApplicationEntityInput,
+    params(
+        ("ae_title" = String, Path, description = "AE Title")
+    ),
+    responses(
+        (status = 200, description = "Application Entityの更新に成功", body = UpdateApplicationEntityOutput),
+        (status = 400, description = "バリデーション失敗"),
+        (status = 401, description = "セッションが確立されていない"),
+        (status = 403, description = "CSRFトークンが無効"),
+    ),
+    security(
+        ("session_cookie" = []),
+        ("csrf_token" = [])
+    ),
+    tag = "application-entities"
+)]
 pub async fn update_application_entity(
     State(state): State<AppState>,
     Path(ae_title): Path<String>,

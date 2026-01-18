@@ -1,8 +1,9 @@
 use crate::internal::domain::entity::ApplicationEntity;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
+use utoipa::ToSchema;
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateApplicationEntityOutput {
     pub title: String,

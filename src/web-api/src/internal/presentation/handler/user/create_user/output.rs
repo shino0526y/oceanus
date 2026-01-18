@@ -1,8 +1,9 @@
 use crate::internal::domain::entity::User;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
+use utoipa::ToSchema;
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateUserOutput {
     pub id: String,

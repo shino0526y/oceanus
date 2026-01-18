@@ -7,12 +7,27 @@ use axum::{
 };
 use serde::Serialize;
 use tower_cookies::{Cookie, Cookies};
+use utoipa::ToSchema;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ErrorResponse {
     pub error: String,
 }
 
+#[utoipa::path(
+    post,
+    path = "/logout",
+    responses(
+        (status = 204, description = "ログアウトに成功"),
+        (status = 401, description = "セッションが確立されていない"),
+        (status = 403, description = "CSRFトークンが無効"),
+    ),
+    security(
+        ("session_cookie" = []),
+        ("csrf_token" = [])
+    ),
+    tag = "auth"
+)]
 pub async fn logout(
     State(state): State<AppState>,
     cookies: Cookies,
