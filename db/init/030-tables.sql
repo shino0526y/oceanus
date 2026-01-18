@@ -1,19 +1,23 @@
 CREATE TABLE users(
-    id text PRIMARY KEY CHECK (id <> ''),
-    name text UNIQUE NOT NULL CHECK (name <> ''),
+    id text NOT NULL CHECK (id <> ''),
+    name text NOT NULL CHECK (name <> ''),
     role smallint NOT NULL,
     password_hash text NOT NULL CHECK (password_hash <> ''),
     created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (id),
+    UNIQUE (name)
 );
 
 CREATE TABLE application_entities(
-    title varchar(16) PRIMARY KEY,
-    host text NOT NULL,
+    title varchar(16) NOT NULL CHECK (title <> ''),
+    host text NOT NULL CHECK (host <> ''),
     port integer NOT NULL CHECK (port >= 1 AND port <= 65535),
     comment text NOT NULL DEFAULT '',
     created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (title),
+    UNIQUE (host, port)
 );
 
 CREATE TABLE patients(
