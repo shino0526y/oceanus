@@ -19,7 +19,7 @@ impl CreateUserUseCase {
         Self { repository }
     }
 
-    pub async fn create_user(
+    pub async fn execute(
         &self,
         id: Id,
         name: impl Into<String>,

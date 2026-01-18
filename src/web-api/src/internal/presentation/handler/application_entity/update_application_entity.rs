@@ -50,7 +50,7 @@ pub async fn update_application_entity(
 
     let entity = state
         .update_application_entity_use_case
-        .update_application_entity(&ae_title, command)
+        .execute(&ae_title, command)
         .await
         .map_err(PresentationError::from)?;
 

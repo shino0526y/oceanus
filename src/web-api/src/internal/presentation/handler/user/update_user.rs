@@ -51,7 +51,7 @@ pub async fn update_user(
 
     let user = state
         .update_user_use_case
-        .update_user(&old_id, command)
+        .execute(&old_id, command)
         .await
         .map_err(|e| match e {
             UpdateUserError::PasswordHashError(msg) => PresentationError::InternalServerError(

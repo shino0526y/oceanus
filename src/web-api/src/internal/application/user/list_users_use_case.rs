@@ -10,7 +10,7 @@ impl ListUsersUseCase {
         Self { repository }
     }
 
-    pub async fn list_users(&self) -> Result<Vec<User>, RepositoryError> {
+    pub async fn execute(&self) -> Result<Vec<User>, RepositoryError> {
         self.repository.find_all().await
     }
 }

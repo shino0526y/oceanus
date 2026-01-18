@@ -17,7 +17,7 @@ impl UpdateApplicationEntityUseCase {
         Self { repository }
     }
 
-    pub async fn update_application_entity(
+    pub async fn execute(
         &self,
         old_title: &str,
         command: UpdateApplicationEntityCommand,

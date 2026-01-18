@@ -12,9 +12,7 @@ impl ListApplicationEntitiesUseCase {
         Self { repository }
     }
 
-    pub async fn list_application_entities(
-        &self,
-    ) -> Result<Vec<ApplicationEntity>, RepositoryError> {
+    pub async fn execute(&self) -> Result<Vec<ApplicationEntity>, RepositoryError> {
         self.repository.find_all().await
     }
 }

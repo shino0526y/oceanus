@@ -22,7 +22,7 @@ pub async fn list_users(
 ) -> Result<Json<Vec<ListUsersOutputElement>>, PresentationError> {
     let output = state
         .list_users_use_case
-        .list_users()
+        .execute()
         .await
         .map(|users| {
             users

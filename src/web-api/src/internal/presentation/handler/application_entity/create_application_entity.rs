@@ -46,7 +46,7 @@ pub async fn create_application_entity(
 
     let entity = state
         .create_application_entity_use_case
-        .create_application_entity(command)
+        .execute(command)
         .await
         .map_err(PresentationError::from)?;
 

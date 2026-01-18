@@ -40,7 +40,7 @@ pub async fn create_user(
 
     let user = state
         .create_user_use_case
-        .create_user(id, input.name, role, input.password)
+        .execute(id, input.name, role, input.password)
         .await
         .map_err(|e| match e {
             CreateUserError::PasswordHashError(msg) => PresentationError::InternalServerError(

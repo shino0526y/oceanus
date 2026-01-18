@@ -17,7 +17,7 @@ impl CreateApplicationEntityUseCase {
         Self { repository }
     }
 
-    pub async fn create_application_entity(
+    pub async fn execute(
         &self,
         command: CreateApplicationEntityCommand,
     ) -> Result<ApplicationEntity, RepositoryError> {

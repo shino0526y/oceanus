@@ -21,7 +21,7 @@ impl UpdateUserUseCase {
         Self { repository }
     }
 
-    pub async fn update_user(
+    pub async fn execute(
         &self,
         old_id: &Id,
         command: UpdateUserCommand,

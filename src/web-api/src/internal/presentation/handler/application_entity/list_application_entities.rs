@@ -23,7 +23,7 @@ pub async fn list_application_entities(
 ) -> Result<Json<Vec<ListApplicationEntitiesOutputElement>>, PresentationError> {
     let output = state
         .list_application_entities_use_case
-        .list_application_entities()
+        .execute()
         .await
         .map(|entities| {
             entities
