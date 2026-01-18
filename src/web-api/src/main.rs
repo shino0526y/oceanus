@@ -8,12 +8,16 @@ use self::{
             application_entity::CreateApplicationEntityUseCase,
             application_entity::ListApplicationEntitiesUseCase,
             application_entity::UpdateApplicationEntityUseCase,
+            auth::{AuthenticateUserUseCase, LoginUseCase, LogoutUseCase},
+            session::{CreateSessionUseCase, DeleteSessionUseCase, ExtendSessionUseCase},
             user::create_user_use_case::CreateUserUseCase,
             user::list_users_use_case::ListUsersUseCase,
             user::update_user_use_case::UpdateUserUseCase,
         },
-        infrastructure::repository::{PostgresApplicationEntityRepository, PostgresUserRepository},
-        presentation::handler,
+        infrastructure::repository::{
+            InMemorySessionRepository, PostgresApplicationEntityRepository, PostgresUserRepository,
+        },
+        presentation::{handler, middleware},
     },
 };
 use axum::{
@@ -25,6 +29,7 @@ use dotenvy::dotenv;
 use sqlx::postgres::PgPoolOptions;
 use std::{io::IsTerminal, net::Ipv4Addr, process::exit, sync::Arc};
 use tokio::net::TcpListener;
+use tower_cookies::CookieManagerLayer;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing::{debug, error, info, level_filters::LevelFilter};
 use tracing_subscriber::fmt::time::LocalTime;
@@ -37,6 +42,8 @@ pub struct AppState {
     pub create_user_use_case: Arc<CreateUserUseCase>,
     pub list_users_use_case: Arc<ListUsersUseCase>,
     pub update_user_use_case: Arc<UpdateUserUseCase>,
+    pub login_use_case: Arc<LoginUseCase>,
+    pub logout_use_case: Arc<LogoutUseCase>,
 }
 
 #[tokio::main]
@@ -80,6 +87,7 @@ async fn main() {
     let application_entity_repository =
         Arc::new(PostgresApplicationEntityRepository::new(pool.clone()));
     let user_repository = Arc::new(PostgresUserRepository::new(pool.clone()));
+    let session_repository = Arc::new(InMemorySessionRepository::new());
 
     // ユースケースの初期化
     let create_application_entity_use_case = Arc::new(CreateApplicationEntityUseCase::new(
@@ -95,6 +103,18 @@ async fn main() {
     let list_users_use_case = Arc::new(ListUsersUseCase::new(user_repository.clone()));
     let update_user_use_case = Arc::new(UpdateUserUseCase::new(user_repository.clone()));
 
+    // 認証関連UseCaseの初期化
+    let authenticate_user_use_case =
+        Arc::new(AuthenticateUserUseCase::new(user_repository.clone()));
+    let create_session_use_case = Arc::new(CreateSessionUseCase::new(session_repository.clone()));
+    let delete_session_use_case = Arc::new(DeleteSessionUseCase::new(session_repository.clone()));
+    let extend_session_use_case = Arc::new(ExtendSessionUseCase::new(session_repository.clone()));
+    let login_use_case = Arc::new(LoginUseCase::new(
+        authenticate_user_use_case,
+        create_session_use_case.clone(),
+    ));
+    let logout_use_case = Arc::new(LogoutUseCase::new(delete_session_use_case.clone()));
+
     // アプリケーション状態の初期化
     let app_state = AppState {
         create_application_entity_use_case,
@@ -103,27 +123,45 @@ async fn main() {
         create_user_use_case,
         list_users_use_case,
         update_user_use_case,
+        login_use_case,
+        logout_use_case,
     };
 
     // ルーター設定
     let app = Router::new()
-        .route(
-            "/application-entities",
-            get(handler::application_entity::list_application_entities),
+        // 認証不要なエンドポイント
+        .route("/login", post(handler::auth::login))
+        // 認証が必要なエンドポイントにミドルウェアを適用
+        .merge(
+            Router::new()
+                .route("/logout", post(handler::auth::logout))
+                .route(
+                    "/application-entities",
+                    get(handler::application_entity::list_application_entities),
+                )
+                .route(
+                    "/application-entities",
+                    post(handler::application_entity::create_application_entity),
+                )
+                .route(
+                    "/application-entities/{ae_title}",
+                    put(handler::application_entity::update_application_entity),
+                )
+                .route("/users", get(handler::user::list_users))
+                .route("/users", post(handler::user::create_user))
+                .route("/users/{id}", put(handler::user::update_user))
+                .route_layer(axum::middleware::from_fn(move |cookies, request, next| {
+                    middleware::session_auth_middleware(
+                        cookies,
+                        extend_session_use_case.clone(),
+                        request,
+                        next,
+                    )
+                })),
         )
-        .route(
-            "/application-entities",
-            post(handler::application_entity::create_application_entity),
-        )
-        .route(
-            "/application-entities/{ae_title}",
-            put(handler::application_entity::update_application_entity),
-        )
-        .route("/users", get(handler::user::list_users))
-        .route("/users", post(handler::user::create_user))
-        .route("/users/{id}", put(handler::user::update_user))
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())
+        .layer(CookieManagerLayer::new())
         .with_state(app_state);
 
     // サーバー起動
