@@ -58,9 +58,9 @@ pub async fn list_application_entities(
     request_body = CreateApplicationEntityInput,
     responses(
         (status = 200, description = "Application Entityの作成に成功", body = CreateApplicationEntityOutput),
-        (status = 400, description = "バリデーション失敗"),
         (status = 401, description = "セッションが確立されていない"),
         (status = 403, description = "CSRFトークンが無効"),
+        (status = 422, description = "バリデーション失敗"),
     ),
     security(
         ("session_cookie" = []),
@@ -73,11 +73,13 @@ pub async fn create_application_entity(
     Json(payload): Json<CreateApplicationEntityInput>,
 ) -> Result<Json<CreateApplicationEntityOutput>, PresentationError> {
     let command = CreateApplicationEntityCommand {
-        title: AeValue::from_string(&payload.title)
-            .map_err(|e| PresentationError::BadRequest(format!("AEタイトルが不正です: {e}")))?,
+        title: AeValue::from_string(&payload.title).map_err(|e| {
+            PresentationError::UnprocessableContent(format!("AEタイトルが不正です: {e}"))
+        })?,
         host: payload.host,
-        port: Port::from_u16(payload.port)
-            .map_err(|e| PresentationError::BadRequest(format!("ポート番号が不正です: {e}")))?,
+        port: Port::from_u16(payload.port).map_err(|e| {
+            PresentationError::UnprocessableContent(format!("ポート番号が不正です: {e}"))
+        })?,
         comment: payload.comment,
     };
 
@@ -101,9 +103,9 @@ pub async fn create_application_entity(
     ),
     responses(
         (status = 200, description = "Application Entityの更新に成功", body = UpdateApplicationEntityOutput),
-        (status = 400, description = "バリデーション失敗"),
         (status = 401, description = "セッションが確立されていない"),
         (status = 403, description = "CSRFトークンが無効"),
+        (status = 422, description = "バリデーション失敗"),
     ),
     security(
         ("session_cookie" = []),
@@ -117,11 +119,13 @@ pub async fn update_application_entity(
     Json(payload): Json<UpdateApplicationEntityInput>,
 ) -> Result<Json<UpdateApplicationEntityOutput>, PresentationError> {
     let command = UpdateApplicationEntityCommand {
-        title: AeValue::from_string(&payload.title)
-            .map_err(|e| PresentationError::BadRequest(format!("AEタイトルが不正です: {e}")))?,
+        title: AeValue::from_string(&payload.title).map_err(|e| {
+            PresentationError::UnprocessableContent(format!("AEタイトルが不正です: {e}"))
+        })?,
         host: payload.host,
-        port: Port::from_u16(payload.port)
-            .map_err(|e| PresentationError::BadRequest(format!("ポート番号が不正です: {e}")))?,
+        port: Port::from_u16(payload.port).map_err(|e| {
+            PresentationError::UnprocessableContent(format!("ポート番号が不正です: {e}"))
+        })?,
         comment: payload.comment,
     };
 

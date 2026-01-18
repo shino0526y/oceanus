@@ -9,11 +9,11 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum PresentationError {
     #[error("{0}")]
-    BadRequest(String),
-    #[error("{0}")]
     NotFound(String),
     #[error("{0}")]
     Conflict(String),
+    #[error("{0}")]
+    UnprocessableContent(String),
     #[error("{0}")]
     InternalServerError(String),
 }
@@ -21,9 +21,9 @@ pub enum PresentationError {
 impl IntoResponse for PresentationError {
     fn into_response(self) -> Response {
         let (status, message) = match self {
-            PresentationError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
             PresentationError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
             PresentationError::Conflict(msg) => (StatusCode::CONFLICT, msg),
+            PresentationError::UnprocessableContent(msg) => (StatusCode::UNPROCESSABLE_ENTITY, msg),
             PresentationError::InternalServerError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
         };
 

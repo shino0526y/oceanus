@@ -38,8 +38,8 @@ pub struct ErrorResponse {
     request_body = LoginInput,
     responses(
         (status = 200, description = "ログインに成功", body = LoginOutput),
-        (status = 400, description = "バリデーション失敗", body = ErrorResponse),
-        (status = 401, description = "認証に失敗", body = ErrorResponse)
+        (status = 401, description = "認証に失敗", body = ErrorResponse),
+        (status = 422, description = "バリデーション失敗", body = ErrorResponse),
     ),
     tag = "auth"
 )]
@@ -81,7 +81,7 @@ impl From<AuthenticationError> for LoginError {
 impl IntoResponse for LoginError {
     fn into_response(self) -> Response {
         let (status, message) = match self {
-            LoginError::Validation { message } => (StatusCode::BAD_REQUEST, message),
+            LoginError::Validation { message } => (StatusCode::UNPROCESSABLE_ENTITY, message),
             LoginError::Authentication(err) => {
                 let status = match err {
                     AuthenticationError::InvalidCredentials => StatusCode::UNAUTHORIZED,
