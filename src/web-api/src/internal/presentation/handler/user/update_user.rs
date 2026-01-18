@@ -1,5 +1,64 @@
 mod input;
 mod output;
 
-pub use input::UpdateUserInput;
-pub use output::UpdateUserOutput;
+pub use self::{input::UpdateUserInput, output::UpdateUserOutput};
+
+use crate::{
+    AppState,
+    internal::{
+        application::user::update_user_use_case::{UpdateUserCommand, UpdateUserError},
+        domain::value_object::{Id, Role},
+        presentation::error::PresentationError,
+    },
+};
+use axum::{
+    Json,
+    extract::{Path, State},
+};
+
+#[utoipa::path(
+    put,
+    path = "/users/{id}",
+    request_body = UpdateUserInput,
+    params(
+        ("id" = String, Path, description = "ユーザーID")
+    ),
+    responses(
+        (status = 200, description = "ユーザーの更新に成功", body = UpdateUserOutput),
+        (status = 401, description = "セッションが確立されていない"),
+        (status = 403, description = "CSRFトークンが無効"),
+        (status = 422, description = "バリデーションに失敗"),
+    ),
+    security(
+        ("session_cookie" = []),
+        ("csrf_token" = [])
+    ),
+    tag = "users"
+)]
+pub async fn update_user(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(input): Json<UpdateUserInput>,
+) -> Result<Json<UpdateUserOutput>, PresentationError> {
+    // バリデーション
+    let old_id = Id::new(id)
+        .map_err(|e| PresentationError::UnprocessableContent(format!("無効なID: {}", e)))?;
+    let new_id = Id::new(input.id)
+        .map_err(|e| PresentationError::UnprocessableContent(format!("無効なID: {}", e)))?;
+    let role = Role::from_i16(input.role).map_err(PresentationError::UnprocessableContent)?;
+
+    let command = UpdateUserCommand::new(new_id, input.name, role, input.password);
+
+    let user = state
+        .update_user_use_case
+        .update_user(&old_id, command)
+        .await
+        .map_err(|e| match e {
+            UpdateUserError::PasswordHashError(msg) => PresentationError::InternalServerError(
+                format!("パスワードのハッシュ化に失敗しました: {}", msg),
+            ),
+            UpdateUserError::Repository(e) => PresentationError::from(e),
+        })?;
+
+    Ok(Json(UpdateUserOutput::from(user)))
+}

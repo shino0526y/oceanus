@@ -47,12 +47,12 @@ use utoipa::{
     paths(
         internal::presentation::handler::auth::login::login,
         internal::presentation::handler::auth::logout::logout,
-        internal::presentation::handler::user::create_user,
-        internal::presentation::handler::user::list_users,
-        internal::presentation::handler::user::update_user,
-        internal::presentation::handler::application_entity::list_application_entities,
-        internal::presentation::handler::application_entity::create_application_entity,
-        internal::presentation::handler::application_entity::update_application_entity,
+        internal::presentation::handler::user::create_user::create_user,
+        internal::presentation::handler::user::list_users::list_users,
+        internal::presentation::handler::user::update_user::update_user,
+        internal::presentation::handler::application_entity::list_application_entities::list_application_entities,
+        internal::presentation::handler::application_entity::create_application_entity::create_application_entity,
+        internal::presentation::handler::application_entity::update_application_entity::update_application_entity,
     ),
     components(schemas(
         internal::presentation::handler::auth::login::LoginInput,

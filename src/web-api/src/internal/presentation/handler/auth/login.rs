@@ -1,3 +1,8 @@
+mod input;
+mod output;
+
+pub use self::{input::LoginInput, output::LoginOutput};
+
 use crate::{
     AppState,
     internal::{
@@ -12,20 +17,9 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use tower_cookies::Cookies;
 use utoipa::ToSchema;
-
-#[derive(Debug, Deserialize, ToSchema)]
-pub struct LoginInput {
-    pub user_id: String,
-    pub password: String,
-}
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct LoginOutput {
-    pub csrf_token: String,
-}
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ErrorResponse {
