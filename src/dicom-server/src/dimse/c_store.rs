@@ -274,10 +274,15 @@ async fn save_instance_to_db(
 
     query!(
         r#"
-        INSERT INTO patients (id, name_alphabet, name_kanji, name_hiragana, birth_date, sex)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        WITH ae AS (
+            SELECT uuid FROM application_entities WHERE title = $1
+        )
+        INSERT INTO patients (id, name_alphabet, name_kanji, name_hiragana, birth_date, sex, created_by, created_at, updated_by, updated_at)
+        SELECT $2, $3, $4, $5, $6, $7, ae.uuid, now(), ae.uuid, now()
+        FROM ae
         ON CONFLICT (id) DO NOTHING
         "#, // 患者についてはもともと登録されていた情報を真とみなす
+        ae_title,
         instance_info.patient.id(),
         instance_info.patient.name_alphabet(),
         instance_info.patient.name_kanji(),
@@ -296,30 +301,35 @@ async fn save_instance_to_db(
 
     query!(
         r#"
-        INSERT INTO studies (patient_id, instance_uid, id, study_date, study_time, accession_number, ae_title)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        WITH ae AS (
+            SELECT uuid FROM application_entities WHERE title = $1
+        )
+        INSERT INTO studies (patient_id, instance_uid, id, study_date, study_time, accession_number, application_entity_uuid, created_by, created_at, updated_by, updated_at)
+        SELECT $2, $3, $4, $5, $6, $7, ae.uuid, ae.uuid, now(), ae.uuid, now()
+        FROM ae
         ON CONFLICT (instance_uid) DO UPDATE SET
             patient_id = EXCLUDED.patient_id,
             id = EXCLUDED.id,
             study_date = EXCLUDED.study_date,
             study_time = EXCLUDED.study_time,
             accession_number = EXCLUDED.accession_number,
-            ae_title = EXCLUDED.ae_title,
-            updated_at = NOW()
+            application_entity_uuid = EXCLUDED.application_entity_uuid,
+            updated_by = EXCLUDED.updated_by,
+            updated_at = EXCLUDED.updated_at
         WHERE studies.patient_id IS DISTINCT FROM EXCLUDED.patient_id
            OR studies.id IS DISTINCT FROM EXCLUDED.id
            OR studies.study_date IS DISTINCT FROM EXCLUDED.study_date
            OR studies.study_time IS DISTINCT FROM EXCLUDED.study_time
            OR studies.accession_number IS DISTINCT FROM EXCLUDED.accession_number
-           OR studies.ae_title IS DISTINCT FROM EXCLUDED.ae_title
+           OR studies.application_entity_uuid IS DISTINCT FROM EXCLUDED.application_entity_uuid
         "#,
+        ae_title,
         instance_info.patient.id(),
         instance_info.study.instance_uid(),
         instance_info.study.id(),
         instance_info.study.date(),
         instance_info.study.time(),
         instance_info.study.accession_number(),
-        ae_title,
     )
     .execute(&mut *transaction)
     .await
@@ -327,17 +337,23 @@ async fn save_instance_to_db(
 
     query!(
         r#"
-        INSERT INTO series (study_instance_uid, instance_uid, modality, series_number)
-        VALUES ($1, $2, $3, $4)
+        WITH ae AS (
+            SELECT uuid FROM application_entities WHERE title = $1
+        )
+        INSERT INTO series (study_instance_uid, instance_uid, modality, series_number, created_by, created_at, updated_by, updated_at)
+        SELECT $2, $3, $4, $5, ae.uuid, now(), ae.uuid, now()
+        FROM ae
         ON CONFLICT (instance_uid) DO UPDATE SET
             study_instance_uid = EXCLUDED.study_instance_uid,
             modality = EXCLUDED.modality,
             series_number = EXCLUDED.series_number,
-            updated_at = NOW()
+            updated_by = EXCLUDED.updated_by,
+            updated_at = EXCLUDED.updated_at
         WHERE series.study_instance_uid IS DISTINCT FROM EXCLUDED.study_instance_uid
            OR series.modality IS DISTINCT FROM EXCLUDED.modality
            OR series.series_number IS DISTINCT FROM EXCLUDED.series_number
         "#,
+        ae_title,
         instance_info.study.instance_uid(),
         instance_info.series.instance_uid(),
         instance_info.series.modality(),
@@ -349,21 +365,27 @@ async fn save_instance_to_db(
 
     query!(
         r#"
-        INSERT INTO sop_instances (series_instance_uid, class_uid, instance_uid, transfer_syntax_uid, size, path)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        WITH ae AS (
+            SELECT uuid FROM application_entities WHERE title = $1
+        )
+        INSERT INTO sop_instances (series_instance_uid, class_uid, instance_uid, transfer_syntax_uid, size, path, created_by, created_at, updated_by, updated_at)
+        SELECT $2, $3, $4, $5, $6, $7, ae.uuid, now(), ae.uuid, now()
+        FROM ae
         ON CONFLICT (instance_uid) DO UPDATE SET
             series_instance_uid = EXCLUDED.series_instance_uid,
             class_uid = EXCLUDED.class_uid,
             transfer_syntax_uid = EXCLUDED.transfer_syntax_uid,
             size = EXCLUDED.size,
             path = EXCLUDED.path,
-            updated_at = NOW()
+            updated_by = EXCLUDED.updated_by,
+            updated_at = EXCLUDED.updated_at
         WHERE sop_instances.series_instance_uid IS DISTINCT FROM EXCLUDED.series_instance_uid
            OR sop_instances.class_uid IS DISTINCT FROM EXCLUDED.class_uid
            OR sop_instances.transfer_syntax_uid IS DISTINCT FROM EXCLUDED.transfer_syntax_uid
            OR sop_instances.size IS DISTINCT FROM EXCLUDED.size
            OR sop_instances.path IS DISTINCT FROM EXCLUDED.path
         "#,
+        ae_title,
         instance_info.series.instance_uid(),
         instance_info.sop_instance.class_uid(),
         instance_info.sop_instance.instance_uid(),
