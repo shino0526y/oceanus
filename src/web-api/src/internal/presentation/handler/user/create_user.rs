@@ -6,12 +6,13 @@ pub use self::{input::CreateUserInput, output::CreateUserOutput};
 use crate::{
     AppState,
     internal::{
-        application::user::create_user_use_case::CreateUserError,
+        application::user::create_user_use_case::{CreateUserCommand, CreateUserError},
         domain::value_object::{Id, Role},
-        presentation::error::PresentationError,
+        presentation::{error::PresentationError, middleware::AuthenticatedUser},
     },
 };
-use axum::{Json, extract::State};
+use axum::{Extension, Json, extract::State};
+use chrono::Utc;
 
 #[utoipa::path(
     post,
@@ -31,16 +32,27 @@ use axum::{Json, extract::State};
 )]
 pub async fn create_user(
     State(state): State<AppState>,
+    Extension(user): Extension<AuthenticatedUser>,
     Json(input): Json<CreateUserInput>,
 ) -> Result<Json<CreateUserOutput>, PresentationError> {
+    // バリデーション
     let id = Id::new(input.id)
         .map_err(|e| PresentationError::UnprocessableContent(format!("無効なID: {}", e)))?;
     let role =
         Role::from_i16(input.role as i16).map_err(PresentationError::UnprocessableContent)?;
 
+    // 登録処理
+    let command = CreateUserCommand {
+        id,
+        name: input.name,
+        role,
+        password: input.password,
+        created_by: user.uuid(),
+        created_at: Utc::now(),
+    };
     let user = state
         .create_user_use_case
-        .execute(id, input.name, role, input.password)
+        .execute(command)
         .await
         .map_err(|e| match e {
             CreateUserError::PasswordHashError(msg) => PresentationError::InternalServerError(

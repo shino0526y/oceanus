@@ -8,10 +8,21 @@ use argon2::{
     Argon2,
     password_hash::{PasswordHasher, SaltString, rand_core::OsRng},
 };
+use chrono::{DateTime, Utc};
 use std::sync::Arc;
+use uuid::Uuid;
 
 pub struct CreateUserUseCase {
     repository: Arc<dyn UserRepository>,
+}
+
+pub struct CreateUserCommand {
+    pub id: Id,
+    pub name: String,
+    pub role: Role,
+    pub password: String,
+    pub created_by: Uuid,
+    pub created_at: DateTime<Utc>,
 }
 
 impl CreateUserUseCase {
@@ -19,27 +30,26 @@ impl CreateUserUseCase {
         Self { repository }
     }
 
-    pub async fn execute(
-        &self,
-        id: Id,
-        name: impl Into<String>,
-        role: Role,
-        password: impl Into<String>,
-    ) -> Result<User, CreateUserError> {
+    pub async fn execute(&self, command: CreateUserCommand) -> Result<User, CreateUserError> {
         // パスワードのハッシュ化(argon2id)
         let salt = SaltString::generate(&mut OsRng);
         let argon2 = Argon2::default();
         let password_hash = argon2
-            .hash_password(password.into().as_bytes(), &salt)
+            .hash_password(command.password.as_bytes(), &salt)
             .map_err(|e| CreateUserError::PasswordHashError(e.to_string()))?
             .to_string();
 
-        let now = chrono::Utc::now();
-
-        let user = User::new(id, name, role, password_hash, now, now);
+        let user = User::create(
+            command.id,
+            command.name,
+            command.role,
+            password_hash,
+            command.created_by,
+            command.created_at,
+        );
 
         self.repository
-            .add(user)
+            .add(&user)
             .await
             .map_err(CreateUserError::Repository)
     }

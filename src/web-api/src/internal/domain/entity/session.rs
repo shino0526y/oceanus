@@ -1,11 +1,11 @@
 use chrono::{DateTime, Duration, Utc};
 use rand::Rng;
+use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub struct Session {
     session_id: String,
-    #[allow(dead_code)]
-    user_id: String,
+    user_uuid: Uuid,
     csrf_token: String,
     expires_at: DateTime<Utc>,
 }
@@ -15,14 +15,14 @@ impl Session {
     pub const DEFAULT_EXPIRY_MINUTES: i64 = 30;
 
     /// 新規セッションを作成する
-    pub fn create(user_id: impl Into<String>) -> Self {
+    pub fn create(user_uuid: Uuid) -> Self {
         let session_id = Self::generate_session_id();
         let csrf_token = Self::generate_csrf_token();
         let expires_at = Utc::now() + Duration::minutes(Self::DEFAULT_EXPIRY_MINUTES);
 
         Self {
             session_id,
-            user_id: user_id.into(),
+            user_uuid,
             csrf_token,
             expires_at,
         }
@@ -32,16 +32,14 @@ impl Session {
         &self.session_id
     }
 
-    #[allow(dead_code)]
-    pub fn user_id(&self) -> &str {
-        &self.user_id
+    pub fn user_uuid(&self) -> &Uuid {
+        &self.user_uuid
     }
 
     pub fn csrf_token(&self) -> &str {
         &self.csrf_token
     }
 
-    #[allow(dead_code)]
     pub fn expires_at(&self) -> &DateTime<Utc> {
         &self.expires_at
     }

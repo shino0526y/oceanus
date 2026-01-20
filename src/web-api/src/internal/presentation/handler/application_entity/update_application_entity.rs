@@ -7,10 +7,15 @@ use crate::{
     AppState,
     internal::{
         application::application_entity::update_application_entity_use_case::UpdateApplicationEntityCommand,
-        domain::value_object::Port, presentation::error::PresentationError,
+        domain::value_object::Port,
+        presentation::{error::PresentationError, middleware::AuthenticatedUser},
     },
 };
-use axum::{Json, extract::Path, extract::State};
+use axum::{
+    Extension, Json,
+    extract::{Path, State},
+};
+use chrono::Utc;
 use dicom_lib::core::value::value_representations::ae::AeValue;
 
 #[utoipa::path(
@@ -34,23 +39,34 @@ use dicom_lib::core::value::value_representations::ae::AeValue;
 )]
 pub async fn update_application_entity(
     State(state): State<AppState>,
+    Extension(user): Extension<AuthenticatedUser>,
     Path(ae_title): Path<String>,
     Json(payload): Json<UpdateApplicationEntityInput>,
 ) -> Result<Json<UpdateApplicationEntityOutput>, PresentationError> {
-    let command = UpdateApplicationEntityCommand {
-        title: AeValue::from_string(&payload.title).map_err(|e| {
-            PresentationError::UnprocessableContent(format!("AEタイトルが不正です: {e}"))
-        })?,
-        host: payload.host,
-        port: Port::from_u16(payload.port).map_err(|e| {
-            PresentationError::UnprocessableContent(format!("ポート番号が不正です: {e}"))
-        })?,
-        comment: payload.comment,
-    };
+    // バリデーション
+    let old_title = AeValue::from_string(&ae_title).map_err(|e| {
+        PresentationError::UnprocessableContent(format!("AEタイトルが不正です: {e}"))
+    })?;
+    let title = AeValue::from_string(&payload.title).map_err(|e| {
+        PresentationError::UnprocessableContent(format!("AEタイトルが不正です: {e}"))
+    })?;
+    let port = Port::from_u16(payload.port).map_err(|e| {
+        PresentationError::UnprocessableContent(format!("ポート番号が不正です: {e}"))
+    })?;
 
+    // 更新処理
+    let command = UpdateApplicationEntityCommand {
+        old_title,
+        title,
+        host: payload.host,
+        port,
+        comment: payload.comment,
+        updated_by: user.uuid(),
+        updated_at: Utc::now(),
+    };
     let entity = state
         .update_application_entity_use_case
-        .execute(&ae_title, command)
+        .execute(command)
         .await
         .map_err(PresentationError::from)?;
 

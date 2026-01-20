@@ -6,14 +6,18 @@ use crate::internal::domain::{
 };
 use chrono::{DateTime, Utc};
 use sqlx::{FromRow, Pool, Postgres};
+use uuid::Uuid;
 
 #[derive(FromRow)]
 struct UserRecord {
+    uuid: Uuid,
     id: String,
     name: String,
     role: i16,
     password_hash: String,
+    created_by: Uuid,
     created_at: DateTime<Utc>,
+    updated_by: Uuid,
     updated_at: DateTime<Utc>,
 }
 
@@ -23,12 +27,15 @@ impl TryFrom<UserRecord> for User {
     fn try_from(record: UserRecord) -> Result<Self, Self::Error> {
         let user_id = Id::new(record.id)?;
         let role = Role::from_i16(record.role)?;
-        Ok(User::new(
+        Ok(User::construct(
+            record.uuid,
             user_id,
             record.name,
             role,
             record.password_hash,
+            record.created_by,
             record.created_at,
+            record.updated_by,
             record.updated_at,
         ))
     }
@@ -48,7 +55,7 @@ impl PostgresUserRepository {
 impl UserRepository for PostgresUserRepository {
     async fn find_all(&self) -> Result<Vec<User>, RepositoryError> {
         let records = sqlx::query_as::<_, UserRecord>(
-            "SELECT id, name, role, password_hash, created_at, updated_at
+            "SELECT uuid, id, name, role, password_hash, created_by, created_at, updated_by, updated_at
              FROM users
              ORDER BY created_at DESC",
         )
@@ -70,7 +77,7 @@ impl UserRepository for PostgresUserRepository {
 
     async fn find_by_id(&self, id: &Id) -> Result<Option<User>, RepositoryError> {
         let record = sqlx::query_as::<_, UserRecord>(
-            "SELECT id, name, role, password_hash, created_at, updated_at
+            "SELECT uuid, id, name, role, password_hash, created_by, created_at, updated_by, updated_at
              FROM users
              WHERE id = $1",
         )
@@ -92,16 +99,21 @@ impl UserRepository for PostgresUserRepository {
         }
     }
 
-    async fn add(&self, user: User) -> Result<User, RepositoryError> {
+    async fn add(&self, user: &User) -> Result<User, RepositoryError> {
         let record = sqlx::query_as::<_, UserRecord>(
-            "INSERT INTO users (id, name, role, password_hash)
-             VALUES ($1, $2, $3, $4)
-             RETURNING id, name, role, password_hash, created_at, updated_at",
+            "INSERT INTO users (uuid, id, name, role, password_hash, created_by, created_at, updated_by, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+             RETURNING uuid, id, name, role, password_hash, created_by, created_at, updated_by, updated_at",
         )
+        .bind(user.uuid())
         .bind(user.id().value())
         .bind(user.name())
         .bind(user.role().as_i16())
         .bind(user.password_hash())
+        .bind(user.created_by())
+        .bind(user.created_at())
+        .bind(user.updated_by())
+        .bind(user.updated_at())
         .fetch_one(&self.pool)
         .await
         .map_err(|e| {
@@ -125,17 +137,17 @@ impl UserRepository for PostgresUserRepository {
     }
 
     async fn update(&self, old_id: &Id, user: &User) -> Result<User, RepositoryError> {
-        let new_id = user.id();
         let record = sqlx::query_as::<_, UserRecord>(
             "UPDATE users
-             SET id = $1, name = $2, role = $3, password_hash = $4, updated_at = $5
-             WHERE id = $6
-             RETURNING id, name, role, password_hash, created_at, updated_at",
+             SET id = $1, name = $2, role = $3, password_hash = $4, updated_by = $5, updated_at = $6
+             WHERE id = $7
+             RETURNING uuid, id, name, role, password_hash, created_by, created_at, updated_by, updated_at",
         )
-        .bind(new_id.value())
+        .bind(user.id().value())
         .bind(user.name())
         .bind(user.role().as_i16())
         .bind(user.password_hash())
+        .bind(user.updated_by())
         .bind(user.updated_at())
         .bind(old_id.value())
         .fetch_optional(&self.pool)
@@ -146,7 +158,7 @@ impl UserRepository for PostgresUserRepository {
             {
                 return RepositoryError::AlreadyExists {
                     resource: "ユーザー".to_string(),
-                    key: new_id.value().to_string(),
+                    key: user.id().value().to_string(),
                 };
             }
             RepositoryError::Other {

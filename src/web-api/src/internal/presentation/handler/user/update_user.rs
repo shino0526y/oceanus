@@ -8,13 +8,14 @@ use crate::{
     internal::{
         application::user::update_user_use_case::{UpdateUserCommand, UpdateUserError},
         domain::value_object::{Id, Role},
-        presentation::error::PresentationError,
+        presentation::{error::PresentationError, middleware::AuthenticatedUser},
     },
 };
 use axum::{
-    Json,
+    Extension, Json,
     extract::{Path, State},
 };
+use chrono::Utc;
 
 #[utoipa::path(
     put,
@@ -37,6 +38,7 @@ use axum::{
 )]
 pub async fn update_user(
     State(state): State<AppState>,
+    Extension(user): Extension<AuthenticatedUser>,
     Path(id): Path<String>,
     Json(input): Json<UpdateUserInput>,
 ) -> Result<Json<UpdateUserOutput>, PresentationError> {
@@ -47,11 +49,19 @@ pub async fn update_user(
         .map_err(|e| PresentationError::UnprocessableContent(format!("無効なID: {}", e)))?;
     let role = Role::from_i16(input.role).map_err(PresentationError::UnprocessableContent)?;
 
-    let command = UpdateUserCommand::new(new_id, input.name, role, input.password);
-
+    // 更新処理
+    let command = UpdateUserCommand {
+        old_id,
+        id: new_id,
+        name: input.name,
+        role,
+        password: input.password,
+        updated_by: user.uuid(),
+        updated_at: Utc::now(),
+    };
     let user = state
         .update_user_use_case
-        .execute(&old_id, command)
+        .execute(command)
         .await
         .map_err(|e| match e {
             UpdateUserError::PasswordHashError(msg) => PresentationError::InternalServerError(

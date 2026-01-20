@@ -1,3 +1,3 @@
 pub mod session_auth;
 
-pub use session_auth::session_auth_middleware;
+pub use session_auth::{AuthenticatedUser, session_auth_middleware};

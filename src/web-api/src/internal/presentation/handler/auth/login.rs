@@ -6,7 +6,7 @@ pub use self::{input::LoginInput, output::LoginOutput};
 use crate::{
     AppState,
     internal::{
-        application::auth::AuthenticationError,
+        application::auth::{AuthenticationError, LoginCommand},
         domain::{entity::Session, value_object::Id},
         presentation::util::CookieHelper,
     },
@@ -42,16 +42,17 @@ pub async fn login(
     cookies: Cookies,
     Json(input): Json<LoginInput>,
 ) -> Result<Json<LoginOutput>, LoginError> {
-    // ユーザーIDのバリデーション
+    // バリデーション
     let user_id = Id::new(&input.user_id).map_err(|e| LoginError::Validation {
         message: format!("無効なユーザーID: {e}"),
     })?;
 
     // ログイン処理
-    let (session_id, csrf_token) = state
-        .login_use_case
-        .execute(&user_id, &input.password)
-        .await?;
+    let command = LoginCommand {
+        user_id,
+        password: input.password,
+    };
+    let (session_id, csrf_token) = state.login_use_case.execute(command).await?;
 
     // Cookie設定
     let cookie = CookieHelper::create_session_cookie(session_id, Session::DEFAULT_EXPIRY_MINUTES);

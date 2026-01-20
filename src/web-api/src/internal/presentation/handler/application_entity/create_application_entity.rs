@@ -7,10 +7,12 @@ use crate::{
     AppState,
     internal::{
         application::application_entity::create_application_entity_use_case::CreateApplicationEntityCommand,
-        domain::value_object::Port, presentation::error::PresentationError,
+        domain::value_object::Port,
+        presentation::{error::PresentationError, middleware::AuthenticatedUser},
     },
 };
-use axum::{Json, extract::State};
+use axum::{Extension, Json, extract::State};
+use chrono::Utc;
 use dicom_lib::core::value::value_representations::ae::AeValue;
 
 #[utoipa::path(
@@ -31,19 +33,26 @@ use dicom_lib::core::value::value_representations::ae::AeValue;
 )]
 pub async fn create_application_entity(
     State(state): State<AppState>,
+    Extension(user): Extension<AuthenticatedUser>,
     Json(payload): Json<CreateApplicationEntityInput>,
 ) -> Result<Json<CreateApplicationEntityOutput>, PresentationError> {
-    let command = CreateApplicationEntityCommand {
-        title: AeValue::from_string(&payload.title).map_err(|e| {
-            PresentationError::UnprocessableContent(format!("AEタイトルが不正です: {e}"))
-        })?,
-        host: payload.host,
-        port: Port::from_u16(payload.port).map_err(|e| {
-            PresentationError::UnprocessableContent(format!("ポート番号が不正です: {e}"))
-        })?,
-        comment: payload.comment,
-    };
+    // バリデーション
+    let title = AeValue::from_string(&payload.title).map_err(|e| {
+        PresentationError::UnprocessableContent(format!("AEタイトルが不正です: {e}"))
+    })?;
+    let port = Port::from_u16(payload.port).map_err(|e| {
+        PresentationError::UnprocessableContent(format!("ポート番号が不正です: {e}"))
+    })?;
 
+    // 登録処理
+    let command = CreateApplicationEntityCommand {
+        title,
+        host: payload.host,
+        port,
+        comment: payload.comment,
+        created_by: user.uuid(),
+        created_at: Utc::now(),
+    };
     let entity = state
         .create_application_entity_use_case
         .execute(command)

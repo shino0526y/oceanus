@@ -5,14 +5,18 @@ use crate::internal::domain::{
 use chrono::{DateTime, Utc};
 use dicom_lib::core::value::value_representations::ae::AeValue;
 use sqlx::{FromRow, Pool, Postgres};
+use uuid::Uuid;
 
 #[derive(FromRow)]
 struct ApplicationEntityRecord {
+    uuid: Uuid,
     title: String,
     host: String,
     port: i32,
     comment: String,
+    created_by: Uuid,
     created_at: DateTime<Utc>,
+    updated_by: Uuid,
     updated_at: DateTime<Utc>,
 }
 
@@ -23,12 +27,15 @@ impl TryFrom<ApplicationEntityRecord> for ApplicationEntity {
         let title = AeValue::from_string(&record.title)
             .map_err(|e| format!("AEタイトルが不正です: {e}"))?;
         let port = Port::from_i32(record.port).map_err(|e| format!("ポート番号が不正です: {e}"))?;
-        Ok(ApplicationEntity::new(
+        Ok(ApplicationEntity::construct(
+            record.uuid,
             title,
             record.host,
             port,
             record.comment,
+            record.created_by,
             record.created_at,
+            record.updated_by,
             record.updated_at,
         ))
     }
@@ -48,7 +55,7 @@ impl PostgresApplicationEntityRepository {
 impl ApplicationEntityRepository for PostgresApplicationEntityRepository {
     async fn find_all(&self) -> Result<Vec<ApplicationEntity>, RepositoryError> {
         let records = sqlx::query_as::<_, ApplicationEntityRecord>(
-            "SELECT title, host, port, comment, created_at, updated_at
+            "SELECT uuid, title, host, port, comment, created_by, created_at, updated_by, updated_at
              FROM application_entities
              ORDER BY created_at DESC",
         )
@@ -70,14 +77,14 @@ impl ApplicationEntityRepository for PostgresApplicationEntityRepository {
 
     async fn find_by_title(
         &self,
-        title: &str,
+        title: &AeValue,
     ) -> Result<Option<ApplicationEntity>, RepositoryError> {
         let record = sqlx::query_as::<_, ApplicationEntityRecord>(
-            "SELECT title, host, port, comment, created_at, updated_at
+            "SELECT uuid, title, host, port, comment, created_by, created_at, updated_by, updated_at
              FROM application_entities
              WHERE title = $1",
         )
-        .bind(title)
+        .bind(title.value())
         .fetch_optional(&self.pool)
         .await
         .map_err(|e| RepositoryError::Other {
@@ -96,16 +103,20 @@ impl ApplicationEntityRepository for PostgresApplicationEntityRepository {
     }
 
     async fn add(&self, entity: &ApplicationEntity) -> Result<ApplicationEntity, RepositoryError> {
-        let ae_title = entity.title().value();
         let record = sqlx::query_as::<_, ApplicationEntityRecord>(
-            "INSERT INTO application_entities (title, host, port, comment)
-             VALUES ($1, $2, $3, $4)
-             RETURNING title, host, port, comment, created_at, updated_at",
+            "INSERT INTO application_entities (uuid, title, host, port, comment, created_by, created_at, updated_by, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+             RETURNING uuid, title, host, port, comment, created_by, created_at, updated_by, updated_at",
         )
-        .bind(ae_title)
+        .bind(entity.uuid())
+        .bind(entity.title().value())
         .bind(entity.host())
         .bind(entity.port().value() as i32)
         .bind(entity.comment())
+        .bind(entity.created_by())
+        .bind(entity.created_at())
+        .bind(entity.updated_by())
+        .bind(entity.updated_at())
         .fetch_one(&self.pool)
         .await
         .map_err(|e| {
@@ -114,7 +125,7 @@ impl ApplicationEntityRepository for PostgresApplicationEntityRepository {
             {
                 return RepositoryError::AlreadyExists {
                     resource: "AEタイトル".to_string(),
-                    key: ae_title.to_string(),
+                    key: entity.title().value().to_string(),
                 };
             }
             RepositoryError::Other {
@@ -130,22 +141,22 @@ impl ApplicationEntityRepository for PostgresApplicationEntityRepository {
 
     async fn update(
         &self,
-        old_title: &str,
+        old_title: &AeValue,
         entity: &ApplicationEntity,
     ) -> Result<ApplicationEntity, RepositoryError> {
-        let new_title = entity.title().value();
         let record = sqlx::query_as::<_, ApplicationEntityRecord>(
             "UPDATE application_entities
-             SET title = $1, host = $2, port = $3, comment = $4, updated_at = $5
-             WHERE title = $6
-             RETURNING title, host, port, comment, created_at, updated_at",
+             SET title = $1, host = $2, port = $3, comment = $4, updated_by = $5, updated_at = $6
+             WHERE title = $7
+             RETURNING uuid, title, host, port, comment, created_by, created_at, updated_by, updated_at",
         )
-        .bind(new_title)
+        .bind(entity.title().value())
         .bind(entity.host())
         .bind(entity.port().value() as i32)
         .bind(entity.comment())
+        .bind(entity.updated_by())
         .bind(entity.updated_at())
-        .bind(old_title)
+        .bind(old_title.value())
         .fetch_optional(&self.pool)
         .await
         .map_err(|e| {
@@ -154,7 +165,7 @@ impl ApplicationEntityRepository for PostgresApplicationEntityRepository {
             {
                 return RepositoryError::AlreadyExists {
                     resource: "AEタイトル".to_string(),
-                    key: new_title.to_string(),
+                    key: entity.title().value().to_string(),
                 };
             }
             RepositoryError::Other {
@@ -171,7 +182,7 @@ impl ApplicationEntityRepository for PostgresApplicationEntityRepository {
             }
             None => Err(RepositoryError::NotFound {
                 resource: "AEタイトル".to_string(),
-                key: old_title.to_string(),
+                key: old_title.value().to_string(),
             }),
         }
     }

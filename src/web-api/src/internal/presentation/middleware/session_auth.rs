@@ -11,8 +11,19 @@ use axum::{
 };
 use std::sync::Arc;
 use tower_cookies::Cookies;
+use uuid::Uuid;
 
 const CSRF_TOKEN_HEADER: &str = "X-CSRF-Token";
+
+/// 認証済みユーザーのUUIDを格納する構造体
+#[derive(Clone, Copy, Debug)]
+pub struct AuthenticatedUser(pub Uuid);
+
+impl AuthenticatedUser {
+    pub fn uuid(&self) -> Uuid {
+        self.0
+    }
+}
 
 /// セッション認証ミドルウェア
 pub async fn session_auth_middleware(
@@ -55,7 +66,7 @@ pub async fn session_auth_middleware(
             .execute_with_csrf_validation(&session_id, csrf_token)
             .await
         {
-            Ok(true) => {
+            Ok(Some(user_uuid)) => {
                 // セッション有効期限を延長したので、Cookieも更新
                 let cookie = CookieHelper::create_session_cookie(
                     session_id,
@@ -63,9 +74,15 @@ pub async fn session_auth_middleware(
                 );
                 cookies.add(cookie);
 
+                // 認証済みユーザー情報をリクエストに追加
+                let mut request = request;
+                request
+                    .extensions_mut()
+                    .insert(AuthenticatedUser(user_uuid));
+
                 next.run(request).await
             }
-            Ok(false) => {
+            Ok(None) => {
                 // セッションが見つからないか期限切れ
                 StatusCode::UNAUTHORIZED.into_response()
             }
@@ -77,11 +94,17 @@ pub async fn session_auth_middleware(
     } else {
         // GETなどの参照系リクエストではCSRFトークン不要
         // セッションを検証し延長する
-        if extend_session_use_case.execute(&session_id).await {
+        if let Some(user_uuid) = extend_session_use_case.execute(&session_id).await {
             // セッション有効期限を延長したので、Cookieも更新
             let cookie =
                 CookieHelper::create_session_cookie(session_id, Session::DEFAULT_EXPIRY_MINUTES);
             cookies.add(cookie);
+
+            // 認証済みユーザー情報をリクエストに追加
+            let mut request = request;
+            request
+                .extensions_mut()
+                .insert(AuthenticatedUser(user_uuid));
 
             next.run(request).await
         } else {

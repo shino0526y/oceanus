@@ -4,6 +4,7 @@ use crate::internal::domain::{
 use argon2::{Argon2, PasswordHash, PasswordVerifier};
 use std::sync::Arc;
 use thiserror::Error;
+use uuid::Uuid;
 
 #[derive(Debug, Error)]
 pub enum AuthenticationError {
@@ -18,21 +19,25 @@ pub struct AuthenticateUserUseCase {
     user_repository: Arc<dyn UserRepository>,
 }
 
+pub struct AuthenticateUserCommand<'a> {
+    pub user_id: &'a Id,
+    pub password: &'a str,
+}
+
 impl AuthenticateUserUseCase {
     pub fn new(user_repository: Arc<dyn UserRepository>) -> Self {
         Self { user_repository }
     }
 
-    /// ユーザーを認証し、認証成功時にユーザーIDを返す
+    /// ユーザーを認証し、認証成功時にユーザーUUIDを返す
     pub async fn execute(
         &self,
-        user_id: &Id,
-        password: &str,
-    ) -> Result<String, AuthenticationError> {
+        command: AuthenticateUserCommand<'_>,
+    ) -> Result<Uuid, AuthenticationError> {
         // ユーザー取得
         let user = self
             .user_repository
-            .find_by_id(user_id)
+            .find_by_id(command.user_id)
             .await
             .map_err(|e| match e {
                 RepositoryError::NotFound { .. } => AuthenticationError::InvalidCredentials,
@@ -49,10 +54,10 @@ impl AuthenticateUserUseCase {
             })?;
 
         Argon2::default()
-            .verify_password(password.as_bytes(), &parsed_hash)
+            .verify_password(command.password.as_bytes(), &parsed_hash)
             .map_err(|_| AuthenticationError::InvalidCredentials)?;
 
-        // 認証成功、ユーザーIDを返す
-        Ok(user.id().value().to_string())
+        // 認証成功、ユーザーUUIDを返す
+        Ok(*user.uuid())
     }
 }

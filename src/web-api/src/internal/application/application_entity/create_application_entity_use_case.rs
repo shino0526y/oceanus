@@ -1,15 +1,23 @@
-mod create_application_entity_command;
-
-pub use create_application_entity_command::CreateApplicationEntityCommand;
-
 use crate::internal::domain::{
     entity::ApplicationEntity, error::RepositoryError, repository::ApplicationEntityRepository,
+    value_object::Port,
 };
-use chrono::Utc;
+use chrono::{DateTime, Utc};
+use dicom_lib::core::value::value_representations::ae::AeValue;
 use std::sync::Arc;
+use uuid::Uuid;
 
 pub struct CreateApplicationEntityUseCase {
     repository: Arc<dyn ApplicationEntityRepository>,
+}
+
+pub struct CreateApplicationEntityCommand {
+    pub title: AeValue,
+    pub host: String,
+    pub port: Port,
+    pub comment: String,
+    pub created_by: Uuid,
+    pub created_at: DateTime<Utc>,
 }
 
 impl CreateApplicationEntityUseCase {
@@ -21,13 +29,13 @@ impl CreateApplicationEntityUseCase {
         &self,
         command: CreateApplicationEntityCommand,
     ) -> Result<ApplicationEntity, RepositoryError> {
-        let entity = ApplicationEntity::new(
+        let entity = ApplicationEntity::create(
             command.title,
             command.host,
             command.port,
             command.comment,
-            Utc::now(),
-            Utc::now(),
+            command.created_by,
+            command.created_at,
         );
 
         self.repository.add(&entity).await

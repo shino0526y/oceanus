@@ -1,9 +1,13 @@
 use crate::internal::domain::repository::SessionRepository;
 use std::sync::Arc;
 
-#[allow(dead_code)]
 pub struct ValidateCsrfTokenUseCase {
     session_repository: Arc<dyn SessionRepository>,
+}
+
+pub struct ValidateCsrfTokenCommand {
+    pub session_id: String,
+    pub token: String,
 }
 
 #[allow(dead_code)]
@@ -13,9 +17,13 @@ impl ValidateCsrfTokenUseCase {
     }
 
     /// CSRFトークンを検証
-    pub async fn execute(&self, session_id: &str, token: &str) -> bool {
-        if let Some(session) = self.session_repository.find_by_session_id(session_id).await {
-            session.csrf_token() == token
+    pub async fn execute(&self, command: ValidateCsrfTokenCommand) -> bool {
+        if let Some(session) = self
+            .session_repository
+            .find_by_session_id(&command.session_id)
+            .await
+        {
+            session.csrf_token() == command.token
         } else {
             false
         }

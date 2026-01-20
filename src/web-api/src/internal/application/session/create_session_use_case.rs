@@ -1,5 +1,6 @@
 use crate::internal::domain::{entity::Session, repository::SessionRepository};
 use std::sync::Arc;
+use uuid::Uuid;
 
 pub struct CreateSessionUseCase {
     session_repository: Arc<dyn SessionRepository>,
@@ -11,8 +12,8 @@ impl CreateSessionUseCase {
     }
 
     /// セッションを作成し、セッションIDとCSRFトークンを返す
-    pub async fn execute(&self, user_id: String) -> (String, String) {
-        let session = Session::create(user_id);
+    pub async fn execute(&self, user_uuid: Uuid) -> (String, String) {
+        let session = Session::create(user_uuid);
         let session_id = session.session_id().to_string();
         let csrf_token = session.csrf_token().to_string();
         self.session_repository.save(session).await;

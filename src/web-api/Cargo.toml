@@ -15,7 +15,7 @@ dotenvy = "0.15"
 rand = "0.9"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "macros", "chrono"] }
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "macros", "chrono", "uuid"] }
 thiserror = { workspace = true }
 time = "0.3"
 tokio = { workspace = true }
@@ -26,4 +26,5 @@ tracing = { workspace = true }
 tracing-subscriber = { version = "0.3", features = ["local-time", "env-filter"] }
 utoipa = { version = "5", features = ["axum_extras", "chrono"] }
 utoipa-swagger-ui = { version = "9", features = ["axum"] }
+uuid = { workspace = true }
 dicom-lib = { workspace = true }
