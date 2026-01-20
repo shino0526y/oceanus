@@ -26,5 +26,5 @@ tracing = { workspace = true }
 tracing-subscriber = { version = "0.3", features = ["local-time", "env-filter"] }
 utoipa = { version = "5", features = ["axum_extras", "chrono"] }
 utoipa-swagger-ui = { version = "9", features = ["axum"] }
-uuid = { workspace = true }
+uuid = { version = "1", features = ["v7"] }
 dicom-lib = { workspace = true }
