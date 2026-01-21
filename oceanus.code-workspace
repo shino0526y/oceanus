@@ -11,13 +11,17 @@
     },
     {
       "path": "./src/web-api"
+    },
+    {
+      "path": "./src/web-ui"
     }
   ],
   "extensions": {
     "recommendations": [
       "rust-lang.rust-analyzer",
       "vadimcn.vscode-lldb",
-      "bradymholt.pgformatter"
+      "bradymholt.pgformatter",
+      "svelte.svelte-vscode"
     ]
   },
   "settings": {
