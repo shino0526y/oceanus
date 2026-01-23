@@ -9,6 +9,7 @@
 		type UpdateUserInput
 	} from '$lib/api';
 	import { ROLES, ROLE_LABELS, ROLE_OPTIONS } from '$lib/constants';
+	import { authStore } from '$lib/stores/auth.svelte';
 	import { handleOverlayClick, handleKeydown, formatDate } from '$lib/utils';
 	import { onMount } from 'svelte';
 
@@ -238,12 +239,14 @@
 							<button onclick={() => openEditModal(user)} class="text-blue-600 hover:text-blue-900">
 								編集
 							</button>
-							<button
-								onclick={() => openDeleteModal(user)}
-								class="ml-3 text-red-600 hover:text-red-900"
-							>
-								削除
-							</button>
+							{#if user.id !== authStore.userId}
+								<button
+									onclick={() => openDeleteModal(user)}
+									class="ml-3 text-red-600 hover:text-red-900"
+								>
+									削除
+								</button>
+							{/if}
 						</td>
 					</tr>
 				{/each}

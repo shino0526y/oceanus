@@ -49,7 +49,7 @@ pub async fn login(
 
     // ログイン処理
     let command = LoginCommand {
-        user_id,
+        user_id: user_id.clone(),
         password: input.password,
     };
     let (session_id, csrf_token) = state.login_use_case.execute(command).await?;
@@ -58,7 +58,10 @@ pub async fn login(
     let cookie = CookieHelper::create_session_cookie(session_id, Session::DEFAULT_EXPIRY_MINUTES);
     cookies.add(cookie);
 
-    Ok(Json(LoginOutput { csrf_token }))
+    Ok(Json(LoginOutput {
+        user_id: user_id.value().to_string(),
+        csrf_token,
+    }))
 }
 
 #[derive(Debug)]

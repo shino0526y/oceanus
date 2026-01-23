@@ -81,6 +81,7 @@ export interface LoginInput {
 }
 
 export interface LoginOutput {
+	userId: string;
 	csrfToken: string;
 }
 

@@ -3,12 +3,14 @@ import { api } from '$lib/api';
 
 interface AuthState {
 	isAuthenticated: boolean;
+	userId: string | null;
 	csrfToken: string | null;
 }
 
 function createAuthStore() {
 	let state = $state<AuthState>({
 		isAuthenticated: false,
+		userId: null,
 		csrfToken: null
 	});
 
@@ -16,15 +18,18 @@ function createAuthStore() {
 		get isAuthenticated() {
 			return state.isAuthenticated;
 		},
+		get userId() {
+			return state.userId;
+		},
 		get csrfToken() {
 			return state.csrfToken;
 		},
-		login(csrfToken: string) {
-			state = { isAuthenticated: true, csrfToken };
+		login(userId: string, csrfToken: string) {
+			state = { isAuthenticated: true, userId, csrfToken };
 			api.setCsrfToken(csrfToken);
 		},
 		logout() {
-			state = { isAuthenticated: false, csrfToken: null };
+			state = { isAuthenticated: false, userId: null, csrfToken: null };
 			api.clearCsrfToken();
 		},
 		/**
