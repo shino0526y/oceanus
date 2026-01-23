@@ -66,6 +66,10 @@ class ApiClient {
 	put<T>(path: string, body?: unknown) {
 		return this.request<T>('PUT', path, body);
 	}
+
+	delete<T>(path: string) {
+		return this.request<T>('DELETE', path);
+	}
 }
 
 export const api = new ApiClient();
@@ -154,6 +158,10 @@ export function updateUser(id: string, input: UpdateUserInput) {
 	return api.put<User>(`/users/${encodeURIComponent(id)}`, input);
 }
 
+export function deleteUser(id: string) {
+	return api.delete<null>(`/users/${encodeURIComponent(id)}`);
+}
+
 export function listApplicationEntities() {
 	return api.get<ApplicationEntity[]>('/application-entities');
 }
@@ -164,4 +172,8 @@ export function createApplicationEntity(input: CreateApplicationEntityInput) {
 
 export function updateApplicationEntity(aeTitle: string, input: UpdateApplicationEntityInput) {
 	return api.put<ApplicationEntity>(`/application-entities/${encodeURIComponent(aeTitle)}`, input);
+}
+
+export function deleteApplicationEntity(aeTitle: string) {
+	return api.delete<null>(`/application-entities/${encodeURIComponent(aeTitle)}`);
 }

@@ -3,6 +3,7 @@
 		listUsers,
 		createUser,
 		updateUser,
+		deleteUser,
 		type User,
 		type CreateUserInput,
 		type UpdateUserInput
@@ -26,6 +27,11 @@
 	let editForm = $state<UpdateUserInput>({ id: '', name: '', password: '', role: ROLES.ADMIN });
 	let editError = $state('');
 	let isEditing = $state(false);
+
+	// 削除用
+	let deletingUser = $state<User | null>(null);
+	let deleteError = $state('');
+	let isDeleting = $state(false);
 
 	onMount(loadUsers);
 
@@ -122,6 +128,31 @@
 		}
 		return 'bg-gray-100 text-gray-800';
 	}
+
+	function openDeleteModal(user: User) {
+		deletingUser = user;
+		deleteError = '';
+	}
+
+	function closeDeleteModal() {
+		deletingUser = null;
+	}
+
+	async function handleDelete() {
+		if (!deletingUser) return;
+
+		isDeleting = true;
+		deleteError = '';
+
+		const result = await deleteUser(deletingUser.id);
+		if (result.ok) {
+			deletingUser = null;
+			await loadUsers();
+		} else {
+			deleteError = result.error;
+		}
+		isDeleting = false;
+	}
 </script>
 
 <svelte:head>
@@ -206,6 +237,12 @@
 						<td class="px-6 py-4 text-sm whitespace-nowrap">
 							<button onclick={() => openEditModal(user)} class="text-blue-600 hover:text-blue-900">
 								編集
+							</button>
+							<button
+								onclick={() => openDeleteModal(user)}
+								class="ml-3 text-red-600 hover:text-red-900"
+							>
+								削除
 							</button>
 						</td>
 					</tr>
@@ -379,6 +416,53 @@
 					</button>
 				</div>
 			</form>
+		</div>
+	</div>
+{/if}
+
+<!-- 削除確認モーダル -->
+{#if deletingUser}
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+		onclick={(e) => handleOverlayClick(e, closeDeleteModal)}
+		onkeydown={(e) => handleKeydown(e, closeDeleteModal)}
+		tabindex="-1"
+	>
+		<div class="w-full max-w-md rounded-lg bg-white p-6">
+			<h3 class="mb-4 text-lg font-bold text-red-600">ユーザー削除の確認</h3>
+			{#if deleteError}
+				<div class="mb-4 rounded border border-red-400 bg-red-100 px-4 py-3 text-red-700">
+					{deleteError}
+				</div>
+			{/if}
+			<p class="mb-4 text-gray-700">以下のユーザーを削除しますか？この操作は取り消せません。</p>
+			<div class="mb-6 rounded bg-gray-50 p-4">
+				<p><span class="font-medium">ID:</span> {deletingUser.id}</p>
+				<p><span class="font-medium">名前:</span> {deletingUser.name}</p>
+				<p>
+					<span class="font-medium">ロール:</span>
+					{ROLE_LABELS[deletingUser.role as keyof typeof ROLE_LABELS] ||
+						`ロール${deletingUser.role}`}
+				</p>
+			</div>
+			<div class="flex justify-end gap-2">
+				<button
+					type="button"
+					onclick={closeDeleteModal}
+					class="rounded-md border border-gray-300 px-4 py-2 hover:bg-gray-50"
+				>
+					キャンセル
+				</button>
+				<button
+					type="button"
+					onclick={handleDelete}
+					disabled={isDeleting}
+					class="rounded-md bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:bg-red-400"
+				>
+					{isDeleting ? '削除中...' : '削除'}
+				</button>
+			</div>
 		</div>
 	</div>
 {/if}

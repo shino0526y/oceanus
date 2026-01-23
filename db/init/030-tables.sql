@@ -13,6 +13,21 @@ CREATE TABLE users(
     UNIQUE (name)
 );
 
+CREATE TABLE users_deleted(
+    uuid uuid NOT NULL,
+    id text NOT NULL CHECK (id <> ''),
+    name text NOT NULL CHECK (name <> ''),
+    role smallint NOT NULL,
+    password_hash text NOT NULL CHECK (password_hash <> ''),
+    created_by uuid NOT NULL,
+    created_at timestamptz NOT NULL,
+    updated_by uuid NOT NULL,
+    updated_at timestamptz NOT NULL,
+    deleted_by uuid NOT NULL,
+    deleted_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (uuid)
+);
+
 CREATE TABLE application_entities(
     uuid uuid NOT NULL DEFAULT uuidv7(),
     title varchar(16) NOT NULL CHECK (title <> ''),
@@ -26,6 +41,21 @@ CREATE TABLE application_entities(
     PRIMARY KEY (uuid),
     UNIQUE (title),
     UNIQUE (host, port)
+);
+
+CREATE TABLE application_entities_deleted(
+    uuid uuid NOT NULL,
+    title varchar(16) NOT NULL CHECK (title <> ''),
+    host text NOT NULL CHECK (host <> ''),
+    port integer NOT NULL CHECK (port >= 1 AND port <= 65535),
+    comment text NOT NULL,
+    created_by uuid NOT NULL,
+    created_at timestamptz NOT NULL,
+    updated_by uuid NOT NULL,
+    updated_at timestamptz NOT NULL,
+    deleted_by uuid NOT NULL,
+    deleted_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (uuid)
 );
 
 CREATE TABLE patients(
@@ -49,7 +79,7 @@ CREATE TABLE studies(
     study_date date,
     study_time time,
     accession_number varchar(16) NOT NULL,
-    application_entity_uuid uuid NOT NULL REFERENCES application_entities(uuid),
+    application_entity_uuid uuid NOT NULL,
     created_by uuid NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_by uuid NOT NULL,

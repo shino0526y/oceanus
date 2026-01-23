@@ -3,6 +3,7 @@
 		listApplicationEntities,
 		createApplicationEntity,
 		updateApplicationEntity,
+		deleteApplicationEntity,
 		type ApplicationEntity,
 		type CreateApplicationEntityInput,
 		type UpdateApplicationEntityInput
@@ -35,6 +36,11 @@
 	});
 	let editError = $state('');
 	let isEditing = $state(false);
+
+	// 削除用
+	let deletingEntity = $state<ApplicationEntity | null>(null);
+	let deleteError = $state('');
+	let isDeleting = $state(false);
 
 	onMount(loadEntities);
 
@@ -124,6 +130,31 @@
 		}
 		isEditing = false;
 	}
+
+	function openDeleteModal(entity: ApplicationEntity) {
+		deletingEntity = entity;
+		deleteError = '';
+	}
+
+	function closeDeleteModal() {
+		deletingEntity = null;
+	}
+
+	async function handleDelete() {
+		if (!deletingEntity) return;
+
+		isDeleting = true;
+		deleteError = '';
+
+		const result = await deleteApplicationEntity(deletingEntity.title);
+		if (result.ok) {
+			deletingEntity = null;
+			await loadEntities();
+		} else {
+			deleteError = result.error;
+		}
+		isDeleting = false;
+	}
 </script>
 
 <svelte:head>
@@ -209,6 +240,12 @@
 								class="text-blue-600 hover:text-blue-900"
 							>
 								編集
+							</button>
+							<button
+								onclick={() => openDeleteModal(entity)}
+								class="ml-3 text-red-600 hover:text-red-900"
+							>
+								削除
 							</button>
 						</td>
 					</tr>
@@ -386,6 +423,54 @@
 					</button>
 				</div>
 			</form>
+		</div>
+	</div>
+{/if}
+
+<!-- 削除確認モーダル -->
+{#if deletingEntity}
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+		onclick={(e) => handleOverlayClick(e, closeDeleteModal)}
+		onkeydown={(e) => handleKeydown(e, closeDeleteModal)}
+		tabindex="-1"
+	>
+		<div class="w-full max-w-md rounded-lg bg-white p-6">
+			<h3 class="mb-4 text-lg font-bold text-red-600">Application Entity削除の確認</h3>
+			{#if deleteError}
+				<div class="mb-4 rounded border border-red-400 bg-red-100 px-4 py-3 text-red-700">
+					{deleteError}
+				</div>
+			{/if}
+			<p class="mb-4 text-gray-700">
+				以下のApplication Entityを削除しますか？この操作は取り消せません。
+			</p>
+			<div class="mb-6 rounded bg-gray-50 p-4">
+				<p><span class="font-medium">AE Title:</span> {deletingEntity.title}</p>
+				<p><span class="font-medium">ホスト:</span> {deletingEntity.host}</p>
+				<p><span class="font-medium">ポート:</span> {deletingEntity.port}</p>
+				{#if deletingEntity.comment}
+					<p><span class="font-medium">コメント:</span> {deletingEntity.comment}</p>
+				{/if}
+			</div>
+			<div class="flex justify-end gap-2">
+				<button
+					type="button"
+					onclick={closeDeleteModal}
+					class="rounded-md border border-gray-300 px-4 py-2 hover:bg-gray-50"
+				>
+					キャンセル
+				</button>
+				<button
+					type="button"
+					onclick={handleDelete}
+					disabled={isDeleting}
+					class="rounded-md bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:bg-red-400"
+				>
+					{isDeleting ? '削除中...' : '削除'}
+				</button>
+			</div>
 		</div>
 	</div>
 {/if}

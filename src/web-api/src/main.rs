@@ -6,11 +6,13 @@ use self::{
     internal::{
         application::{
             application_entity::CreateApplicationEntityUseCase,
+            application_entity::DeleteApplicationEntityUseCase,
             application_entity::ListApplicationEntitiesUseCase,
             application_entity::UpdateApplicationEntityUseCase,
             auth::{AuthenticateUserUseCase, LoginUseCase, LogoutUseCase},
             session::{CreateSessionUseCase, DeleteSessionUseCase, ExtendSessionUseCase},
             user::create_user_use_case::CreateUserUseCase,
+            user::delete_user_use_case::DeleteUserUseCase,
             user::list_users_use_case::ListUsersUseCase,
             user::update_user_use_case::UpdateUserUseCase,
         },
@@ -22,7 +24,7 @@ use self::{
 };
 use axum::{
     Router,
-    routing::{get, post, put},
+    routing::{delete, get, post, put},
 };
 use clap::Parser;
 use dotenvy::dotenv;
@@ -50,9 +52,11 @@ use utoipa::{
         internal::presentation::handler::user::create_user::create_user,
         internal::presentation::handler::user::list_users::list_users,
         internal::presentation::handler::user::update_user::update_user,
-        internal::presentation::handler::application_entity::list_application_entities::list_application_entities,
+        internal::presentation::handler::user::delete_user::delete_user,
         internal::presentation::handler::application_entity::create_application_entity::create_application_entity,
+        internal::presentation::handler::application_entity::list_application_entities::list_application_entities,
         internal::presentation::handler::application_entity::update_application_entity::update_application_entity,
+        internal::presentation::handler::application_entity::delete_application_entity::delete_application_entity,
     ),
     components(schemas(
         internal::presentation::handler::auth::login::LoginInput,
@@ -108,9 +112,11 @@ pub struct AppState {
     pub create_application_entity_use_case: Arc<CreateApplicationEntityUseCase>,
     pub list_application_entities_use_case: Arc<ListApplicationEntitiesUseCase>,
     pub update_application_entity_use_case: Arc<UpdateApplicationEntityUseCase>,
+    pub delete_application_entity_use_case: Arc<DeleteApplicationEntityUseCase>,
     pub create_user_use_case: Arc<CreateUserUseCase>,
     pub list_users_use_case: Arc<ListUsersUseCase>,
     pub update_user_use_case: Arc<UpdateUserUseCase>,
+    pub delete_user_use_case: Arc<DeleteUserUseCase>,
     pub login_use_case: Arc<LoginUseCase>,
     pub logout_use_case: Arc<LogoutUseCase>,
 }
@@ -168,9 +174,13 @@ async fn main() {
     let update_application_entity_use_case = Arc::new(UpdateApplicationEntityUseCase::new(
         application_entity_repository.clone(),
     ));
+    let delete_application_entity_use_case = Arc::new(DeleteApplicationEntityUseCase::new(
+        application_entity_repository.clone(),
+    ));
     let create_user_use_case = Arc::new(CreateUserUseCase::new(user_repository.clone()));
     let list_users_use_case = Arc::new(ListUsersUseCase::new(user_repository.clone()));
     let update_user_use_case = Arc::new(UpdateUserUseCase::new(user_repository.clone()));
+    let delete_user_use_case = Arc::new(DeleteUserUseCase::new(user_repository.clone()));
 
     // 認証関連UseCaseの初期化
     let authenticate_user_use_case =
@@ -189,9 +199,11 @@ async fn main() {
         create_application_entity_use_case,
         list_application_entities_use_case,
         update_application_entity_use_case,
+        delete_application_entity_use_case,
         create_user_use_case,
         list_users_use_case,
         update_user_use_case,
+        delete_user_use_case,
         login_use_case,
         logout_use_case,
     };
@@ -216,9 +228,14 @@ async fn main() {
                     "/application-entities/{ae_title}",
                     put(handler::application_entity::update_application_entity),
                 )
+                .route(
+                    "/application-entities/{ae_title}",
+                    delete(handler::application_entity::delete_application_entity),
+                )
                 .route("/users", get(handler::user::list_users))
                 .route("/users", post(handler::user::create_user))
                 .route("/users/{id}", put(handler::user::update_user))
+                .route("/users/{id}", delete(handler::user::delete_user))
                 .route_layer(axum::middleware::from_fn(move |cookies, request, next| {
                     middleware::session_auth_middleware(
                         cookies,

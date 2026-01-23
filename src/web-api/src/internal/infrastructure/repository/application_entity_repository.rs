@@ -186,4 +186,58 @@ impl ApplicationEntityRepository for PostgresApplicationEntityRepository {
             }),
         }
     }
+
+    async fn delete(
+        &self,
+        title: &AeValue,
+        deleted_by: &Uuid,
+        deleted_at: &DateTime<Utc>,
+    ) -> Result<(), RepositoryError> {
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| RepositoryError::Other {
+                message: format!("トランザクションの開始に失敗しました: {e}"),
+            })?;
+
+        // 削除済みテーブルにINSERT
+        let rows_affected = sqlx::query(
+            "INSERT INTO application_entities_deleted (uuid, title, host, port, comment, created_by, created_at, updated_by, updated_at, deleted_by, deleted_at)
+             SELECT uuid, title, host, port, comment, created_by, created_at, updated_by, updated_at, $1, $2
+             FROM application_entities
+             WHERE title = $3",
+        )
+        .bind(deleted_by)
+        .bind(deleted_at)
+        .bind(title.value())
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| RepositoryError::Other {
+            message: format!("データベース処理でエラーが発生しました: {e}"),
+        })?
+        .rows_affected();
+
+        if rows_affected == 0 {
+            return Err(RepositoryError::NotFound {
+                resource: "AEタイトル".to_string(),
+                key: title.value().to_string(),
+            });
+        }
+
+        // 元テーブルからDELETE
+        sqlx::query("DELETE FROM application_entities WHERE title = $1")
+            .bind(title.value())
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| RepositoryError::Other {
+                message: format!("データベース処理でエラーが発生しました: {e}"),
+            })?;
+
+        tx.commit().await.map_err(|e| RepositoryError::Other {
+            message: format!("トランザクションのコミットに失敗しました: {e}"),
+        })?;
+
+        Ok(())
+    }
 }

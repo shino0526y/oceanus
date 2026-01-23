@@ -179,4 +179,58 @@ impl UserRepository for PostgresUserRepository {
             }),
         }
     }
+
+    async fn delete(
+        &self,
+        id: &Id,
+        deleted_by: &Uuid,
+        deleted_at: &DateTime<Utc>,
+    ) -> Result<(), RepositoryError> {
+        let mut tx = self
+            .pool
+            .begin()
+            .await
+            .map_err(|e| RepositoryError::Other {
+                message: format!("トランザクションの開始に失敗しました: {e}"),
+            })?;
+
+        // 削除済みテーブルにINSERT
+        let rows_affected = sqlx::query(
+            "INSERT INTO users_deleted (uuid, id, name, role, password_hash, created_by, created_at, updated_by, updated_at, deleted_by, deleted_at)
+             SELECT uuid, id, name, role, password_hash, created_by, created_at, updated_by, updated_at, $1, $2
+             FROM users
+             WHERE id = $3",
+        )
+        .bind(deleted_by)
+        .bind(deleted_at)
+        .bind(id.value())
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| RepositoryError::Other {
+            message: format!("データベース処理でエラーが発生しました: {e}"),
+        })?
+        .rows_affected();
+
+        if rows_affected == 0 {
+            return Err(RepositoryError::NotFound {
+                resource: "ユーザー".to_string(),
+                key: id.value().to_string(),
+            });
+        }
+
+        // 元テーブルからDELETE
+        sqlx::query("DELETE FROM users WHERE id = $1")
+            .bind(id.value())
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| RepositoryError::Other {
+                message: format!("データベース処理でエラーが発生しました: {e}"),
+            })?;
+
+        tx.commit().await.map_err(|e| RepositoryError::Other {
+            message: format!("トランザクションのコミットに失敗しました: {e}"),
+        })?;
+
+        Ok(())
+    }
 }
