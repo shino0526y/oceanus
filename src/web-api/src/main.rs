@@ -49,6 +49,7 @@ use utoipa::{
     paths(
         internal::presentation::handler::auth::login::login,
         internal::presentation::handler::auth::logout::logout,
+        internal::presentation::handler::auth::me::me,
         internal::presentation::handler::user::create_user::create_user,
         internal::presentation::handler::user::list_users::list_users,
         internal::presentation::handler::user::update_user::update_user,
@@ -63,6 +64,8 @@ use utoipa::{
         internal::presentation::handler::auth::login::LoginOutput,
         internal::presentation::handler::auth::login::ErrorResponse,
         internal::presentation::handler::auth::logout::ErrorResponse,
+        internal::presentation::handler::auth::me::MeOutput,
+        internal::presentation::handler::auth::me::ErrorResponse,
         internal::presentation::handler::user::create_user::CreateUserInput,
         internal::presentation::handler::user::create_user::CreateUserOutput,
         internal::presentation::handler::user::list_users::ListUsersOutputElement,
@@ -209,9 +212,14 @@ async fn main() {
     };
 
     // ルーター設定
+    let session_repository_for_me = session_repository.clone();
     let app = Router::new()
         // 認証不要なエンドポイント
         .route("/login", post(handler::auth::login))
+        .route(
+            "/me",
+            get(move |cookies| handler::auth::me(cookies, session_repository_for_me.clone())),
+        )
         // 認証が必要なエンドポイントにミドルウェアを適用
         .merge(
             Router::new()

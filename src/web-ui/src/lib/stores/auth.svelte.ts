@@ -1,5 +1,5 @@
 // 認証状態を管理するストア
-import { api } from '$lib/api';
+import { api, getMe } from '$lib/api';
 
 interface AuthState {
 	isAuthenticated: boolean;
@@ -34,10 +34,20 @@ function createAuthStore() {
 		},
 		/**
 		 * セッション状態を復元する
-		 * TODO: バックエンドに /api/me エンドポイントを実装後、認証状態を確認する処理を追加
+		 * バックエンドの /me エンドポイントを呼び出し、セッションが有効であれば認証状態を復元する
+		 * @returns セッションが有効であれば true、無効であれば false
 		 */
-		restore() {
-			// 現時点では何もしない（ページリロードで認証状態はリセットされる）
+		async restore(): Promise<boolean> {
+			const result = await getMe();
+			if (result.ok) {
+				state = {
+					isAuthenticated: true,
+					userId: result.data.userId,
+					csrfToken: result.data.csrfToken
+				};
+				return true;
+			}
+			return false;
 		}
 	};
 }

@@ -8,12 +8,19 @@
 
 	let { children } = $props();
 	let isLoggingOut = $state(false);
+	let isRestoring = $state(true);
 
-	onMount(() => {
-		// 認証状態がない場合はログイン画面へリダイレクト
+	onMount(async () => {
+		// セッションの復元を試みる
 		if (!authStore.isAuthenticated) {
-			goto(resolve('/login'));
+			const restored = await authStore.restore();
+			if (!restored) {
+				// 復元に失敗した場合はログイン画面へリダイレクト
+				goto(resolve('/login'));
+				return;
+			}
 		}
+		isRestoring = false;
 	});
 
 	async function handleLogout() {
@@ -30,7 +37,11 @@
 	];
 </script>
 
-{#if authStore.isAuthenticated}
+{#if isRestoring}
+	<div class="flex min-h-screen items-center justify-center">
+		<p class="text-gray-500">認証確認中...</p>
+	</div>
+{:else if authStore.isAuthenticated}
 	<div class="flex min-h-screen flex-col">
 		<!-- ヘッダー -->
 		<header class="bg-gray-800 text-white">

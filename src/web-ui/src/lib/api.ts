@@ -85,6 +85,11 @@ export interface LoginOutput {
 	csrfToken: string;
 }
 
+export interface MeOutput {
+	userId: string;
+	csrfToken: string;
+}
+
 export interface User {
 	id: string;
 	name: string;
@@ -143,6 +148,14 @@ export async function logout() {
 	const result = await api.post<null>('/logout');
 	if (result.ok) {
 		api.clearCsrfToken();
+	}
+	return result;
+}
+
+export async function getMe() {
+	const result = await api.get<MeOutput>('/me');
+	if (result.ok) {
+		api.setCsrfToken(result.data.csrfToken);
 	}
 	return result;
 }
