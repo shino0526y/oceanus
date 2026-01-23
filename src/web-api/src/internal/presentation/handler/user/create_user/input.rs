@@ -6,6 +6,6 @@ use utoipa::ToSchema;
 pub struct CreateUserInput {
     pub id: String,
     pub name: String,
-    pub role: u8,
+    pub role: i16,
     pub password: String,
 }

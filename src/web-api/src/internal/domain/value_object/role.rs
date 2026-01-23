@@ -24,10 +24,6 @@ impl Role {
         }
     }
 
-    pub fn as_u8(&self) -> u8 {
-        *self as u8
-    }
-
     pub fn as_i16(&self) -> i16 {
         *self as i16
     }

@@ -38,8 +38,7 @@ pub async fn create_user(
     // バリデーション
     let id = Id::new(input.id)
         .map_err(|e| PresentationError::UnprocessableContent(format!("無効なID: {}", e)))?;
-    let role =
-        Role::from_i16(input.role as i16).map_err(PresentationError::UnprocessableContent)?;
+    let role = Role::from_i16(input.role).map_err(PresentationError::UnprocessableContent)?;
 
     // 登録処理
     let command = CreateUserCommand {
