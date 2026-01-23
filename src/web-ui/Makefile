@@ -1,4 +1,4 @@
-.PHONY: install run preview lint format test build help
+.PHONY: install run preview lint format test build clean help
 
 .DEFAULT_GOAL := help
 
@@ -23,6 +23,9 @@ test:
 build:
 	npm run build
 
+clean:
+	rm -rf node_modules .svelte-kit build
+
 help:
 	@echo "web-ui Makefile"
 	@echo ""
@@ -36,4 +39,5 @@ help:
 	@echo "  format   フォーマッターを実行"
 	@echo "  test     型チェックを実行"
 	@echo "  build    リリースモードでビルド"
+	@echo "  clean    ビルド成果物を削除"
 	@echo "  help     このヘルプを表示"

@@ -1,5 +1,5 @@
-.PHONY: install run preview lint format test build help \
-        install-all run-all preview-all lint-all format-all test-all build-all
+.PHONY: install run preview lint format test build clean help \
+        install-all run-all preview-all lint-all format-all test-all build-all clean-all
 
 .DEFAULT_GOAL := help
 
@@ -48,6 +48,12 @@ build-all:
 		$(MAKE) -C $$dir build; \
 	done
 
+clean-all:
+	@for dir in $(PROJECTS); do \
+		echo "=== $$dir: clean ==="; \
+		$(MAKE) -C $$dir clean; \
+	done
+
 # 個別プロジェクトに対して実行
 install-%:
 	$(MAKE) -C $* install
@@ -70,12 +76,16 @@ test-%:
 build-%:
 	$(MAKE) -C $* build
 
+clean-%:
+	$(MAKE) -C $* clean
+
 # エイリアス
 install: install-all
 lint: lint-all
 format: format-all
 test: test-all
 build: build-all
+clean: clean-all
 
 help:
 	@echo "oceanus Makefile"
@@ -88,6 +98,7 @@ help:
 	@echo "  format       全プロジェクトでフォーマッターを実行"
 	@echo "  test         全プロジェクトでテストを実行"
 	@echo "  build        全プロジェクトをリリースモードでビルド"
+	@echo "  clean        ビルド成果物を削除"
 	@echo ""
 	@echo "個別プロジェクト対象 (例: make run-web-api):"
 	@echo "  install-<project>  依存関係をインストール"
@@ -97,6 +108,7 @@ help:
 	@echo "  format-<project>   フォーマッターを実行"
 	@echo "  test-<project>     テストを実行"
 	@echo "  build-<project>    リリースモードでビルド"
+	@echo "  clean-<project>    ビルド成果物を削除"
 	@echo ""
 	@echo "プロジェクト一覧:"
 	@echo "  dicom-lib, dicom-server, web-api, web-ui"

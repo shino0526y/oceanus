@@ -1,4 +1,4 @@
-.PHONY: install run preview lint format test build help
+.PHONY: install run preview lint format test build clean help
 
 .DEFAULT_GOAL := help
 
@@ -25,6 +25,9 @@ test:
 build:
 	cargo build --release
 
+clean:
+	cargo clean
+
 help:
 	@echo "dicom-lib Makefile"
 	@echo ""
@@ -38,4 +41,5 @@ help:
 	@echo "  format   フォーマッターを実行"
 	@echo "  test     テストを実行"
 	@echo "  build    リリースモードでビルド"
+	@echo "  clean    ビルド成果物を削除"
 	@echo "  help     このヘルプを表示"
