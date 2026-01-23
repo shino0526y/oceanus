@@ -108,6 +108,7 @@ export interface CreateUserInput {
 export interface UpdateUserInput {
 	id?: string;
 	name?: string;
+	/** パスワード（変更しない場合はフィールド自体を送信しない） */
 	password?: string;
 	role?: number;
 }

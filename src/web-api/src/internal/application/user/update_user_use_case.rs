@@ -22,7 +22,7 @@ pub struct UpdateUserCommand {
     pub id: Id,
     pub name: String,
     pub role: Role,
-    pub password: String,
+    pub password: Option<String>,
     pub updated_by: Uuid,
     pub updated_at: DateTime<Utc>,
 }
@@ -44,13 +44,22 @@ impl UpdateUserUseCase {
                 })
             })?;
 
-        // パスワードのハッシュ化
-        let salt = SaltString::generate(&mut OsRng);
-        let argon2 = Argon2::default();
-        let password_hash = argon2
-            .hash_password(command.password.as_bytes(), &salt)
-            .map_err(|e| UpdateUserError::PasswordHashError(e.to_string()))?
-            .to_string();
+        // パスワードが指定された場合のみハッシュ化、それ以外は既存のハッシュを維持
+        let password_hash = match command.password {
+            Some(password) => {
+                // 空文字列は許可しない
+                if password.is_empty() {
+                    return Err(UpdateUserError::EmptyPassword);
+                }
+                let salt = SaltString::generate(&mut OsRng);
+                let argon2 = Argon2::default();
+                argon2
+                    .hash_password(password.as_bytes(), &salt)
+                    .map_err(|e| UpdateUserError::PasswordHashError(e.to_string()))?
+                    .to_string()
+            }
+            None => entity.password_hash().to_string(),
+        };
 
         // エンティティを変更し、変更があれば保存
         let is_changed = entity.update(
@@ -73,6 +82,8 @@ impl UpdateUserUseCase {
 
 #[derive(Debug, thiserror::Error)]
 pub enum UpdateUserError {
+    #[error("パスワードは1文字以上で入力してください")]
+    EmptyPassword,
     #[error("パスワードのハッシュ化に失敗しました: {0}")]
     PasswordHashError(String),
     #[error("{0}")]

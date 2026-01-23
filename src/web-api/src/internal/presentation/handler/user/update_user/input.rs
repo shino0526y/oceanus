@@ -7,5 +7,5 @@ pub struct UpdateUserInput {
     pub id: String,
     pub name: String,
     pub role: i16,
-    pub password: String,
+    pub password: Option<String>,
 }

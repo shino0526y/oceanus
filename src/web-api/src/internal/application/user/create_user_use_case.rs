@@ -31,6 +31,11 @@ impl CreateUserUseCase {
     }
 
     pub async fn execute(&self, command: CreateUserCommand) -> Result<User, CreateUserError> {
+        // パスワードの空文字チェック
+        if command.password.is_empty() {
+            return Err(CreateUserError::EmptyPassword);
+        }
+
         // パスワードのハッシュ化(argon2id)
         let salt = SaltString::generate(&mut OsRng);
         let argon2 = Argon2::default();
@@ -57,6 +62,8 @@ impl CreateUserUseCase {
 
 #[derive(Debug, thiserror::Error)]
 pub enum CreateUserError {
+    #[error("パスワードは1文字以上で入力してください")]
+    EmptyPassword,
     #[error("パスワードのハッシュ化に失敗しました: {0}")]
     PasswordHashError(String),
     #[error("{0}")]
