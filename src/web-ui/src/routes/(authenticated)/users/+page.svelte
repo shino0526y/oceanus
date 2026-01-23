@@ -266,7 +266,7 @@
 	>
 		<div class="w-full max-w-md rounded-lg bg-white p-6">
 			<h3 class="mb-4 text-lg font-bold">ユーザー新規作成</h3>
-			<form onsubmit={handleCreate} class="space-y-4">
+			<form onsubmit={handleCreate} class="space-y-4" autocomplete="off">
 				{#if createError}
 					<div class="rounded border border-red-400 bg-red-100 px-4 py-3 text-red-700">
 						{createError}
@@ -281,6 +281,7 @@
 						id="create-id"
 						bind:value={createForm.id}
 						required
+						autocomplete="off"
 						class="w-full rounded-md border border-gray-300 px-3 py-2"
 					/>
 				</div>
@@ -291,6 +292,7 @@
 						id="create-name"
 						bind:value={createForm.name}
 						required
+						autocomplete="off"
 						class="w-full rounded-md border border-gray-300 px-3 py-2"
 					/>
 				</div>
@@ -303,6 +305,7 @@
 						id="create-password"
 						bind:value={createForm.password}
 						required
+						autocomplete="new-password"
 						class="w-full rounded-md border border-gray-300 px-3 py-2"
 					/>
 				</div>
@@ -352,7 +355,7 @@
 	>
 		<div class="w-full max-w-md rounded-lg bg-white p-6">
 			<h3 class="mb-4 text-lg font-bold">ユーザー編集</h3>
-			<form onsubmit={handleEdit} class="space-y-4">
+			<form onsubmit={handleEdit} class="space-y-4" autocomplete="off">
 				{#if editError}
 					<div class="rounded border border-red-400 bg-red-100 px-4 py-3 text-red-700">
 						{editError}
@@ -367,6 +370,7 @@
 						id="edit-id"
 						bind:value={editForm.id}
 						required
+						autocomplete="off"
 						class="w-full rounded-md border border-gray-300 px-3 py-2"
 					/>
 				</div>
@@ -376,6 +380,7 @@
 						type="text"
 						id="edit-name"
 						bind:value={editForm.name}
+						autocomplete="off"
 						class="w-full rounded-md border border-gray-300 px-3 py-2"
 					/>
 				</div>
@@ -387,6 +392,7 @@
 						type="password"
 						id="edit-password"
 						bind:value={editForm.password}
+						autocomplete="new-password"
 						class="w-full rounded-md border border-gray-300 px-3 py-2"
 					/>
 				</div>
