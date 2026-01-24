@@ -131,14 +131,11 @@
 		editError = '';
 
 		const input: UpdateApplicationEntityInput = {
+			title: editForm.title,
 			host: editForm.host,
 			port: editForm.port,
 			comment: editForm.comment
 		};
-		// Titleは変更された場合のみ送信
-		if (editForm.title && editForm.title !== editingEntity.title) {
-			input.title = editForm.title;
-		}
 
 		const result = await updateApplicationEntity(editingEntity.title, input);
 		if (result.ok) {

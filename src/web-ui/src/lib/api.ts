@@ -109,11 +109,11 @@ export interface CreateUserInput {
 }
 
 export interface UpdateUserInput {
-	id?: string;
-	name?: string;
+	id: string;
+	name: string;
 	/** パスワード（変更しない場合はフィールド自体を送信しない） */
 	password?: string;
-	role?: number;
+	role: number;
 }
 
 export interface ApplicationEntity {
@@ -133,10 +133,10 @@ export interface CreateApplicationEntityInput {
 }
 
 export interface UpdateApplicationEntityInput {
-	title?: string;
-	host?: string;
-	port?: number;
-	comment?: string;
+	title: string;
+	host: string;
+	port: number;
+	comment: string;
 }
 
 // API関数

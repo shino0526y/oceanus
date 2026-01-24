@@ -118,17 +118,11 @@
 		editError = '';
 
 		const input: UpdateUserInput = {
-			name: editForm.name || undefined,
-			role: editForm.role
+			id: editForm.id,
+			name: editForm.name,
+			role: editForm.role,
+			password: editForm.password ? editForm.password : undefined
 		};
-		// IDは変更された場合のみ送信
-		if (editForm.id && editForm.id !== editingUser.id) {
-			input.id = editForm.id;
-		}
-		// パスワードは入力された場合のみ送信
-		if (editForm.password) {
-			input.password = editForm.password;
-		}
 
 		const result = await updateUser(editingUser.id, input);
 		if (result.ok) {
