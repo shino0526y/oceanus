@@ -35,6 +35,18 @@
     "[sql]": {
       "editor.defaultFormatter": "bradymholt.pgformatter",
     },
+    "[html]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+    },
+    "[javascript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+    },
+    "[typescript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+    },
+    "[svelte]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+    },
   },
   "tasks": {
     "version": "2.0.0",
