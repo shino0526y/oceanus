@@ -37,19 +37,20 @@ impl SessionRepository for InMemorySessionRepository {
     }
 
     async fn find_by_session_id(&self, session_id: &str) -> Option<Session> {
-        let mut sessions = self.sessions.write().unwrap();
-
-        if let Some(session) = sessions.get(session_id) {
-            if session.is_expired() {
-                // 期限切れの場合は削除して None を返す
-                sessions.remove(session_id);
-                None
-            } else {
-                Some(session.clone())
+        let (session, is_expired) = {
+            let sessions = self.sessions.read().unwrap();
+            match sessions.get(session_id) {
+                Some(session) => (Some(session.clone()), session.is_expired()),
+                None => (None, false),
             }
-        } else {
-            None
+        };
+
+        if is_expired {
+            self.sessions.write().unwrap().remove(session_id);
+            return None;
         }
+
+        session
     }
 
     async fn delete(&self, session_id: &str) {
