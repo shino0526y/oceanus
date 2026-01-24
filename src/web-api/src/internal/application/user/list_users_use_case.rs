@@ -1,5 +1,7 @@
 use crate::internal::domain::{
-    entity::User, error::RepositoryError, repository::{LoginFailureCountRepository, UserRepository},
+    entity::User,
+    error::RepositoryError,
+    repository::{LoginFailureCountRepository, UserRepository},
 };
 use std::sync::Arc;
 

@@ -6,4 +6,5 @@ use utoipa::ToSchema;
 pub struct LoginOutput {
     pub user_id: String,
     pub csrf_token: String,
+    pub role: i16,
 }

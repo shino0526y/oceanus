@@ -224,6 +224,7 @@ async fn main() {
     let login_use_case = Arc::new(LoginUseCase::new(
         authenticate_user_use_case,
         create_session_use_case.clone(),
+        user_repository.clone(),
     ));
     let logout_use_case = Arc::new(LogoutUseCase::new(delete_session_use_case.clone()));
 
@@ -244,12 +245,15 @@ async fn main() {
 
     // ルーター設定
     let session_repository_for_me = session_repository.clone();
+    let user_repository_for_me = user_repository.clone();
     let app = Router::new()
         // 認証不要なエンドポイント
         .route("/login", post(handler::auth::login))
         .route(
             "/me",
-            get(move |cookies| handler::auth::me(cookies, session_repository_for_me.clone())),
+            get(move |cookies| {
+                handler::auth::me(cookies, session_repository_for_me, user_repository_for_me)
+            }),
         )
         // 認証が必要なエンドポイントにミドルウェアを適用
         .merge({

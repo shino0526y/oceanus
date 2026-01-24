@@ -3,7 +3,8 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { logout } from '$lib/api';
-	import { authStore } from '$lib/stores/auth.svelte';
+	import { authStore, isManager } from '$lib/stores/auth.svelte';
+	import { get } from 'svelte/store';
 	import { onMount } from 'svelte';
 
 	let { children } = $props();
@@ -12,7 +13,7 @@
 
 	onMount(async () => {
 		// セッションの復元を試みる
-		if (!authStore.isAuthenticated) {
+		if (!$authStore.isAuthenticated) {
 			const restored = await authStore.restore();
 			if (!restored) {
 				// 復元に失敗した場合はログイン画面へリダイレクト
@@ -30,25 +31,30 @@
 		goto(resolve('/login'));
 	}
 
-	const navItems: { href: '/' | '/users' | '/application-entities'; label: string }[] = [
-		{ href: '/', label: 'ホーム' },
-		{ href: '/users', label: 'ユーザー管理' },
-		{ href: '/application-entities', label: 'Application Entity' }
-	];
+	function navItems() {
+		const base: { href: '/' | '/users' | '/application-entities' | '/login'; label: string }[] = [
+			{ href: '/', label: 'ホーム' }
+		];
+		if (get(isManager)) {
+			base.push({ href: '/users', label: 'ユーザー管理' });
+			base.push({ href: '/application-entities', label: 'Application Entity' });
+		}
+		return base;
+	}
 </script>
 
 {#if isRestoring}
 	<div class="flex min-h-screen items-center justify-center">
 		<p class="text-gray-500">認証確認中...</p>
 	</div>
-{:else if authStore.isAuthenticated}
+{:else if $authStore.isAuthenticated}
 	<div class="flex min-h-screen flex-col">
 		<!-- ヘッダー -->
 		<header class="bg-gray-800 text-white">
 			<div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
 				<h1 class="text-xl font-bold">Oceanus</h1>
 				<nav class="flex items-center gap-6">
-					{#each navItems as item (item.href)}
+					{#each navItems() as item (item.href)}
 						<a
 							href={resolve(item.href)}
 							class="hover:text-gray-300 {page.url.pathname === item.href

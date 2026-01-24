@@ -17,7 +17,7 @@
 		const result = await login({ userId, password });
 
 		if (result.ok) {
-			authStore.login(result.data.userId, result.data.csrfToken);
+			authStore.login(result.data.userId, result.data.csrfToken, result.data.role);
 			goto(resolve('/'));
 		} else {
 			error = result.error;

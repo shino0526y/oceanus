@@ -83,11 +83,13 @@ export interface LoginInput {
 export interface LoginOutput {
 	userId: string;
 	csrfToken: string;
+	role: number;
 }
 
 export interface MeOutput {
 	userId: string;
 	csrfToken: string;
+	role: number;
 }
 
 export interface User {

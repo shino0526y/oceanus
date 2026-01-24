@@ -1,35 +1,44 @@
 // 認証状態を管理するストア
+import { writable, get, derived } from 'svelte/store';
 import { api, getMe } from '$lib/api';
 
 interface AuthState {
 	isAuthenticated: boolean;
 	userId: string | null;
 	csrfToken: string | null;
+	role: number | null;
 }
 
+const initial: AuthState = {
+	isAuthenticated: false,
+	userId: null,
+	csrfToken: null,
+	role: null
+};
+
 function createAuthStore() {
-	let state = $state<AuthState>({
-		isAuthenticated: false,
-		userId: null,
-		csrfToken: null
-	});
+	const { subscribe, set } = writable<AuthState>(initial);
 
 	return {
-		get isAuthenticated() {
-			return state.isAuthenticated;
-		},
-		get userId() {
-			return state.userId;
-		},
-		get csrfToken() {
-			return state.csrfToken;
-		},
-		login(userId: string, csrfToken: string) {
-			state = { isAuthenticated: true, userId, csrfToken };
+		subscribe,
+		// ログイン
+		login(userId: string, csrfToken: string, role: number) {
+			set({ isAuthenticated: true, userId, csrfToken, role });
 			api.setCsrfToken(csrfToken);
 		},
+		// 指定したロールを保持しているか（同期チェック）
+		hasRole(role: number) {
+			const s = get({ subscribe });
+			return s.role !== null && s.role === role;
+		},
+		// 管理者か
+		isAdmin() {
+			const s = get({ subscribe });
+			return s.role !== null && s.role === 0;
+		},
+		// ログアウト
 		logout() {
-			state = { isAuthenticated: false, userId: null, csrfToken: null };
+			set({ isAuthenticated: false, userId: null, csrfToken: null, role: null });
 			api.clearCsrfToken();
 		},
 		/**
@@ -40,11 +49,12 @@ function createAuthStore() {
 		async restore(): Promise<boolean> {
 			const result = await getMe();
 			if (result.ok) {
-				state = {
+				set({
 					isAuthenticated: true,
 					userId: result.data.userId,
-					csrfToken: result.data.csrfToken
-				};
+					csrfToken: result.data.csrfToken,
+					role: result.data.role
+				});
 				return true;
 			}
 			return false;
@@ -53,3 +63,8 @@ function createAuthStore() {
 }
 
 export const authStore = createAuthStore();
+// 管理者または情シスかどうかを示す派生ストア
+export const isManager = derived(
+	authStore,
+	(s) => s.role !== null && (s.role === 0 || s.role === 1)
+);

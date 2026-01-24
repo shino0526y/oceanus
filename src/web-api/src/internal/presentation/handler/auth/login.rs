@@ -52,7 +52,7 @@ pub async fn login(
         user_id: user_id.clone(),
         password: input.password,
     };
-    let (session_id, csrf_token) = state.login_use_case.execute(command).await?;
+    let (session_id, csrf_token, role) = state.login_use_case.execute(command).await?;
 
     // Cookie設定
     let cookie = CookieHelper::create_session_cookie(session_id, Session::DEFAULT_EXPIRY_MINUTES);
@@ -61,6 +61,7 @@ pub async fn login(
     Ok(Json(LoginOutput {
         user_id: user_id.value().to_string(),
         csrf_token,
+        role,
     }))
 }
 

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { listUsers, listApplicationEntities } from '$lib/api';
+	import { isManager } from '$lib/stores/auth.svelte';
+	import { get } from 'svelte/store';
 	import { onMount } from 'svelte';
 
 	let userCount = $state<number | null>(null);
@@ -8,7 +10,18 @@
 	let isLoading = $state(true);
 	let error = $state('');
 
-	onMount(loadData);
+	function canManage() {
+		return get(isManager);
+	}
+
+	onMount(() => {
+		if (!canManage()) {
+			// 非管理者は何も表示しない
+			isLoading = false;
+			return;
+		}
+		loadData();
+	});
 
 	async function loadData() {
 		isLoading = true;
@@ -53,7 +66,7 @@
 
 {#if isLoading}
 	<p class="text-gray-500">読み込み中...</p>
-{:else}
+{:else if $isManager}
 	<div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
 		<!-- ユーザー数カード -->
 		<a
@@ -79,4 +92,6 @@
 			<p class="mt-1 text-sm text-gray-500">登録済みAE数</p>
 		</a>
 	</div>
+{:else}
+	<div></div>
 {/if}

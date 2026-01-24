@@ -10,13 +10,20 @@
 		type UpdateUserInput
 	} from '$lib/api';
 	import { ROLES, ROLE_LABELS, ROLE_OPTIONS } from '$lib/constants';
-	import { authStore } from '$lib/stores/auth.svelte';
+	import { authStore, isManager } from '$lib/stores/auth.svelte';
+	import { get } from 'svelte/store';
 	import { handleOverlayClick, handleKeydown, formatDate } from '$lib/utils';
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 
 	let users = $state<User[]>([]);
 	let isLoading = $state(true);
 	let error = $state('');
+
+	function canManage() {
+		return get(isManager);
+	}
 
 	// 新規作成用
 	let showCreateModal = $state(false);
@@ -35,7 +42,18 @@
 	let deleteError = $state('');
 	let isDeleting = $state(false);
 
-	onMount(loadUsers);
+	onMount(() => {
+		(async () => {
+			isLoading = true;
+			error = '';
+			if (!canManage()) {
+				// 管理者/情シス以外はホームへ戻す
+				goto(resolve('/'));
+				return;
+			}
+			await loadUsers();
+		})();
+	});
 
 	async function loadUsers() {
 		isLoading = true;
@@ -177,12 +195,14 @@
 
 <div class="mb-6 flex items-center justify-between">
 	<h2 class="text-2xl font-bold text-gray-800">ユーザー管理</h2>
-	<button
-		onclick={openCreateModal}
-		class="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-	>
-		新規作成
-	</button>
+	{#if $isManager}
+		<button
+			onclick={openCreateModal}
+			class="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+		>
+			新規作成
+		</button>
+	{/if}
 </div>
 
 {#if error}
@@ -264,9 +284,7 @@
 									解除
 								</button>
 							{:else if user.loginFailureCount > 0}
-								<span class="text-yellow-600"
-									>失敗{user.loginFailureCount}回</span
-								>
+								<span class="text-yellow-600">失敗{user.loginFailureCount}回</span>
 							{:else}
 								<span class="text-green-600">正常</span>
 							{/if}
@@ -275,16 +293,23 @@
 							>{formatDate(user.createdAt)}</td
 						>
 						<td class="px-6 py-4 text-sm whitespace-nowrap">
-							<button onclick={() => openEditModal(user)} class="text-blue-600 hover:text-blue-900">
-								編集
-							</button>
-							{#if user.id !== authStore.userId}
+							{#if $isManager}
 								<button
-									onclick={() => openDeleteModal(user)}
-									class="ml-3 text-red-600 hover:text-red-900"
+									onclick={() => openEditModal(user)}
+									class="text-blue-600 hover:text-blue-900"
 								>
-									削除
+									編集
 								</button>
+								{#if user.id !== $authStore.userId}
+									<button
+										onclick={() => openDeleteModal(user)}
+										class="ml-3 text-red-600 hover:text-red-900"
+									>
+										削除
+									</button>
+								{/if}
+							{:else}
+								<span class="text-gray-500">権限なし</span>
 							{/if}
 						</td>
 					</tr>

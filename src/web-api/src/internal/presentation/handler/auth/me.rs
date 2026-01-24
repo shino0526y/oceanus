@@ -3,7 +3,10 @@ mod output;
 pub use self::output::MeOutput;
 
 use crate::internal::{
-    domain::{entity::Session, repository::SessionRepository},
+    domain::{
+        entity::Session,
+        repository::{SessionRepository, UserRepository},
+    },
     presentation::util::CookieHelper,
 };
 use axum::{
@@ -36,6 +39,7 @@ pub struct ErrorResponse {
 pub async fn me(
     cookies: Cookies,
     session_repository: Arc<dyn SessionRepository>,
+    user_repository: Arc<dyn UserRepository>,
 ) -> Result<Json<MeOutput>, MeError> {
     // CookieからセッションIDを取得
     let session_id = cookies
@@ -53,6 +57,15 @@ pub async fn me(
     let user_uuid = *session.user_uuid();
     let csrf_token = session.csrf_token().to_string();
 
+    // ユーザーのロールを取得
+    let user = user_repository
+        .find_by_uuid(&user_uuid)
+        .await
+        .ok()
+        .flatten()
+        .ok_or(MeError::Unauthorized)?;
+    let role_i16 = user.role().as_i16();
+
     // セッションを延長
     session.extend();
     session_repository.save(session).await;
@@ -64,6 +77,7 @@ pub async fn me(
     Ok(Json(MeOutput {
         user_id: user_uuid.to_string(),
         csrf_token,
+        role: role_i16,
     }))
 }
 
