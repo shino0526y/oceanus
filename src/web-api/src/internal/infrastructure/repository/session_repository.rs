@@ -14,7 +14,6 @@ impl InMemorySessionRepository {
     }
 
     /// 期限切れセッションを削除（メモリリーク対策）
-    #[allow(dead_code)]
     pub fn cleanup_expired_sessions(&self) {
         let mut sessions = self.sessions.write().unwrap();
         sessions.retain(|_, session| !session.is_expired());

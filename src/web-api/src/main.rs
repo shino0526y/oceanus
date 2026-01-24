@@ -173,6 +173,18 @@ async fn main() {
         Arc::new(PostgresLoginFailureCountRepository::new(pool.clone()));
     let session_repository = Arc::new(InMemorySessionRepository::new());
 
+    // セッションクリーンアップの定期実行ジョブ（メモリ内セッションの期限切れ削除）
+    {
+        let session_repo = session_repository.clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
+            loop {
+                interval.tick().await;
+                session_repo.cleanup_expired_sessions();
+            }
+        });
+    }
+
     // ユースケースの初期化
     let create_application_entity_use_case = Arc::new(CreateApplicationEntityUseCase::new(
         application_entity_repository.clone(),
