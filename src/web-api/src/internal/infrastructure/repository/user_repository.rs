@@ -75,6 +75,30 @@ impl UserRepository for PostgresUserRepository {
         Ok(entities)
     }
 
+    async fn find_by_uuid(&self, uuid: &Uuid) -> Result<Option<User>, RepositoryError> {
+        let record = sqlx::query_as::<_, UserRecord>(
+            "SELECT uuid, id, name, role, password_hash, created_by, created_at, updated_by, updated_at
+             FROM users
+             WHERE uuid = $1",
+        )
+        .bind(uuid)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::Other {
+            message: format!("データベース処理でエラーが発生しました: {e}"),
+        })?;
+
+        match record {
+            Some(record) => {
+                let entity = record
+                    .try_into()
+                    .expect("DBレコードからエンティティへの変換は成功するはず");
+                Ok(Some(entity))
+            }
+            None => Ok(None),
+        }
+    }
+
     async fn find_by_id(&self, id: &Id) -> Result<Option<User>, RepositoryError> {
         let record = sqlx::query_as::<_, UserRecord>(
             "SELECT uuid, id, name, role, password_hash, created_by, created_at, updated_by, updated_at

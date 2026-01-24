@@ -22,7 +22,7 @@ use chrono::Utc;
     responses(
         (status = 204, description = "ユーザーの削除に成功"),
         (status = 401, description = "セッションが確立されていない"),
-        (status = 403, description = "CSRFトークンが無効"),
+        (status = 403, description = "CSRFトークンが無効または権限がありません"),
         (status = 404, description = "ユーザーが見つからない"),
         (status = 422, description = "バリデーションに失敗、または自分自身を削除しようとした"),
     ),

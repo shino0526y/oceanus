@@ -21,7 +21,7 @@ use chrono::Utc;
     responses(
         (status = 200, description = "ユーザーの作成に成功", body = CreateUserOutput),
         (status = 401, description = "セッションが確立されていない"),
-        (status = 403, description = "CSRFトークンが無効"),
+        (status = 403, description = "CSRFトークンが無効または権限がありません"),
         (status = 422, description = "バリデーションに失敗"),
     ),
     security(

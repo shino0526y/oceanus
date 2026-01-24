@@ -6,6 +6,8 @@ use uuid::Uuid;
 pub trait UserRepository: Send + Sync {
     async fn find_all(&self) -> Result<Vec<User>, RepositoryError>;
 
+    async fn find_by_uuid(&self, uuid: &Uuid) -> Result<Option<User>, RepositoryError>;
+
     async fn find_by_id(&self, id: &Id) -> Result<Option<User>, RepositoryError>;
 
     async fn add(&self, user: &User) -> Result<User, RepositoryError>;

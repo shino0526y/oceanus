@@ -11,6 +11,7 @@ use axum::{Json, extract::State};
     responses(
         (status = 200, description = "ユーザーの一覧の取得に成功", body = Vec<ListUsersOutputElement>),
         (status = 401, description = "セッションが確立されていない"),
+        (status = 403, description = "権限がありません"),
     ),
     security(
         ("session_cookie" = [])

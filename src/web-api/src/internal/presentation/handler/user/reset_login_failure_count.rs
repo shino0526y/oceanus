@@ -22,7 +22,7 @@ use axum::{
     responses(
         (status = 204, description = "ログイン失敗回数のリセットに成功"),
         (status = 401, description = "セッションが確立されていない"),
-        (status = 403, description = "CSRFトークンが無効"),
+        (status = 403, description = "CSRFトークンが無効または権限がありません"),
         (status = 404, description = "ユーザーが見つからない"),
         (status = 422, description = "バリデーションに失敗"),
     ),

@@ -252,16 +252,19 @@ async fn main() {
             get(move |cookies| handler::auth::me(cookies, session_repository_for_me.clone())),
         )
         // 認証が必要なエンドポイントにミドルウェアを適用
-        .merge(
-            Router::new()
-                .route("/logout", post(handler::auth::logout))
-                .route(
-                    "/application-entities",
-                    get(handler::application_entity::list_application_entities),
-                )
+        .merge({
+            // 認証は必要だが、管理者権限は不要なルート
+            let public_auth_router = Router::new().route("/logout", post(handler::auth::logout));
+
+            // 管理者または情シス権限が必要なルート
+            let admin_router = Router::new()
                 .route(
                     "/application-entities",
                     post(handler::application_entity::create_application_entity),
+                )
+                .route(
+                    "/application-entities",
+                    get(handler::application_entity::list_application_entities),
                 )
                 .route(
                     "/application-entities/{ae_title}",
@@ -271,14 +274,22 @@ async fn main() {
                     "/application-entities/{ae_title}",
                     delete(handler::application_entity::delete_application_entity),
                 )
-                .route("/users", get(handler::user::list_users))
                 .route("/users", post(handler::user::create_user))
+                .route("/users", get(handler::user::list_users))
                 .route("/users/{id}", put(handler::user::update_user))
                 .route("/users/{id}", delete(handler::user::delete_user))
                 .route(
                     "/users/{id}/login-failure-count",
                     delete(handler::user::reset_login_failure_count),
                 )
+                // 管理者チェックミドルウェアを適用
+                .layer(axum::middleware::from_fn(move |request, next| {
+                    middleware::require_admin_or_it(request, next, user_repository.clone())
+                }));
+
+            // まとめてマージし、セッション認証ミドルウェアを適用
+            public_auth_router
+                .merge(admin_router)
                 .route_layer(axum::middleware::from_fn(move |cookies, request, next| {
                     middleware::session_auth_middleware(
                         cookies,
@@ -286,8 +297,8 @@ async fn main() {
                         request,
                         next,
                     )
-                })),
-        )
+                }))
+        })
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())
         .layer(CookieManagerLayer::new())

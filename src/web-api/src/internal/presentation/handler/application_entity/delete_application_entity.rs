@@ -22,7 +22,7 @@ use dicom_lib::core::value::value_representations::ae::AeValue;
     responses(
         (status = 204, description = "Application Entityの削除に成功"),
         (status = 401, description = "セッションが確立されていない"),
-        (status = 403, description = "CSRFトークンが無効"),
+        (status = 403, description = "CSRFトークンが無効または権限がありません"),
         (status = 404, description = "Application Entityが見つからない"),
         (status = 422, description = "バリデーション失敗"),
     ),

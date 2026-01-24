@@ -28,7 +28,7 @@ use dicom_lib::core::value::value_representations::ae::AeValue;
     responses(
         (status = 200, description = "Application Entityの更新に成功", body = UpdateApplicationEntityOutput),
         (status = 401, description = "セッションが確立されていない"),
-        (status = 403, description = "CSRFトークンが無効"),
+        (status = 403, description = "CSRFトークンが無効または権限がありません"),
         (status = 422, description = "バリデーション失敗"),
     ),
     security(
