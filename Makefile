@@ -1,5 +1,8 @@
-.PHONY: up down start stop restart logs ps build pull clean help \
-        db-up db-down db-start db-stop db-restart db-logs db-shell db-psql
+.PHONY: \
+	up down start stop restart logs ps build pull clean \
+	db-up db-down db-start db-stop db-restart db-logs db-shell db-psql \
+	install lint format test src-build src-clean \
+	help
 
 .DEFAULT_GOAL := help
 
@@ -80,6 +83,9 @@ test:
 src-build:
 	$(MAKE) -C src build
 
+src-clean:
+	$(MAKE) -C src clean
+
 # === ヘルプ ===
 
 help:
@@ -115,5 +121,6 @@ help:
 	@echo "  format     全プロジェクトでフォーマッターを実行"
 	@echo "  test       全プロジェクトでテストを実行"
 	@echo "  src-build  全プロジェクトをビルド"
+	@echo "  src-clean  全プロジェクトのビルド成果物を削除"
 	@echo ""
 	@echo "  help       このヘルプを表示"
