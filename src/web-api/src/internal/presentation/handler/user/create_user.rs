@@ -57,6 +57,7 @@ pub async fn create_user(
             CreateUserError::EmptyPassword => {
                 PresentationError::UnprocessableContent(e.to_string())
             }
+            CreateUserError::Forbidden => PresentationError::Forbidden(e.to_string()),
             CreateUserError::PasswordHashError(msg) => PresentationError::InternalServerError(
                 format!("パスワードのハッシュ化に失敗しました: {}", msg),
             ),

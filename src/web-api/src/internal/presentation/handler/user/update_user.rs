@@ -67,6 +67,7 @@ pub async fn update_user(
             UpdateUserError::EmptyPassword => {
                 PresentationError::UnprocessableContent(e.to_string())
             }
+            UpdateUserError::Forbidden => PresentationError::Forbidden(e.to_string()),
             UpdateUserError::PasswordHashError(msg) => PresentationError::InternalServerError(
                 format!("パスワードのハッシュ化に失敗しました: {}", msg),
             ),

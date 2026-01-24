@@ -15,6 +15,8 @@ pub enum PresentationError {
     #[error("{0}")]
     UnprocessableContent(String),
     #[error("{0}")]
+    Forbidden(String),
+    #[error("{0}")]
     InternalServerError(String),
 }
 
@@ -24,6 +26,7 @@ impl IntoResponse for PresentationError {
             PresentationError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
             PresentationError::Conflict(msg) => (StatusCode::CONFLICT, msg),
             PresentationError::UnprocessableContent(msg) => (StatusCode::UNPROCESSABLE_ENTITY, msg),
+            PresentationError::Forbidden(msg) => (StatusCode::FORBIDDEN, msg),
             PresentationError::InternalServerError(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
         };
 

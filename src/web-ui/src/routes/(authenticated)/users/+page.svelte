@@ -25,6 +25,22 @@
 		return get(isManager);
 	}
 
+	// 利用可能なロール選択肢（情シスの場合は管理者を除外）
+	function getAvailableRoleOptions() {
+		const s = get(authStore);
+		return s.role === ROLES.IT_STAFF
+			? ROLE_OPTIONS.filter((o) => o.value !== ROLES.ADMIN)
+			: ROLE_OPTIONS;
+	}
+
+	function canManageUser(user: User) {
+		if (!get(isManager)) return false;
+		// 情シスは管理者を編集/削除できない
+		const s = get(authStore);
+		if (s.role === ROLES.IT_STAFF && user.role === ROLES.ADMIN) return false;
+		return true;
+	}
+
 	// 新規作成用
 	let showCreateModal = $state(false);
 	let createForm = $state<CreateUserInput>({ id: '', name: '', password: '', role: ROLES.ADMIN });
@@ -68,7 +84,13 @@
 	}
 
 	function openCreateModal() {
-		createForm = { id: '', name: '', password: '', role: ROLES.ADMIN };
+		const opts = getAvailableRoleOptions();
+		createForm = {
+			id: '',
+			name: '',
+			password: '',
+			role: opts[0].value
+		};
 		createError = '';
 		showCreateModal = true;
 	}
@@ -287,7 +309,7 @@
 							>{formatDate(user.createdAt)}</td
 						>
 						<td class="px-6 py-4 text-sm whitespace-nowrap">
-							{#if $isManager}
+							{#if canManageUser(user)}
 								<button
 									onclick={() => openEditModal(user)}
 									class="text-blue-600 hover:text-blue-900"
@@ -376,7 +398,7 @@
 						bind:value={createForm.role}
 						class="w-full rounded-md border border-gray-300 px-3 py-2"
 					>
-						{#each ROLE_OPTIONS as option (option.value)}
+						{#each getAvailableRoleOptions() as option (option.value)}
 							<option value={option.value}>{option.label}</option>
 						{/each}
 					</select>
@@ -461,7 +483,7 @@
 						bind:value={editForm.role}
 						class="w-full rounded-md border border-gray-300 px-3 py-2"
 					>
-						{#each ROLE_OPTIONS as option (option.value)}
+						{#each getAvailableRoleOptions() as option (option.value)}
 							<option value={option.value}>{option.label}</option>
 						{/each}
 					</select>

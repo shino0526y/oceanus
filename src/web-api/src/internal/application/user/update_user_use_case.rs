@@ -33,6 +33,22 @@ impl UpdateUserUseCase {
     }
 
     pub async fn execute(&self, command: UpdateUserCommand) -> Result<User, UpdateUserError> {
+        // 更新実行前に更新者の権限を確認: 情シスは管理者への変更を行えない
+        match self.repository.find_by_uuid(&command.updated_by).await {
+            Ok(Some(actor)) => {
+                if actor.role() == Role::ItStaff && command.role == Role::Admin {
+                    return Err(UpdateUserError::Forbidden);
+                }
+            }
+            Ok(None) => {
+                return Err(UpdateUserError::Repository(RepositoryError::NotFound {
+                    resource: "ユーザー".to_string(),
+                    key: command.updated_by.to_string(),
+                }));
+            }
+            Err(e) => return Err(UpdateUserError::Repository(e)),
+        }
+
         let mut entity = self
             .repository
             .find_by_id(&command.old_id)
@@ -84,6 +100,8 @@ impl UpdateUserUseCase {
 pub enum UpdateUserError {
     #[error("パスワードは1文字以上で入力してください")]
     EmptyPassword,
+    #[error("権限がありません")]
+    Forbidden,
     #[error("パスワードのハッシュ化に失敗しました: {0}")]
     PasswordHashError(String),
     #[error("{0}")]

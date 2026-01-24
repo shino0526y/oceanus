@@ -1,7 +1,7 @@
 use crate::internal::domain::{
     error::RepositoryError,
     repository::{LoginFailureCountRepository, UserRepository},
-    value_object::Id,
+    value_object::{Id, Role},
 };
 use chrono::{DateTime, Utc};
 use std::sync::Arc;
@@ -47,6 +47,22 @@ impl DeleteUserUseCase {
             return Err(DeleteUserError::CannotDeleteSelf);
         }
 
+        // 削除者の権限を確認: 情シスは管理者を削除できない
+        match self.user_repository.find_by_uuid(&command.deleted_by).await {
+            Ok(Some(actor)) => {
+                if actor.role() == Role::ItStaff && target_user.role() == Role::Admin {
+                    return Err(DeleteUserError::Forbidden);
+                }
+            }
+            Ok(None) => {
+                return Err(DeleteUserError::Repository(RepositoryError::NotFound {
+                    resource: "ユーザー".to_string(),
+                    key: command.deleted_by.to_string(),
+                }));
+            }
+            Err(e) => return Err(DeleteUserError::Repository(e)),
+        }
+
         // ログイン失敗情報を明示的に削除（CASCADEに依存しない）
         self.login_failure_count_repository
             .delete(target_user.uuid())
@@ -65,6 +81,8 @@ impl DeleteUserUseCase {
 pub enum DeleteUserError {
     #[error("自分自身を削除することはできません")]
     CannotDeleteSelf,
+    #[error("権限がありません")]
+    Forbidden,
     #[error("{0}")]
     Repository(#[from] RepositoryError),
 }

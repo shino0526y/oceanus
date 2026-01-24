@@ -36,6 +36,22 @@ impl CreateUserUseCase {
             return Err(CreateUserError::EmptyPassword);
         }
 
+        // 作成者の権限を確認: 情シスは管理者の作成を行えない
+        match self.repository.find_by_uuid(&command.created_by).await {
+            Ok(Some(actor)) => {
+                if actor.role() == Role::ItStaff && command.role == Role::Admin {
+                    return Err(CreateUserError::Forbidden);
+                }
+            }
+            Ok(None) => {
+                return Err(CreateUserError::Repository(RepositoryError::NotFound {
+                    resource: "ユーザー".to_string(),
+                    key: command.created_by.to_string(),
+                }));
+            }
+            Err(e) => return Err(CreateUserError::Repository(e)),
+        }
+
         // パスワードのハッシュ化(argon2id)
         let salt = SaltString::generate(&mut OsRng);
         let argon2 = Argon2::default();
@@ -64,6 +80,8 @@ impl CreateUserUseCase {
 pub enum CreateUserError {
     #[error("パスワードは1文字以上で入力してください")]
     EmptyPassword,
+    #[error("権限がありません")]
+    Forbidden,
     #[error("パスワードのハッシュ化に失敗しました: {0}")]
     PasswordHashError(String),
     #[error("{0}")]

@@ -56,6 +56,7 @@ pub async fn delete_user(
             DeleteUserError::CannotDeleteSelf => {
                 PresentationError::UnprocessableContent(e.to_string())
             }
+            DeleteUserError::Forbidden => PresentationError::Forbidden(e.to_string()),
             DeleteUserError::Repository(repo_err) => PresentationError::from(repo_err),
         })?;
 
