@@ -4,6 +4,7 @@
 		createUser,
 		updateUser,
 		deleteUser,
+		resetLoginFailure,
 		type User,
 		type CreateUserInput,
 		type UpdateUserInput
@@ -154,6 +155,20 @@
 		}
 		isDeleting = false;
 	}
+
+	async function handleResetLoginFailure(user: User) {
+		const confirmed = confirm(
+			`「${user.name}」のログイン失敗回数をリセットし、ロックを解除しますか？`
+		);
+		if (!confirmed) return;
+
+		const result = await resetLoginFailure(user.id);
+		if (result.ok) {
+			await loadUsers();
+		} else {
+			alert(result.error);
+		}
+	}
 </script>
 
 <svelte:head>
@@ -211,6 +226,9 @@
 						>ロール</th
 					>
 					<th class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
+						>ステータス</th
+					>
+					<th class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
 						>作成日時</th
 					>
 					<th class="px-6 py-3 text-left text-xs font-medium tracking-wider text-gray-500 uppercase"
@@ -231,6 +249,27 @@
 							>
 								{ROLE_LABELS[user.role as keyof typeof ROLE_LABELS] || `ロール${user.role}`}
 							</span>
+						</td>
+						<td class="px-6 py-4 text-sm whitespace-nowrap">
+							{#if user.loginFailureCount >= 5}
+								<span
+									class="inline-flex rounded-full bg-red-100 px-2 text-xs leading-5 font-semibold text-red-800"
+								>
+									ロック中
+								</span>
+								<button
+									onclick={() => handleResetLoginFailure(user)}
+									class="ml-2 text-orange-600 hover:text-orange-900"
+								>
+									解除
+								</button>
+							{:else if user.loginFailureCount > 0}
+								<span class="text-yellow-600"
+									>失敗{user.loginFailureCount}回</span
+								>
+							{:else}
+								<span class="text-green-600">正常</span>
+							{/if}
 						</td>
 						<td class="px-6 py-4 text-sm whitespace-nowrap text-gray-500"
 							>{formatDate(user.createdAt)}</td

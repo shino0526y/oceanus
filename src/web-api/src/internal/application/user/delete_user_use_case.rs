@@ -1,12 +1,15 @@
 use crate::internal::domain::{
-    error::RepositoryError, repository::UserRepository, value_object::Id,
+    error::RepositoryError,
+    repository::{LoginFailureCountRepository, UserRepository},
+    value_object::Id,
 };
 use chrono::{DateTime, Utc};
 use std::sync::Arc;
 use uuid::Uuid;
 
 pub struct DeleteUserUseCase {
-    repository: Arc<dyn UserRepository>,
+    user_repository: Arc<dyn UserRepository>,
+    login_failure_count_repository: Arc<dyn LoginFailureCountRepository>,
 }
 
 pub struct DeleteUserCommand {
@@ -16,14 +19,20 @@ pub struct DeleteUserCommand {
 }
 
 impl DeleteUserUseCase {
-    pub fn new(repository: Arc<dyn UserRepository>) -> Self {
-        Self { repository }
+    pub fn new(
+        user_repository: Arc<dyn UserRepository>,
+        login_failure_count_repository: Arc<dyn LoginFailureCountRepository>,
+    ) -> Self {
+        Self {
+            user_repository,
+            login_failure_count_repository,
+        }
     }
 
     pub async fn execute(&self, command: DeleteUserCommand) -> Result<(), DeleteUserError> {
         // 削除対象ユーザーを取得
         let target_user = self
-            .repository
+            .user_repository
             .find_by_id(&command.id)
             .await?
             .ok_or_else(|| {
@@ -38,7 +47,13 @@ impl DeleteUserUseCase {
             return Err(DeleteUserError::CannotDeleteSelf);
         }
 
-        self.repository
+        // ログイン失敗情報を明示的に削除（CASCADEに依存しない）
+        self.login_failure_count_repository
+            .delete(target_user.uuid())
+            .await?;
+
+        // ユーザーを削除
+        self.user_repository
             .delete(&command.id, &command.deleted_by, &command.deleted_at)
             .await?;
 

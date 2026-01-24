@@ -28,6 +28,13 @@ CREATE TABLE users_deleted(
     PRIMARY KEY (uuid)
 );
 
+CREATE TABLE login_failure_counts(
+    user_uuid uuid NOT NULL REFERENCES users(uuid) ON DELETE CASCADE,
+    failure_count smallint NOT NULL DEFAULT 0 CHECK (failure_count >= 0),
+    last_failure_at timestamptz,
+    PRIMARY KEY (user_uuid)
+);
+
 CREATE TABLE application_entities(
     uuid uuid NOT NULL DEFAULT uuidv7(),
     title varchar(16) NOT NULL CHECK (title <> ''),

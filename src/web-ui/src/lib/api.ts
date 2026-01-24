@@ -94,6 +94,7 @@ export interface User {
 	id: string;
 	name: string;
 	role: number;
+	loginFailureCount: number;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -175,6 +176,10 @@ export function updateUser(id: string, input: UpdateUserInput) {
 
 export function deleteUser(id: string) {
 	return api.delete<null>(`/users/${encodeURIComponent(id)}`);
+}
+
+export function resetLoginFailure(id: string) {
+	return api.delete<null>(`/users/${encodeURIComponent(id)}/login-failure-count`);
 }
 
 export function listApplicationEntities() {

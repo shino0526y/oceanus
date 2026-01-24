@@ -1,4 +1,4 @@
-use crate::internal::domain::entity::User;
+use crate::internal::application::user::list_users_use_case::UserWithLoginFailureCount;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use utoipa::ToSchema;
@@ -9,18 +9,20 @@ pub struct ListUsersOutputElement {
     pub id: String,
     pub name: String,
     pub role: i16,
+    pub login_failure_count: i16,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
 
-impl From<User> for ListUsersOutputElement {
-    fn from(user: User) -> Self {
+impl From<UserWithLoginFailureCount> for ListUsersOutputElement {
+    fn from(data: UserWithLoginFailureCount) -> Self {
         Self {
-            id: user.id().value().into(),
-            name: user.name().to_string(),
-            role: user.role().as_i16(),
-            created_at: *user.created_at(),
-            updated_at: *user.updated_at(),
+            id: data.user.id().value().into(),
+            name: data.user.name().to_string(),
+            role: data.user.role().as_i16(),
+            login_failure_count: data.login_failure_count,
+            created_at: *data.user.created_at(),
+            updated_at: *data.user.updated_at(),
         }
     }
 }

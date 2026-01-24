@@ -14,10 +14,12 @@ use self::{
             user::create_user_use_case::CreateUserUseCase,
             user::delete_user_use_case::DeleteUserUseCase,
             user::list_users_use_case::ListUsersUseCase,
+            user::reset_login_failure_count_use_case::ResetLoginFailureCountUseCase,
             user::update_user_use_case::UpdateUserUseCase,
         },
         infrastructure::repository::{
-            InMemorySessionRepository, PostgresApplicationEntityRepository, PostgresUserRepository,
+            InMemorySessionRepository, PostgresApplicationEntityRepository,
+            PostgresLoginFailureCountRepository, PostgresUserRepository,
         },
         presentation::{handler, middleware},
     },
@@ -54,6 +56,7 @@ use utoipa::{
         internal::presentation::handler::user::list_users::list_users,
         internal::presentation::handler::user::update_user::update_user,
         internal::presentation::handler::user::delete_user::delete_user,
+        internal::presentation::handler::user::reset_login_failure_count::reset_login_failure_count,
         internal::presentation::handler::application_entity::create_application_entity::create_application_entity,
         internal::presentation::handler::application_entity::list_application_entities::list_application_entities,
         internal::presentation::handler::application_entity::update_application_entity::update_application_entity,
@@ -120,6 +123,7 @@ pub struct AppState {
     pub list_users_use_case: Arc<ListUsersUseCase>,
     pub update_user_use_case: Arc<UpdateUserUseCase>,
     pub delete_user_use_case: Arc<DeleteUserUseCase>,
+    pub reset_login_failure_count_use_case: Arc<ResetLoginFailureCountUseCase>,
     pub login_use_case: Arc<LoginUseCase>,
     pub logout_use_case: Arc<LogoutUseCase>,
 }
@@ -165,6 +169,8 @@ async fn main() {
     let application_entity_repository =
         Arc::new(PostgresApplicationEntityRepository::new(pool.clone()));
     let user_repository = Arc::new(PostgresUserRepository::new(pool.clone()));
+    let login_failure_count_repository =
+        Arc::new(PostgresLoginFailureCountRepository::new(pool.clone()));
     let session_repository = Arc::new(InMemorySessionRepository::new());
 
     // ユースケースの初期化
@@ -181,13 +187,25 @@ async fn main() {
         application_entity_repository.clone(),
     ));
     let create_user_use_case = Arc::new(CreateUserUseCase::new(user_repository.clone()));
-    let list_users_use_case = Arc::new(ListUsersUseCase::new(user_repository.clone()));
+    let list_users_use_case = Arc::new(ListUsersUseCase::new(
+        user_repository.clone(),
+        login_failure_count_repository.clone(),
+    ));
     let update_user_use_case = Arc::new(UpdateUserUseCase::new(user_repository.clone()));
-    let delete_user_use_case = Arc::new(DeleteUserUseCase::new(user_repository.clone()));
+    let delete_user_use_case = Arc::new(DeleteUserUseCase::new(
+        user_repository.clone(),
+        login_failure_count_repository.clone(),
+    ));
+    let reset_login_failure_count_use_case = Arc::new(ResetLoginFailureCountUseCase::new(
+        user_repository.clone(),
+        login_failure_count_repository.clone(),
+    ));
 
     // 認証関連UseCaseの初期化
-    let authenticate_user_use_case =
-        Arc::new(AuthenticateUserUseCase::new(user_repository.clone()));
+    let authenticate_user_use_case = Arc::new(AuthenticateUserUseCase::new(
+        user_repository.clone(),
+        login_failure_count_repository.clone(),
+    ));
     let create_session_use_case = Arc::new(CreateSessionUseCase::new(session_repository.clone()));
     let delete_session_use_case = Arc::new(DeleteSessionUseCase::new(session_repository.clone()));
     let extend_session_use_case = Arc::new(ExtendSessionUseCase::new(session_repository.clone()));
@@ -207,6 +225,7 @@ async fn main() {
         list_users_use_case,
         update_user_use_case,
         delete_user_use_case,
+        reset_login_failure_count_use_case,
         login_use_case,
         logout_use_case,
     };
@@ -244,6 +263,10 @@ async fn main() {
                 .route("/users", post(handler::user::create_user))
                 .route("/users/{id}", put(handler::user::update_user))
                 .route("/users/{id}", delete(handler::user::delete_user))
+                .route(
+                    "/users/{id}/login-failure-count",
+                    delete(handler::user::reset_login_failure_count),
+                )
                 .route_layer(axum::middleware::from_fn(move |cookies, request, next| {
                     middleware::session_auth_middleware(
                         cookies,

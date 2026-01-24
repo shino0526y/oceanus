@@ -83,6 +83,7 @@ impl IntoResponse for LoginError {
             LoginError::Authentication(err) => {
                 let status = match err {
                     AuthenticationError::InvalidCredentials => StatusCode::UNAUTHORIZED,
+                    AuthenticationError::Locked => StatusCode::FORBIDDEN,
                     AuthenticationError::Other { .. } => StatusCode::INTERNAL_SERVER_ERROR,
                 };
                 (status, err.to_string())

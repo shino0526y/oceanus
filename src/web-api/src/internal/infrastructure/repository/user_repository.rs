@@ -218,7 +218,7 @@ impl UserRepository for PostgresUserRepository {
             });
         }
 
-        // 元テーブルからDELETE
+        // 元テーブルからDELETE（login_failure_counts も CASCADE で削除される）
         sqlx::query("DELETE FROM users WHERE id = $1")
             .bind(id.value())
             .execute(&mut *tx)
