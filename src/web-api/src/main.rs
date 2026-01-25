@@ -1,40 +1,29 @@
 mod args;
 mod internal;
+mod utils;
 
 use self::{
     args::Args,
-    internal::{
-        application::{
-            application_entity::CreateApplicationEntityUseCase,
-            application_entity::DeleteApplicationEntityUseCase,
-            application_entity::ListApplicationEntitiesUseCase,
-            application_entity::UpdateApplicationEntityUseCase,
-            auth::{AuthenticateUserUseCase, LoginUseCase, LogoutUseCase},
-            session::{CreateSessionUseCase, DeleteSessionUseCase, ExtendSessionUseCase},
-            user::create_user_use_case::CreateUserUseCase,
-            user::delete_user_use_case::DeleteUserUseCase,
-            user::list_users_use_case::ListUsersUseCase,
-            user::reset_login_failure_count_use_case::ResetLoginFailureCountUseCase,
-            user::update_user_use_case::UpdateUserUseCase,
-        },
-        infrastructure::repository::{
-            InMemorySessionRepository, PostgresApplicationEntityRepository,
-            PostgresLoginFailureCountRepository, PostgresUserRepository,
-        },
-        presentation::{handler, middleware},
+    internal::application::{
+        application_entity::CreateApplicationEntityUseCase,
+        application_entity::DeleteApplicationEntityUseCase,
+        application_entity::ListApplicationEntitiesUseCase,
+        application_entity::UpdateApplicationEntityUseCase,
+        auth::{LoginUseCase, LogoutUseCase},
+        session::ExtendSessionUseCase,
+        user::create_user_use_case::CreateUserUseCase,
+        user::delete_user_use_case::DeleteUserUseCase,
+        user::list_users_use_case::ListUsersUseCase,
+        user::reset_login_failure_count_use_case::ResetLoginFailureCountUseCase,
+        user::update_user_use_case::UpdateUserUseCase,
     },
 };
-use axum::{
-    Router,
-    routing::{delete, get, post, put},
-};
+use crate::utils::make_router;
 use clap::Parser;
 use dotenvy::dotenv;
 use sqlx::postgres::PgPoolOptions;
 use std::{io::IsTerminal, net::Ipv4Addr, process::exit, sync::Arc};
 use tokio::net::TcpListener;
-use tower_cookies::CookieManagerLayer;
-use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing::{debug, error, info, level_filters::LevelFilter};
 use tracing_subscriber::fmt::time::LocalTime;
 
@@ -126,6 +115,7 @@ pub struct AppState {
     pub reset_login_failure_count_use_case: Arc<ResetLoginFailureCountUseCase>,
     pub login_use_case: Arc<LoginUseCase>,
     pub logout_use_case: Arc<LogoutUseCase>,
+    pub extend_session_use_case: Arc<ExtendSessionUseCase>,
 }
 
 #[tokio::main]
@@ -166,147 +156,25 @@ async fn main() {
     };
 
     // リポジトリの初期化
-    let application_entity_repository =
-        Arc::new(PostgresApplicationEntityRepository::new(pool.clone()));
-    let user_repository = Arc::new(PostgresUserRepository::new(pool.clone()));
-    let login_failure_count_repository =
-        Arc::new(PostgresLoginFailureCountRepository::new(pool.clone()));
-    let session_repository = Arc::new(InMemorySessionRepository::new());
+    let repos = utils::Repositories::new(pool);
 
     // セッションクリーンアップの定期実行ジョブ（メモリ内セッションの期限切れ削除）
     {
-        let session_repo = session_repository.clone();
+        let session_repo = repos.session_repository.clone();
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
             loop {
                 interval.tick().await;
-                session_repo.cleanup_expired_sessions();
+                session_repo.cleanup_expired_sessions().await;
             }
         });
     }
 
-    // ユースケースの初期化
-    let create_application_entity_use_case = Arc::new(CreateApplicationEntityUseCase::new(
-        application_entity_repository.clone(),
-    ));
-    let list_application_entities_use_case = Arc::new(ListApplicationEntitiesUseCase::new(
-        application_entity_repository.clone(),
-    ));
-    let update_application_entity_use_case = Arc::new(UpdateApplicationEntityUseCase::new(
-        application_entity_repository.clone(),
-    ));
-    let delete_application_entity_use_case = Arc::new(DeleteApplicationEntityUseCase::new(
-        application_entity_repository.clone(),
-    ));
-    let create_user_use_case = Arc::new(CreateUserUseCase::new(user_repository.clone()));
-    let list_users_use_case = Arc::new(ListUsersUseCase::new(
-        user_repository.clone(),
-        login_failure_count_repository.clone(),
-    ));
-    let update_user_use_case = Arc::new(UpdateUserUseCase::new(user_repository.clone()));
-    let delete_user_use_case = Arc::new(DeleteUserUseCase::new(
-        user_repository.clone(),
-        login_failure_count_repository.clone(),
-    ));
-    let reset_login_failure_count_use_case = Arc::new(ResetLoginFailureCountUseCase::new(
-        user_repository.clone(),
-        login_failure_count_repository.clone(),
-    ));
-
-    // 認証関連UseCaseの初期化
-    let authenticate_user_use_case = Arc::new(AuthenticateUserUseCase::new(
-        user_repository.clone(),
-        login_failure_count_repository.clone(),
-    ));
-    let create_session_use_case = Arc::new(CreateSessionUseCase::new(session_repository.clone()));
-    let delete_session_use_case = Arc::new(DeleteSessionUseCase::new(session_repository.clone()));
-    let extend_session_use_case = Arc::new(ExtendSessionUseCase::new(session_repository.clone()));
-    let login_use_case = Arc::new(LoginUseCase::new(
-        authenticate_user_use_case,
-        create_session_use_case.clone(),
-        user_repository.clone(),
-    ));
-    let logout_use_case = Arc::new(LogoutUseCase::new(delete_session_use_case.clone()));
-
     // アプリケーション状態の初期化
-    let app_state = AppState {
-        create_application_entity_use_case,
-        list_application_entities_use_case,
-        update_application_entity_use_case,
-        delete_application_entity_use_case,
-        create_user_use_case,
-        list_users_use_case,
-        update_user_use_case,
-        delete_user_use_case,
-        reset_login_failure_count_use_case,
-        login_use_case,
-        logout_use_case,
-    };
+    let app_state = utils::make_app_state(&repos);
 
     // ルーター設定
-    let session_repository_for_me = session_repository.clone();
-    let user_repository_for_me = user_repository.clone();
-    let app = Router::new()
-        // 認証不要なエンドポイント
-        .route("/login", post(handler::auth::login))
-        .route(
-            "/me",
-            get(move |cookies| {
-                handler::auth::me(cookies, session_repository_for_me, user_repository_for_me)
-            }),
-        )
-        // 認証が必要なエンドポイントにミドルウェアを適用
-        .merge({
-            // 認証は必要だが、管理者権限は不要なルート
-            let public_auth_router = Router::new().route("/logout", post(handler::auth::logout));
-
-            // 管理者または情シス権限が必要なルート
-            let admin_router = Router::new()
-                .route(
-                    "/application-entities",
-                    post(handler::application_entity::create_application_entity),
-                )
-                .route(
-                    "/application-entities",
-                    get(handler::application_entity::list_application_entities),
-                )
-                .route(
-                    "/application-entities/{ae_title}",
-                    put(handler::application_entity::update_application_entity),
-                )
-                .route(
-                    "/application-entities/{ae_title}",
-                    delete(handler::application_entity::delete_application_entity),
-                )
-                .route("/users", post(handler::user::create_user))
-                .route("/users", get(handler::user::list_users))
-                .route("/users/{id}", put(handler::user::update_user))
-                .route("/users/{id}", delete(handler::user::delete_user))
-                .route(
-                    "/users/{id}/login-failure-count",
-                    delete(handler::user::reset_login_failure_count),
-                )
-                // 管理者チェックミドルウェアを適用
-                .layer(axum::middleware::from_fn(move |request, next| {
-                    middleware::require_admin_or_it(request, next, user_repository.clone())
-                }));
-
-            // まとめてマージし、セッション認証ミドルウェアを適用
-            public_auth_router
-                .merge(admin_router)
-                .route_layer(axum::middleware::from_fn(move |cookies, request, next| {
-                    middleware::session_auth_middleware(
-                        cookies,
-                        extend_session_use_case.clone(),
-                        request,
-                        next,
-                    )
-                }))
-        })
-        .layer(CorsLayer::permissive())
-        .layer(TraceLayer::new_for_http())
-        .layer(CookieManagerLayer::new())
-        .with_state(app_state);
+    let app = make_router(app_state, &repos);
 
     // Swagger UIの設定
     #[cfg(debug_assertions)]

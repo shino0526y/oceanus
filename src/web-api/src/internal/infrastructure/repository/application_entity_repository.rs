@@ -241,3 +241,86 @@ impl ApplicationEntityRepository for PostgresApplicationEntityRepository {
         Ok(())
     }
 }
+
+#[cfg(test)]
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
+
+#[cfg(test)]
+pub struct TestApplicationEntityRepository {
+    inner: Arc<RwLock<HashMap<Uuid, ApplicationEntity>>>,
+}
+
+#[cfg(test)]
+impl TestApplicationEntityRepository {
+    pub fn new() -> Self {
+        Self {
+            inner: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+
+    fn find_uuid_by_title(&self, title: &AeValue) -> Option<Uuid> {
+        self.inner
+            .read()
+            .unwrap()
+            .values()
+            .find(|e| e.title() == title)
+            .cloned()
+            .map(|e| *e.uuid())
+    }
+}
+
+#[cfg(test)]
+#[async_trait::async_trait]
+impl ApplicationEntityRepository for TestApplicationEntityRepository {
+    async fn find_all(&self) -> Result<Vec<ApplicationEntity>, RepositoryError> {
+        Ok(self.inner.read().unwrap().values().cloned().collect())
+    }
+
+    async fn find_by_title(
+        &self,
+        title: &AeValue,
+    ) -> Result<Option<ApplicationEntity>, RepositoryError> {
+        Ok(self
+            .inner
+            .read()
+            .unwrap()
+            .values()
+            .find(|e| e.title() == title)
+            .cloned())
+    }
+
+    async fn add(&self, entity: &ApplicationEntity) -> Result<ApplicationEntity, RepositoryError> {
+        self.inner
+            .write()
+            .unwrap()
+            .insert(*entity.uuid(), entity.clone());
+        Ok(entity.clone())
+    }
+
+    async fn update(
+        &self,
+        _old_title: &AeValue,
+        application_entity: &ApplicationEntity,
+    ) -> Result<ApplicationEntity, RepositoryError> {
+        let uuid = self.find_uuid_by_title(application_entity.title()).unwrap();
+        self.inner
+            .write()
+            .unwrap()
+            .insert(uuid, application_entity.clone());
+        Ok(application_entity.clone())
+    }
+
+    async fn delete(
+        &self,
+        title: &AeValue,
+        _deleted_by: &Uuid,
+        _deleted_at: &DateTime<Utc>,
+    ) -> Result<(), RepositoryError> {
+        let uuid = self.find_uuid_by_title(title).unwrap();
+        self.inner.write().unwrap().remove(&uuid);
+        Ok(())
+    }
+}

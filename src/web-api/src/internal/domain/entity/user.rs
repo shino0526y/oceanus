@@ -2,6 +2,7 @@ use crate::internal::domain::value_object::{Id, Role};
 use chrono::{DateTime, Utc};
 use uuid::{NoContext, Timestamp, Uuid};
 
+#[derive(Clone)]
 pub struct User {
     uuid: Uuid,
     id: Id,

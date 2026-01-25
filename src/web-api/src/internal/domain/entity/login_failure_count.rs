@@ -4,6 +4,7 @@ use uuid::Uuid;
 /// ログイン失敗によるロックのしきい値
 const LOGIN_FAILURE_LOCK_THRESHOLD: i16 = 5;
 
+#[derive(Clone)]
 pub struct LoginFailureCount {
     user_uuid: Uuid,
     failure_count: i16,

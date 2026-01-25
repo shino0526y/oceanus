@@ -258,3 +258,88 @@ impl UserRepository for PostgresUserRepository {
         Ok(())
     }
 }
+
+#[cfg(test)]
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
+
+#[cfg(test)]
+pub struct TestUserRepository {
+    inner: Arc<RwLock<HashMap<Uuid, User>>>,
+}
+
+#[cfg(test)]
+impl TestUserRepository {
+    pub fn new() -> Self {
+        Self {
+            inner: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+
+    fn find_uuid_by_id(&self, id: &Id) -> Option<Uuid> {
+        self.inner
+            .read()
+            .unwrap()
+            .values()
+            .find(|e| e.id() == id)
+            .cloned()
+            .map(|e| *e.uuid())
+    }
+}
+
+#[cfg(test)]
+#[async_trait::async_trait]
+impl UserRepository for TestUserRepository {
+    async fn find_all(&self) -> Result<Vec<User>, RepositoryError> {
+        Ok(self.inner.read().unwrap().values().cloned().collect())
+    }
+
+    async fn find_by_uuid(&self, uuid: &Uuid) -> Result<Option<User>, RepositoryError> {
+        Ok(self.inner.read().unwrap().get(uuid).cloned())
+    }
+
+    async fn find_by_id(&self, id: &Id) -> Result<Option<User>, RepositoryError> {
+        Ok(self
+            .inner
+            .read()
+            .unwrap()
+            .values()
+            .find(|e| e.id() == id)
+            .cloned())
+    }
+
+    async fn add(&self, user: &User) -> Result<User, RepositoryError> {
+        let exists = self.find_by_id(user.id()).await?.is_some();
+        if exists {
+            return Err(RepositoryError::AlreadyExists {
+                resource: "ユーザー".to_string(),
+                key: user.id().value().to_string(),
+            });
+        }
+
+        self.inner
+            .write()
+            .unwrap()
+            .insert(*user.uuid(), user.clone());
+        Ok(user.clone())
+    }
+
+    async fn update(&self, old_id: &Id, user: &User) -> Result<User, RepositoryError> {
+        let uuid = self.find_uuid_by_id(old_id).unwrap();
+        self.inner.write().unwrap().insert(uuid, user.clone());
+        Ok(user.clone())
+    }
+
+    async fn delete(
+        &self,
+        id: &Id,
+        _deleted_by: &Uuid,
+        _deleted_at: &DateTime<Utc>,
+    ) -> Result<(), RepositoryError> {
+        let uuid = self.find_uuid_by_id(id).unwrap();
+        self.inner.write().unwrap().remove(&uuid);
+        Ok(())
+    }
+}

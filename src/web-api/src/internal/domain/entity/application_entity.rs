@@ -3,6 +3,7 @@ use chrono::{DateTime, Utc};
 use dicom_lib::core::value::value_representations::ae::AeValue;
 use uuid::{NoContext, Timestamp, Uuid};
 
+#[derive(Clone)]
 pub struct ApplicationEntity {
     uuid: Uuid,
     title: AeValue,

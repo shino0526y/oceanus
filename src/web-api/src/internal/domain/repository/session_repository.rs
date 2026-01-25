@@ -10,4 +10,7 @@ pub trait SessionRepository: Send + Sync {
 
     /// セッションを削除
     async fn delete(&self, session_id: &str);
+
+    /// 期限切れセッションを削除（メモリリーク対策）
+    async fn cleanup_expired_sessions(&self);
 }
