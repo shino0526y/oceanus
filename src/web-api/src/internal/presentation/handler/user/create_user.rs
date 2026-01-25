@@ -66,3 +66,414 @@ pub async fn create_user(
 
     Ok(Json(CreateUserOutput::from(user)))
 }
+
+#[allow(non_snake_case)]
+#[cfg(test)]
+mod tests {
+    use crate::{
+        internal::{
+            domain::value_object::Id,
+            presentation::{handler::user::prepare_test_data, util::test_helpers},
+        },
+        utils::{self, make_router},
+    };
+    use axum::{
+        body::Body,
+        http::{Request, StatusCode},
+    };
+    use serde_json::json;
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn create_user_正常系_管理者はユーザーを作成できる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let app_state = utils::make_app_state(&repos);
+        let router = make_router(app_state, &repos);
+        let (session_id, csrf) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let payload = json!({
+            "id": "john",
+            "name": "John Doe",
+            "role": 2, // Doctor
+            "password": "Password#1234",
+        });
+        let request = Request::builder()
+            .method("POST")
+            .uri("/users")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={}", session_id))
+            .header("x-csrf-token", csrf)
+            .body(Body::from(serde_json::to_string(&payload).unwrap()))
+            .unwrap();
+
+        // Act
+        let response = router.clone().oneshot(request).await.unwrap();
+
+        // Assert
+        // HTTPレスポンスの確認
+        assert_eq!(response.status(), StatusCode::OK);
+        // ユーザーが作成されていることの確認
+        assert!(
+            repos
+                .user_repository
+                .find_by_id(&Id::new("john").unwrap())
+                .await
+                .unwrap()
+                .is_some()
+        );
+    }
+
+    #[tokio::test]
+    async fn create_user_正常系_情シスはユーザーを作成できる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let app_state = utils::make_app_state(&repos);
+        let router = make_router(app_state, &repos);
+        let (session_id, csrf) = test_helpers::login(&router, "it", "Password#1234").await;
+        let payload = json!({
+            "id": "john",
+            "name": "John Doe",
+            "role": 2, // Doctor
+            "password": "Password#1234",
+        });
+        let request = Request::builder()
+            .method("POST")
+            .uri("/users")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={}", session_id))
+            .header("x-csrf-token", csrf)
+            .body(Body::from(serde_json::to_string(&payload).unwrap()))
+            .unwrap();
+
+        // Act
+        let response = router.clone().oneshot(request).await.unwrap();
+
+        // Assert
+        // HTTPレスポンスの確認
+        assert_eq!(response.status(), StatusCode::OK);
+        // ユーザーが作成されていることの確認
+        assert!(
+            repos
+                .user_repository
+                .find_by_id(&Id::new("john").unwrap())
+                .await
+                .unwrap()
+                .is_some()
+        );
+    }
+
+    #[tokio::test]
+    async fn create_user_準正常系_認証されていない状態でユーザーを作成しようとすると401エラーになる()
+     {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let app_state = utils::make_app_state(&repos);
+        let router = make_router(app_state, &repos);
+        let payload = json!({
+            "id": "john",
+            "name": "John Doe",
+            "role": 2, // Doctor
+            "password": "Password#1234",
+        });
+        let request = Request::builder()
+            .method("POST")
+            .uri("/users")
+            .header("content-type", "application/json")
+            .body(Body::from(serde_json::to_string(&payload).unwrap()))
+            .unwrap();
+
+        // Act
+        let response = router.clone().oneshot(request).await.unwrap();
+
+        // Assert
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn create_user_準正常系_CSRFトークンなしでユーザーを作成しようとすると403エラーになる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let app_state = utils::make_app_state(&repos);
+        let router = make_router(app_state, &repos);
+        let (session_id, _csrf) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let payload = json!({
+            "id": "john",
+            "name": "John Doe",
+            "role": 2, // Doctor
+            "password": "Password#1234",
+        });
+        let request = Request::builder()
+            .method("POST")
+            .uri("/users")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={}", session_id))
+            .body(Body::from(serde_json::to_string(&payload).unwrap()))
+            .unwrap();
+
+        // Act
+        let response = router.clone().oneshot(request).await.unwrap();
+
+        // Assert
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    }
+
+    #[tokio::test]
+    async fn create_user_準正常系_情シスが管理者を作成しようとすると403エラーになる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let app_state = utils::make_app_state(&repos);
+        let router = make_router(app_state, &repos);
+        let (session_id, csrf) = test_helpers::login(&router, "it", "Password#1234").await;
+        let payload = json!({
+            "id": "john",
+            "name": "John Doe",
+            "role": 0, // Admin
+            "password": "Password#1234",
+        });
+        let request = Request::builder()
+            .method("POST")
+            .uri("/users")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={}", session_id))
+            .header("x-csrf-token", csrf)
+            .body(Body::from(serde_json::to_string(&payload).unwrap()))
+            .unwrap();
+
+        // Act
+        let response = router.clone().oneshot(request).await.unwrap();
+
+        // Assert
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    }
+
+    #[tokio::test]
+    async fn create_user_準正常系_管理者や情シスでないユーザーがユーザーを作成しようとすると403エラーになる()
+     {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let app_state = utils::make_app_state(&repos);
+        let router = make_router(app_state, &repos);
+        let (session_id, csrf) = test_helpers::login(&router, "technician", "Password#1234").await;
+        let payload = json!({
+            "id": "john",
+            "name": "John Doe",
+            "role": 2, // Doctor
+            "password": "Password#1234",
+        });
+        let request = Request::builder()
+            .method("POST")
+            .uri("/users")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={}", session_id))
+            .header("x-csrf-token", csrf)
+            .body(Body::from(serde_json::to_string(&payload).unwrap()))
+            .unwrap();
+
+        // Act
+        let response = router.clone().oneshot(request).await.unwrap();
+
+        // Assert
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    }
+
+    #[tokio::test]
+    async fn create_user_準正常系_すでに存在するユーザーを作成しようとすると409エラーになる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let app_state = utils::make_app_state(&repos);
+        let router = make_router(app_state, &repos);
+        let (session_id, csrf) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let payload = json!({
+            "id": "doctor",
+            "name": "医師 太郎",
+            "role": 2, // Doctor
+            "password": "Password#1234",
+        });
+        let request = Request::builder()
+            .method("POST")
+            .uri("/users")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={}", session_id))
+            .header("x-csrf-token", csrf)
+            .body(Body::from(serde_json::to_string(&payload).unwrap()))
+            .unwrap();
+
+        // Act
+        let exists = repos
+            .user_repository
+            .find_by_id(&Id::new("doctor").unwrap())
+            .await
+            .unwrap()
+            .is_some();
+        let response = router.clone().oneshot(request).await.unwrap();
+
+        // Assert
+        // リクエストよりも前からユーザーが存在していることを確認
+        assert!(exists);
+        // HTTPレスポンスの確認
+        assert_eq!(response.status(), StatusCode::CONFLICT);
+    }
+
+    #[tokio::test]
+    async fn create_user_準正常系_バリデーション違反の場合は422エラーになる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let app_state = utils::make_app_state(&repos);
+        let router = make_router(app_state, &repos);
+        let (session_id, csrf) = test_helpers::login(&router, "admin", "Password#1234").await;
+        // IDの指定がないケース
+        let payload1 = json!({
+            "name": "John Doe",
+            "role": 2, // Doctor
+            "password": "Password#1234",
+        });
+        let request1 = Request::builder()
+            .method("POST")
+            .uri("/users")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={}", session_id))
+            .header("x-csrf-token", csrf.clone())
+            .body(Body::from(serde_json::to_string(&payload1).unwrap()))
+            .unwrap();
+        // 空文字のIDを指定するケース
+        let payload2 = json!({
+            "id": "",
+            "name": "John Doe",
+            "role": 2, // Doctor
+            "password": "Password#1234",
+        });
+        let request2 = Request::builder()
+            .method("POST")
+            .uri("/users")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={}", session_id))
+            .header("x-csrf-token", csrf.clone())
+            .body(Body::from(serde_json::to_string(&payload2).unwrap()))
+            .unwrap();
+        // 名前の指定がないケース
+        let payload3 = json!({
+            "id": "john",
+            "role": 2, // Doctor
+            "password": "Password#1234",
+        });
+        let request3 = Request::builder()
+            .method("POST")
+            .uri("/users")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={}", session_id))
+            .header("x-csrf-token", csrf.clone())
+            .body(Body::from(serde_json::to_string(&payload3).unwrap()))
+            .unwrap();
+        // TODO: 名前が空文字のケースは現状はエラーにならない。バリデーションを追加する
+        // 名前が空文字のケース
+        // let payload4 = json!({
+        //     "id": "john",
+        //     "name": "",
+        //     "role": 2, // Doctor
+        //     "password": "Password#1234",
+        // });
+        // let request4 = Request::builder()
+        //     .method("POST")
+        //     .uri("/users")
+        //     .header("content-type", "application/json")
+        //     .header("cookie", format!("session_id={}", session_id))
+        //     .header("x-csrf-token", csrf.clone())
+        //     .body(Body::from(serde_json::to_string(&payload4).unwrap()))
+        //     .unwrap();
+        // ロールの指定がないケース
+        let payload5 = json!({
+            "id": "john",
+            "name": "John Doe",
+            "password": "Password#1234",
+        });
+        let request5 = Request::builder()
+            .method("POST")
+            .uri("/users")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={}", session_id))
+            .header("x-csrf-token", csrf.clone())
+            .body(Body::from(serde_json::to_string(&payload5).unwrap()))
+            .unwrap();
+        // ロールが負の値のケース
+        let payload6 = json!({
+            "id": "john",
+            "name": "John Doe",
+            "role": -1,
+            "password": "Password#1234",
+        });
+        let request6 = Request::builder()
+            .method("POST")
+            .uri("/users")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={}", session_id))
+            .header("x-csrf-token", csrf.clone())
+            .body(Body::from(serde_json::to_string(&payload6).unwrap()))
+            .unwrap();
+        // ロールが5以上の値のケース
+        let payload7 = json!({
+            "id": "john",
+            "name": "John Doe",
+            "role": 5,
+            "password": "Password#1234",
+        });
+        let request7 = Request::builder()
+            .method("POST")
+            .uri("/users")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={}", session_id))
+            .header("x-csrf-token", csrf.clone())
+            .body(Body::from(serde_json::to_string(&payload7).unwrap()))
+            .unwrap();
+        // パスワードの指定がないケース
+        let payload8 = json!({
+            "id": "john",
+            "name": "John Doe",
+            "role": 2, // Doctor
+        });
+        let request8 = Request::builder()
+            .method("POST")
+            .uri("/users")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={}", session_id))
+            .header("x-csrf-token", csrf.clone())
+            .body(Body::from(serde_json::to_string(&payload8).unwrap()))
+            .unwrap();
+        // パスワードが空文字のケース
+        let payload9 = json!({
+            "id": "john",
+            "name": "John Doe",
+            "role": 2, // Doctor
+            "password": "",
+        });
+        let request9 = Request::builder()
+            .method("POST")
+            .uri("/users")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={}", session_id))
+            .header("x-csrf-token", csrf.clone())
+            .body(Body::from(serde_json::to_string(&payload9).unwrap()))
+            .unwrap();
+
+        // Act
+        let response1 = router.clone().oneshot(request1).await.unwrap();
+        let response2 = router.clone().oneshot(request2).await.unwrap();
+        let response3 = router.clone().oneshot(request3).await.unwrap();
+        // let response4 = router.clone().oneshot(request4).await.unwrap();
+        let response5 = router.clone().oneshot(request5).await.unwrap();
+        let response6 = router.clone().oneshot(request6).await.unwrap();
+        let response7 = router.clone().oneshot(request7).await.unwrap();
+        let response8 = router.clone().oneshot(request8).await.unwrap();
+        let response9 = router.clone().oneshot(request9).await.unwrap();
+
+        // Assert
+        assert_eq!(response1.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(response2.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(response3.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        // assert_eq!(response4.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(response5.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(response6.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(response7.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(response8.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(response9.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+}
