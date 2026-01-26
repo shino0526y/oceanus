@@ -293,7 +293,15 @@ impl TestUserRepository {
 #[async_trait::async_trait]
 impl UserRepository for TestUserRepository {
     async fn find_all(&self) -> Result<Vec<User>, RepositoryError> {
-        Ok(self.inner.read().unwrap().values().cloned().collect())
+        let mut entities = self
+            .inner
+            .read()
+            .unwrap()
+            .values()
+            .cloned()
+            .collect::<Vec<User>>();
+        entities.sort_by(|a, b| b.created_at().cmp(&a.created_at()));
+        Ok(entities)
     }
 
     async fn find_by_uuid(&self, uuid: &Uuid) -> Result<Option<User>, RepositoryError> {
