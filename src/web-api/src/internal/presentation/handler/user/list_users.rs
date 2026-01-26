@@ -48,6 +48,8 @@ mod tests {
         body::{self, Body},
         http::{Request, StatusCode},
     };
+    use chrono::{DateTime, Utc};
+    use std::str::FromStr;
     use tower::ServiceExt;
 
     #[tokio::test]
@@ -64,6 +66,17 @@ mod tests {
             .header("cookie", format!("session_id={}", session_id))
             .body(Body::empty())
             .unwrap();
+        let expected = [
+            (
+                "technician",
+                "技師 太郎",
+                3,                              // ロール
+                "2026-01-24T22:26:54.695+0900", // 作成日時＆更新日時
+            ),
+            ("doctor", "医師 太郎", 2, "2026-01-24T22:25:57.855+0900"),
+            ("it", "情シス 太郎", 1, "2026-01-24T22:25:34.436+0900"),
+            ("admin", "管理者 太郎", 0, "2026-01-20T23:10:24.332+0900"),
+        ];
 
         // Act
         let response = router.clone().oneshot(request).await.unwrap();
@@ -75,26 +88,16 @@ mod tests {
             .unwrap();
         let users: Vec<ListUsersOutputElement> = serde_json::from_slice(&bytes).unwrap();
         assert_eq!(users.len(), 4);
-        let technician = &users[0];
-        assert_eq!(technician.id, "technician");
-        assert_eq!(technician.name, "技師 太郎");
-        assert_eq!(technician.role, 3);
-        assert_eq!(technician.login_failure_count, 0);
-        let doctor = &users[1];
-        assert_eq!(doctor.id, "doctor");
-        assert_eq!(doctor.name, "医師 太郎");
-        assert_eq!(doctor.role, 2);
-        assert_eq!(doctor.login_failure_count, 0);
-        let it = &users[2];
-        assert_eq!(it.id, "it");
-        assert_eq!(it.name, "情シス 太郎");
-        assert_eq!(it.role, 1);
-        assert_eq!(it.login_failure_count, 0);
-        let admin = &users[3];
-        assert_eq!(admin.id, "admin");
-        assert_eq!(admin.name, "管理者 太郎");
-        assert_eq!(admin.role, 0);
-        assert_eq!(admin.login_failure_count, 0);
+        for (i, (id, name, role, dt_str)) in expected.iter().enumerate() {
+            let u = &users[i];
+            assert_eq!(u.id, *id);
+            assert_eq!(u.name, *name);
+            assert_eq!(u.role, *role);
+            assert_eq!(u.login_failure_count, 0);
+            let dt = DateTime::<Utc>::from_str(dt_str).unwrap();
+            assert_eq!(u.created_at, dt);
+            assert_eq!(u.updated_at, dt);
+        }
     }
 
     #[tokio::test]
