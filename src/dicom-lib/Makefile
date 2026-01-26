@@ -20,7 +20,7 @@ format:
 	cargo fmt
 
 test:
-	cargo test
+	cargo test -q
 
 build:
 	cargo build --release
