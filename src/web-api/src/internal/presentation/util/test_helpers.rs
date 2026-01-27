@@ -8,7 +8,7 @@ use serde_json::json;
 use tower::ServiceExt;
 
 pub async fn login(router: &Router, user_id: &str, password: &str) -> (String, String) {
-    let payload = json!({
+    let input = json!({
         "userId": user_id,
         "password": password,
     });
@@ -16,7 +16,7 @@ pub async fn login(router: &Router, user_id: &str, password: &str) -> (String, S
         .method("POST")
         .uri("/login")
         .header("content-type", "application/json")
-        .body(Body::from(serde_json::to_string(&payload).unwrap()))
+        .body(Body::from(serde_json::to_string(&input).unwrap()))
         .unwrap();
 
     let response = router.clone().oneshot(request).await.unwrap();

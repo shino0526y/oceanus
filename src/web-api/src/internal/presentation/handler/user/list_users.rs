@@ -86,10 +86,10 @@ mod tests {
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
-        let users: Vec<ListUsersOutputElement> = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(users.len(), 4);
+        let output: Vec<ListUsersOutputElement> = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(output.len(), 4);
         for (i, (id, name, role, dt_str)) in expected.iter().enumerate() {
-            let u = &users[i];
+            let u = &output[i];
             assert_eq!(u.id, *id);
             assert_eq!(u.name, *name);
             assert_eq!(u.role, *role);
@@ -123,9 +123,9 @@ mod tests {
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
-        let users: Vec<ListUsersOutputElement> = serde_json::from_slice(&bytes).unwrap();
+        let output: Vec<ListUsersOutputElement> = serde_json::from_slice(&bytes).unwrap();
         // `list_users__管理者はユーザー一覧を取得できる`でアウトプットの中身は確認しているのでここでは件数のみ確認
-        assert_eq!(users.len(), 4);
+        assert_eq!(output.len(), 4);
     }
 
     #[tokio::test]

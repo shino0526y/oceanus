@@ -93,7 +93,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf) = test_helpers::login(&router, "admin", "Password#1234").await;
-        let payload = json!({
+        let input = json!({
             "id": "john",
             "name": "John Doe",
             "role": 2, // Doctor
@@ -105,7 +105,7 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
             .header("x-csrf-token", csrf)
-            .body(Body::from(serde_json::to_string(&payload).unwrap()))
+            .body(Body::from(serde_json::to_string(&input).unwrap()))
             .unwrap();
 
         // Act
@@ -117,13 +117,13 @@ mod tests {
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
-        let created_user: CreateUserOutput = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(created_user.id, "john");
-        assert_eq!(created_user.name, "John Doe");
-        assert_eq!(created_user.role, 2);
+        let output: CreateUserOutput = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(output.id, "john");
+        assert_eq!(output.name, "John Doe");
+        assert_eq!(output.role, 2);
         let now = Utc::now();
-        assert!((now - created_user.created_at).num_seconds().abs() < 10);
-        assert_eq!(created_user.updated_at, created_user.created_at);
+        assert!((now - output.created_at).num_seconds().abs() < 10);
+        assert_eq!(output.updated_at, output.created_at);
         // ユーザーが作成されていることの確認
         assert!(
             repos
@@ -142,7 +142,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf) = test_helpers::login(&router, "it", "Password#1234").await;
-        let payload = json!({
+        let input = json!({
             "id": "john",
             "name": "John Doe",
             "role": 2, // Doctor
@@ -154,7 +154,7 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
             .header("x-csrf-token", csrf)
-            .body(Body::from(serde_json::to_string(&payload).unwrap()))
+            .body(Body::from(serde_json::to_string(&input).unwrap()))
             .unwrap();
 
         // Act
@@ -166,13 +166,13 @@ mod tests {
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
-        let created_user: CreateUserOutput = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(created_user.id, "john");
-        assert_eq!(created_user.name, "John Doe");
-        assert_eq!(created_user.role, 2);
+        let output: CreateUserOutput = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(output.id, "john");
+        assert_eq!(output.name, "John Doe");
+        assert_eq!(output.role, 2);
         let now = Utc::now();
-        assert!((now - created_user.created_at).num_seconds().abs() < 10);
-        assert_eq!(created_user.updated_at, created_user.created_at);
+        assert!((now - output.created_at).num_seconds().abs() < 10);
+        assert_eq!(output.updated_at, output.created_at);
         // ユーザーが作成されていることの確認
         assert!(
             repos
@@ -191,7 +191,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf) = test_helpers::login(&router, "it", "Password#1234").await;
-        let payload = json!({
+        let input = json!({
             "id": "john",
             "name": "John Doe",
             "role": 0, // Admin
@@ -203,7 +203,7 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
             .header("x-csrf-token", csrf)
-            .body(Body::from(serde_json::to_string(&payload).unwrap()))
+            .body(Body::from(serde_json::to_string(&input).unwrap()))
             .unwrap();
 
         // Act
@@ -221,7 +221,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf) = test_helpers::login(&router, "technician", "Password#1234").await;
-        let payload = json!({
+        let input = json!({
             "id": "john",
             "name": "John Doe",
             "role": 2, // Doctor
@@ -233,7 +233,7 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
             .header("x-csrf-token", csrf)
-            .body(Body::from(serde_json::to_string(&payload).unwrap()))
+            .body(Body::from(serde_json::to_string(&input).unwrap()))
             .unwrap();
 
         // Act
@@ -250,7 +250,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf) = test_helpers::login(&router, "admin", "Password#1234").await;
-        let payload = json!({
+        let input = json!({
             "id": "doctor",
             "name": "医師 太郎",
             "role": 2, // Doctor
@@ -262,7 +262,7 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
             .header("x-csrf-token", csrf)
-            .body(Body::from(serde_json::to_string(&payload).unwrap()))
+            .body(Body::from(serde_json::to_string(&input).unwrap()))
             .unwrap();
 
         // Act
@@ -289,7 +289,7 @@ mod tests {
         let router = make_router(app_state, &repos);
         let (session_id, csrf) = test_helpers::login(&router, "admin", "Password#1234").await;
         // IDの指定がないケース
-        let payload1 = json!({
+        let input1 = json!({
             "name": "John Doe",
             "role": 2, // Doctor
             "password": "Password#1234",
@@ -300,10 +300,10 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
             .header("x-csrf-token", csrf.clone())
-            .body(Body::from(serde_json::to_string(&payload1).unwrap()))
+            .body(Body::from(serde_json::to_string(&input1).unwrap()))
             .unwrap();
         // 空文字のIDを指定するケース
-        let payload2 = json!({
+        let input2 = json!({
             "id": "",
             "name": "John Doe",
             "role": 2, // Doctor
@@ -315,10 +315,10 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
             .header("x-csrf-token", csrf.clone())
-            .body(Body::from(serde_json::to_string(&payload2).unwrap()))
+            .body(Body::from(serde_json::to_string(&input2).unwrap()))
             .unwrap();
         // 名前の指定がないケース
-        let payload3 = json!({
+        let input3 = json!({
             "id": "john",
             "role": 2, // Doctor
             "password": "Password#1234",
@@ -329,11 +329,11 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
             .header("x-csrf-token", csrf.clone())
-            .body(Body::from(serde_json::to_string(&payload3).unwrap()))
+            .body(Body::from(serde_json::to_string(&input3).unwrap()))
             .unwrap();
         // TODO: 名前が空文字のケースは現状はエラーにならない。バリデーションを追加する
         // 名前が空文字のケース
-        // let payload4 = json!({
+        // let input4 = json!({
         //     "id": "john",
         //     "name": "",
         //     "role": 2, // Doctor
@@ -345,10 +345,10 @@ mod tests {
         //     .header("content-type", "application/json")
         //     .header("cookie", format!("session_id={}", session_id))
         //     .header("x-csrf-token", csrf.clone())
-        //     .body(Body::from(serde_json::to_string(&payload4).unwrap()))
+        //     .body(Body::from(serde_json::to_string(&input4).unwrap()))
         //     .unwrap();
         // ロールの指定がないケース
-        let payload5 = json!({
+        let input5 = json!({
             "id": "john",
             "name": "John Doe",
             "password": "Password#1234",
@@ -359,10 +359,10 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
             .header("x-csrf-token", csrf.clone())
-            .body(Body::from(serde_json::to_string(&payload5).unwrap()))
+            .body(Body::from(serde_json::to_string(&input5).unwrap()))
             .unwrap();
         // ロールが負の値のケース
-        let payload6 = json!({
+        let input6 = json!({
             "id": "john",
             "name": "John Doe",
             "role": -1,
@@ -374,10 +374,10 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
             .header("x-csrf-token", csrf.clone())
-            .body(Body::from(serde_json::to_string(&payload6).unwrap()))
+            .body(Body::from(serde_json::to_string(&input6).unwrap()))
             .unwrap();
         // ロールが5以上の値のケース
-        let payload7 = json!({
+        let input7 = json!({
             "id": "john",
             "name": "John Doe",
             "role": 5,
@@ -389,10 +389,10 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
             .header("x-csrf-token", csrf.clone())
-            .body(Body::from(serde_json::to_string(&payload7).unwrap()))
+            .body(Body::from(serde_json::to_string(&input7).unwrap()))
             .unwrap();
         // パスワードの指定がないケース
-        let payload8 = json!({
+        let input8 = json!({
             "id": "john",
             "name": "John Doe",
             "role": 2, // Doctor
@@ -403,10 +403,10 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
             .header("x-csrf-token", csrf.clone())
-            .body(Body::from(serde_json::to_string(&payload8).unwrap()))
+            .body(Body::from(serde_json::to_string(&input8).unwrap()))
             .unwrap();
         // パスワードが空文字のケース
-        let payload9 = json!({
+        let input9 = json!({
             "id": "john",
             "name": "John Doe",
             "role": 2, // Doctor
@@ -418,7 +418,7 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
             .header("x-csrf-token", csrf.clone())
-            .body(Body::from(serde_json::to_string(&payload9).unwrap()))
+            .body(Body::from(serde_json::to_string(&input9).unwrap()))
             .unwrap();
 
         // Act

@@ -34,22 +34,22 @@ use dicom_lib::core::value::value_representations::ae::AeValue;
 pub async fn create_application_entity(
     State(state): State<AppState>,
     Extension(user): Extension<AuthenticatedUser>,
-    Json(payload): Json<CreateApplicationEntityInput>,
+    Json(input): Json<CreateApplicationEntityInput>,
 ) -> Result<Json<CreateApplicationEntityOutput>, PresentationError> {
     // バリデーション
-    let title = AeValue::from_string(&payload.title).map_err(|e| {
+    let title = AeValue::from_string(&input.title).map_err(|e| {
         PresentationError::UnprocessableContent(format!("AEタイトルが不正です: {e}"))
     })?;
-    let port = Port::from_u16(payload.port).map_err(|e| {
+    let port = Port::from_u16(input.port).map_err(|e| {
         PresentationError::UnprocessableContent(format!("ポート番号が不正です: {e}"))
     })?;
 
     // 登録処理
     let command = CreateApplicationEntityCommand {
         title,
-        host: payload.host,
+        host: input.host,
         port,
-        comment: payload.comment,
+        comment: input.comment,
         created_by: user.uuid(),
         created_at: Utc::now(),
     };
