@@ -35,7 +35,7 @@ pub async fn login(router: &Router, user_id: &str, password: &str) -> (String, S
         .next()
         .unwrap()
         .to_string();
-    let bytes = body::to_bytes(response.into_body(), 16 * 1024)
+    let bytes = body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
     let parsed: LoginOutput = serde_json::from_slice(&bytes).unwrap();

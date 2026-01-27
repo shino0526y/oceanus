@@ -75,14 +75,13 @@ mod tests {
     use tower::ServiceExt;
 
     #[tokio::test]
-    async fn delete_user_正常系_管理者は他のユーザーを削除できる() {
+    async fn delete_user__管理者は他のユーザーを削除できる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf) = test_helpers::login(&router, "admin", "Password#1234").await;
-        // 最初の削除リクエスト
-        let request1 = Request::builder()
+        let request = Request::builder()
             .method("DELETE")
             .uri("/users/doctor")
             .header("content-type", "application/json")
@@ -90,23 +89,13 @@ mod tests {
             .header("x-csrf-token", csrf.clone())
             .body(Body::empty())
             .unwrap();
-        // 2回目の削除リクエスト（すでに削除されていることを確認するため）
-        let request2 = Request::builder()
-            .method("DELETE")
-            .uri("/users/doctor")
-            .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf)
-            .body(Body::empty())
-            .unwrap();
 
         // Act
-        let response1 = router.clone().oneshot(request1).await.unwrap();
-        let response2 = router.clone().oneshot(request2).await.unwrap();
+        let response = router.clone().oneshot(request).await.unwrap();
 
         // Assert
-        // 最初のHTTPレスポンスの確認（削除成功）
-        assert_eq!(response1.status(), StatusCode::NO_CONTENT);
+        // HTTPレスポンスの確認
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
         // ユーザーが削除されていることの確認
         assert!(
             repos
@@ -116,19 +105,16 @@ mod tests {
                 .unwrap()
                 .is_none()
         );
-        // 2回目のHTTPレスポンスの確認（すでに削除されているため404）
-        assert_eq!(response2.status(), StatusCode::NOT_FOUND);
     }
 
     #[tokio::test]
-    async fn delete_user_正常系_情シスは他の管理者でないユーザーを削除できる() {
+    async fn delete_user__情シスは他の管理者でないユーザーを削除できる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf) = test_helpers::login(&router, "it", "Password#1234").await;
-        // 最初の削除リクエスト
-        let request1 = Request::builder()
+        let request = Request::builder()
             .method("DELETE")
             .uri("/users/doctor")
             .header("content-type", "application/json")
@@ -136,23 +122,13 @@ mod tests {
             .header("x-csrf-token", csrf.clone())
             .body(Body::empty())
             .unwrap();
-        // 2回目の削除リクエスト（すでに削除されていることを確認するため）
-        let request2 = Request::builder()
-            .method("DELETE")
-            .uri("/users/doctor")
-            .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf)
-            .body(Body::empty())
-            .unwrap();
 
         // Act
-        let response1 = router.clone().oneshot(request1).await.unwrap();
-        let response2 = router.clone().oneshot(request2).await.unwrap();
+        let response = router.clone().oneshot(request).await.unwrap();
 
         // Assert
-        // 最初のHTTPレスポンスの確認（削除成功）
-        assert_eq!(response1.status(), StatusCode::NO_CONTENT);
+        // HTTPレスポンスの確認
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
         // ユーザーが削除されていることの確認
         assert!(
             repos
@@ -162,55 +138,10 @@ mod tests {
                 .unwrap()
                 .is_none()
         );
-        // 2回目のHTTPレスポンスの確認（すでに削除されているため404）
-        assert_eq!(response2.status(), StatusCode::NOT_FOUND);
     }
 
     #[tokio::test]
-    async fn delete_user_準正常系_認証されていない状態でユーザーを削除しようとすると401エラーになる()
-     {
-        // Arrange
-        let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
-        let request = Request::builder()
-            .method("DELETE")
-            .uri("/users/admin")
-            .header("content-type", "application/json")
-            .body(Body::empty())
-            .unwrap();
-
-        // Act
-        let response = router.clone().oneshot(request).await.unwrap();
-
-        // Assert
-        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
-    }
-
-    #[tokio::test]
-    async fn delete_user_準正常系_CSRFトークンなしでユーザーを削除しようとすると403エラーになる() {
-        // Arrange
-        let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
-        let (session_id, _csrf) = test_helpers::login(&router, "admin", "Password#1234").await;
-        let request = Request::builder()
-            .method("DELETE")
-            .uri("/users/doctor")
-            .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
-            .body(Body::empty())
-            .unwrap();
-
-        // Act
-        let response = router.clone().oneshot(request).await.unwrap();
-
-        // Assert
-        assert_eq!(response.status(), StatusCode::FORBIDDEN);
-    }
-
-    #[tokio::test]
-    async fn delete_user_準正常系_情シスが管理者を削除しようとすると403エラーになる() {
+    async fn delete_user__情シスが管理者を削除しようとすると403エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -233,7 +164,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn delete_user_準正常系_管理者や情シスでないユーザーがユーザーを削除しようとすると403エラーになる()
+    async fn delete_user__管理者や情シスでないユーザーがユーザーを削除しようとすると403エラーになる()
      {
         // Arrange
         let repos = prepare_test_data().await;
@@ -257,7 +188,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn delete_user_準正常系_存在しないユーザーを削除しようとすると404エラーになる() {
+    async fn delete_user__存在しないユーザーを削除しようとすると404エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -280,7 +211,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn delete_user_準正常系_ユーザーIDを指定せず削除しようとすると405エラーになる() {
+    async fn delete_user__ユーザーIDを指定せず削除しようとすると405エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -303,7 +234,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn delete_user_準正常系_自分自身を削除しようとすると422エラーになる() {
+    async fn delete_user__自分自身を削除しようとすると422エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);

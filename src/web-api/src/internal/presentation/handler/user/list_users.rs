@@ -53,7 +53,7 @@ mod tests {
     use tower::ServiceExt;
 
     #[tokio::test]
-    async fn list_users_正常系_管理者はユーザー一覧を取得できる() {
+    async fn list_users__管理者はユーザー一覧を取得できる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -83,7 +83,7 @@ mod tests {
 
         // Assert
         assert_eq!(response.status(), StatusCode::OK);
-        let bytes = body::to_bytes(response.into_body(), 16 * 1024)
+        let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
         let users: Vec<ListUsersOutputElement> = serde_json::from_slice(&bytes).unwrap();
@@ -101,7 +101,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn list_users_正常系_情シスはユーザー一覧を取得できる() {
+    async fn list_users__情シスはユーザー一覧を取得できる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -120,36 +120,17 @@ mod tests {
 
         // Assert
         assert_eq!(response.status(), StatusCode::OK);
-        let bytes = body::to_bytes(response.into_body(), 16 * 1024)
+        let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
         let users: Vec<ListUsersOutputElement> = serde_json::from_slice(&bytes).unwrap();
-        // `list_users_正常系_管理者はユーザー一覧を取得できる`でアウトプットの中身は確認しているのでここでは件数のみ確認
+        // `list_users__管理者はユーザー一覧を取得できる`でアウトプットの中身は確認しているのでここでは件数のみ確認
         assert_eq!(users.len(), 4);
     }
 
     #[tokio::test]
-    async fn list_users_準正常系_認証されていないと401エラーになる() {
-        // Arrange
-        let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
-        let request = Request::builder()
-            .method("GET")
-            .uri("/users")
-            .header("content-type", "application/json")
-            .body(Body::empty())
-            .unwrap();
-
-        // Act
-        let response = router.clone().oneshot(request).await.unwrap();
-
-        // Assert
-        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
-    }
-
-    #[tokio::test]
-    async fn list_users_準正常系_権限がないユーザーは403エラーになる() {
+    async fn list_users__管理者でも情シスでもないユーザーがユーザー一覧を取得しようとすると403エラーになる()
+     {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);

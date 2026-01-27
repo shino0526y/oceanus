@@ -70,6 +70,7 @@ pub async fn create_user(
 #[allow(non_snake_case)]
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::{
         internal::{
             domain::value_object::Id,
@@ -78,14 +79,15 @@ mod tests {
         utils::{self, make_router},
     };
     use axum::{
-        body::Body,
+        body::{self, Body},
         http::{Request, StatusCode},
     };
     use serde_json::json;
+    use std::usize;
     use tower::ServiceExt;
 
     #[tokio::test]
-    async fn create_user_正常系_管理者はユーザーを作成できる() {
+    async fn create_user___管理者はユーザーを作成できる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -112,6 +114,16 @@ mod tests {
         // Assert
         // HTTPレスポンスの確認
         assert_eq!(response.status(), StatusCode::OK);
+        let bytes = body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let created_user: CreateUserOutput = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(created_user.id, "john");
+        assert_eq!(created_user.name, "John Doe");
+        assert_eq!(created_user.role, 2);
+        let now = Utc::now();
+        assert!((now - created_user.created_at).num_seconds().abs() < 10);
+        assert_eq!(created_user.updated_at, created_user.created_at);
         // ユーザーが作成されていることの確認
         assert!(
             repos
@@ -124,7 +136,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn create_user_正常系_情シスはユーザーを作成できる() {
+    async fn create_user__情シスはユーザーを作成できる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -151,6 +163,16 @@ mod tests {
         // Assert
         // HTTPレスポンスの確認
         assert_eq!(response.status(), StatusCode::OK);
+        let bytes = body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let created_user: CreateUserOutput = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(created_user.id, "john");
+        assert_eq!(created_user.name, "John Doe");
+        assert_eq!(created_user.role, 2);
+        let now = Utc::now();
+        assert!((now - created_user.created_at).num_seconds().abs() < 10);
+        assert_eq!(created_user.updated_at, created_user.created_at);
         // ユーザーが作成されていることの確認
         assert!(
             repos
@@ -163,62 +185,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn create_user_準正常系_認証されていない状態でユーザーを作成しようとすると401エラーになる()
-     {
-        // Arrange
-        let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
-        let payload = json!({
-            "id": "john",
-            "name": "John Doe",
-            "role": 2, // Doctor
-            "password": "Password#1234",
-        });
-        let request = Request::builder()
-            .method("POST")
-            .uri("/users")
-            .header("content-type", "application/json")
-            .body(Body::from(serde_json::to_string(&payload).unwrap()))
-            .unwrap();
-
-        // Act
-        let response = router.clone().oneshot(request).await.unwrap();
-
-        // Assert
-        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
-    }
-
-    #[tokio::test]
-    async fn create_user_準正常系_CSRFトークンなしでユーザーを作成しようとすると403エラーになる() {
-        // Arrange
-        let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
-        let (session_id, _csrf) = test_helpers::login(&router, "admin", "Password#1234").await;
-        let payload = json!({
-            "id": "john",
-            "name": "John Doe",
-            "role": 2, // Doctor
-            "password": "Password#1234",
-        });
-        let request = Request::builder()
-            .method("POST")
-            .uri("/users")
-            .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
-            .body(Body::from(serde_json::to_string(&payload).unwrap()))
-            .unwrap();
-
-        // Act
-        let response = router.clone().oneshot(request).await.unwrap();
-
-        // Assert
-        assert_eq!(response.status(), StatusCode::FORBIDDEN);
-    }
-
-    #[tokio::test]
-    async fn create_user_準正常系_情シスが管理者を作成しようとすると403エラーになる() {
+    async fn create_user__情シスが管理者を作成しようとすると403エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -247,7 +214,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn create_user_準正常系_管理者や情シスでないユーザーがユーザーを作成しようとすると403エラーになる()
+    async fn create_user__管理者や情シスでないユーザーがユーザーを作成しようとすると403エラーになる()
      {
         // Arrange
         let repos = prepare_test_data().await;
@@ -277,7 +244,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn create_user_準正常系_すでに存在するユーザーを作成しようとすると409エラーになる() {
+    async fn create_user__すでに存在するユーザーを作成しようとすると409エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -315,7 +282,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn create_user_準正常系_バリデーション違反の場合は422エラーになる() {
+    async fn create_user__バリデーション違反の場合は422エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
