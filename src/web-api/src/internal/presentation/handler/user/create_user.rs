@@ -83,7 +83,6 @@ mod tests {
         http::{Request, StatusCode},
     };
     use serde_json::json;
-    use std::usize;
     use tower::ServiceExt;
 
     #[tokio::test]
