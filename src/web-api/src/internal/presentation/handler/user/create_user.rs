@@ -86,7 +86,7 @@ mod tests {
     use tower::ServiceExt;
 
     #[tokio::test]
-    async fn create_user___管理者はユーザーを作成できる() {
+    async fn create_user__管理者はユーザーを作成できる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
