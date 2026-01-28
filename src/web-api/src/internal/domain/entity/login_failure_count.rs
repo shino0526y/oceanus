@@ -56,10 +56,4 @@ impl LoginFailureCount {
         self.failure_count = self.failure_count.saturating_add(1);
         self.last_failure_at = Some(failed_at);
     }
-
-    /// ログイン失敗回数をリセットする
-    pub fn reset(&mut self) {
-        self.failure_count = 0;
-        self.last_failure_at = None;
-    }
 }
