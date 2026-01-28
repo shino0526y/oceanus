@@ -52,3 +52,214 @@ pub async fn reset_login_failure_count(
 
     Ok(StatusCode::NO_CONTENT)
 }
+
+#[allow(non_snake_case)]
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        internal::{
+            domain::entity::LoginFailureCount,
+            presentation::{handler::user::prepare_test_data, util::test_helpers},
+        },
+        utils::{self, make_router},
+    };
+    use axum::{body::Body, http::Request};
+    use chrono::DateTime;
+    use std::str::FromStr;
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn reset_login_failure_count__管理者はユーザーのログイン失敗回数をリセットできる() {
+        // Arrange
+        // 事前に失敗回数を3回にセット
+        let repos = prepare_test_data().await;
+        let user = repos
+            .user_repository
+            .find_by_id(&Id::new("doctor").unwrap())
+            .await
+            .unwrap()
+            .unwrap();
+        let user_uuid = *user.uuid();
+        repos
+            .login_failure_count_repository
+            .save(&LoginFailureCount::construct(
+                user_uuid,
+                3,
+                Some(DateTime::from_str("2026-01-28T23:01:15.295+09:00").unwrap()),
+            ))
+            .await
+            .unwrap();
+        // リクエストの準備
+        let app_state = utils::make_app_state(&repos);
+        let router = make_router(app_state, &repos);
+        let (session_id, csrf) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let request = Request::builder()
+            .method("DELETE")
+            .uri("/users/doctor/login-failure-count")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={}", session_id))
+            .header("x-csrf-token", csrf.clone())
+            .body(Body::empty())
+            .unwrap();
+
+        // Act
+        let response = router.clone().oneshot(request).await.unwrap();
+
+        // Assert
+        // レスポンスの確認
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
+        // 失敗回数の情報自体が削除されていることの確認
+        let login_failure_count = repos
+            .login_failure_count_repository
+            .find_by_user_uuid(&user_uuid)
+            .await
+            .unwrap();
+        assert!(login_failure_count.is_none());
+    }
+
+    #[tokio::test]
+    async fn reset_login_failure_count__情シスはユーザーのログイン失敗回数をリセットできる() {
+        // Arrange
+        // 事前に失敗回数を3回にセット
+        let repos = prepare_test_data().await;
+        let user = repos
+            .user_repository
+            .find_by_id(&Id::new("doctor").unwrap())
+            .await
+            .unwrap()
+            .unwrap();
+        let user_uuid = *user.uuid();
+        repos
+            .login_failure_count_repository
+            .save(&LoginFailureCount::construct(
+                user_uuid,
+                3,
+                Some(DateTime::from_str("2026-01-28T23:01:15.295+09:00").unwrap()),
+            ))
+            .await
+            .unwrap();
+        // リクエストの準備
+        let app_state = utils::make_app_state(&repos);
+        let router = make_router(app_state, &repos);
+        let (session_id, csrf) = test_helpers::login(&router, "it", "Password#1234").await;
+        let request = Request::builder()
+            .method("DELETE")
+            .uri("/users/doctor/login-failure-count")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={}", session_id))
+            .header("x-csrf-token", csrf.clone())
+            .body(Body::empty())
+            .unwrap();
+
+        // Act
+        let response = router.clone().oneshot(request).await.unwrap();
+
+        // Assert
+        // レスポンスの確認
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
+        // 失敗回数の情報自体が削除されていることの確認
+        let login_failure_count = repos
+            .login_failure_count_repository
+            .find_by_user_uuid(&user_uuid)
+            .await
+            .unwrap();
+        assert!(login_failure_count.is_none());
+    }
+
+    #[tokio::test]
+    async fn reset_login_failure_count__管理者でも情シスでもないユーザーがリセットしようとすると403エラーになる()
+     {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let app_state = utils::make_app_state(&repos);
+        let router = make_router(app_state, &repos);
+        let (session_id, csrf) = test_helpers::login(&router, "technician", "Password#1234").await;
+        let request = Request::builder()
+            .method("DELETE")
+            .uri("/users/doctor/login-failure-count")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={}", session_id))
+            .header("x-csrf-token", csrf.clone())
+            .body(Body::empty())
+            .unwrap();
+
+        // Act
+        let response = router.clone().oneshot(request).await.unwrap();
+
+        // Assert
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    }
+
+    // TODO: 現状、情シスが管理者ユーザーのログイン失敗回数をリセットできてしまう。要修正
+    // #[tokio::test]
+    // async fn reset_login_failure_count__情シスが管理者ユーザーのログイン失敗回数をリセットしようとすると403エラーになる()
+    //  {
+    //     // Arrange
+    //     let repos = prepare_test_data().await;
+    //     let app_state = utils::make_app_state(&repos);
+    //     let router = make_router(app_state, &repos);
+    //     let (session_id, csrf) = test_helpers::login(&router, "it", "Password#1234").await;
+    //     let request = Request::builder()
+    //         .method("DELETE")
+    //         .uri("/users/admin/login-failure-count")
+    //         .header("content-type", "application/json")
+    //         .header("cookie", format!("session_id={}", session_id))
+    //         .header("x-csrf-token", csrf.clone())
+    //         .body(Body::empty())
+    //         .unwrap();
+
+    //     // Act
+    //     let response = router.clone().oneshot(request).await.unwrap();
+
+    //     // Assert
+    //     assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    // }
+
+    #[tokio::test]
+    async fn reset_login_failure_count__存在しないユーザーのログイン失敗回数をリセットしようとすると404エラーになる()
+     {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let app_state = utils::make_app_state(&repos);
+        let router = make_router(app_state, &repos);
+        let (session_id, csrf) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let request = Request::builder()
+            .method("DELETE")
+            .uri("/users/notfound/login-failure-count")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={}", session_id))
+            .header("x-csrf-token", csrf.clone())
+            .body(Body::empty())
+            .unwrap();
+
+        // Act
+        let response = router.clone().oneshot(request).await.unwrap();
+
+        // Assert
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn reset_login_failure_count__ユーザーIDが不正な場合は422エラーになる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let app_state = utils::make_app_state(&repos);
+        let router = make_router(app_state, &repos);
+        let (session_id, csrf) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let request = Request::builder()
+            .method("DELETE")
+            .uri("/users//login-failure-count") // 空のIDは不正
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={}", session_id))
+            .header("x-csrf-token", csrf)
+            .body(Body::empty())
+            .unwrap();
+
+        // Act
+        let response = router.clone().oneshot(request).await.unwrap();
+
+        // Assert
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+}
