@@ -75,7 +75,7 @@ mod tests {
     use tower::ServiceExt;
 
     #[tokio::test]
-    async fn delete_user__管理者は他のユーザーを削除できる() {
+    async fn 管理者は他のユーザーを削除できる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -108,7 +108,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn delete_user__情シスは他の管理者でないユーザーを削除できる() {
+    async fn 情シスは他の管理者でないユーザーを削除できる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -141,7 +141,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn delete_user__情シスが管理者を削除しようとすると403エラーになる() {
+    async fn 情シスが管理者を削除しようとすると403エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -164,8 +164,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn delete_user__管理者や情シスでないユーザーがユーザーを削除しようとすると403エラーになる()
-     {
+    async fn 管理者や情シスでないユーザーがユーザーを削除しようとすると403エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -188,7 +187,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn delete_user__存在しないユーザーを削除しようとすると404エラーになる() {
+    async fn 存在しないユーザーを削除しようとすると404エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -211,7 +210,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn delete_user__ユーザーIDを指定せず削除しようとすると405エラーになる() {
+    async fn ユーザーIDを指定せず削除しようとすると405エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -234,7 +233,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn delete_user__自分自身を削除しようとすると422エラーになる() {
+    async fn 自分自身を削除しようとすると422エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);

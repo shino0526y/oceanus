@@ -96,7 +96,7 @@ mod tests {
     use uuid::Uuid;
 
     #[tokio::test]
-    async fn update_user__管理者はユーザー名とロールを変更できる() {
+    async fn 管理者はユーザー名とロールを変更できる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -153,7 +153,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn update_user__管理者はユーザーIDを変更できる() {
+    async fn 管理者はユーザーIDを変更できる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -214,7 +214,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn update_user__管理者はパスワードを変更できる() {
+    async fn 管理者はパスワードを変更できる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -273,7 +273,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn update_user__情シスはユーザー名とロールを変更できる() {
+    async fn 情シスはユーザー名とロールを変更できる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -330,7 +330,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn update_user__情シスはユーザーIDを変更できる() {
+    async fn 情シスはユーザーIDを変更できる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -391,7 +391,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn update_user__情シスはパスワードを変更できる() {
+    async fn 情シスはパスワードを変更できる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -450,8 +450,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn update_user__管理者でも情シスでもないユーザーが他のユーザーを変更しようとすると403エラーになる()
-     {
+    async fn 管理者でも情シスでもないユーザーが他のユーザーを変更しようとすると403エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -480,7 +479,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn update_user__情シスが管理者ユーザーを変更しようとすると403エラーになる() {
+    async fn 情シスが管理者ユーザーを変更しようとすると403エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -509,8 +508,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn update_user__情シスが管理者でないユーザーを管理者ユーザーに変更しようとすると403エラーになる()
-     {
+    async fn 情シスが管理者でないユーザーを管理者ユーザーに変更しようとすると403エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -539,7 +537,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn update_user__存在しないユーザーを変更しようとすると404エラーになる() {
+    async fn 存在しないユーザーを変更しようとすると404エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -568,7 +566,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn update_user__バリデーション違反で422エラーになる() {
+    async fn バリデーション違反で422エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);

@@ -86,7 +86,7 @@ mod tests {
     use tower::ServiceExt;
 
     #[tokio::test]
-    async fn create_user__管理者はユーザーを作成できる() {
+    async fn 管理者はユーザーを作成できる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -135,7 +135,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn create_user__情シスはユーザーを作成できる() {
+    async fn 情シスはユーザーを作成できる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -184,7 +184,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn create_user__情シスが管理者を作成しようとすると403エラーになる() {
+    async fn 情シスが管理者を作成しようとすると403エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -213,8 +213,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn create_user__管理者や情シスでないユーザーがユーザーを作成しようとすると403エラーになる()
-     {
+    async fn 管理者や情シスでないユーザーがユーザーを作成しようとすると403エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -243,7 +242,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn create_user__すでに存在するユーザーを作成しようとすると409エラーになる() {
+    async fn すでに存在するユーザーを作成しようとすると409エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -281,7 +280,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn create_user__バリデーション違反の場合は422エラーになる() {
+    async fn バリデーション違反の場合は422エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);

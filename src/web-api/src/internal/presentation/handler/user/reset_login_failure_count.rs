@@ -70,7 +70,7 @@ mod tests {
     use tower::ServiceExt;
 
     #[tokio::test]
-    async fn reset_login_failure_count__管理者はユーザーのログイン失敗回数をリセットできる() {
+    async fn 管理者はユーザーのログイン失敗回数をリセットできる() {
         // Arrange
         // 事前に失敗回数を3回にセット
         let repos = prepare_test_data().await;
@@ -119,7 +119,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn reset_login_failure_count__情シスはユーザーのログイン失敗回数をリセットできる() {
+    async fn 情シスはユーザーのログイン失敗回数をリセットできる() {
         // Arrange
         // 事前に失敗回数を3回にセット
         let repos = prepare_test_data().await;
@@ -168,8 +168,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn reset_login_failure_count__管理者でも情シスでもないユーザーがリセットしようとすると403エラーになる()
-     {
+    async fn 管理者でも情シスでもないユーザーがリセットしようとすると403エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -193,7 +192,7 @@ mod tests {
 
     // TODO: 現状、情シスが管理者ユーザーのログイン失敗回数をリセットできてしまう。要修正
     // #[tokio::test]
-    // async fn reset_login_failure_count__情シスが管理者ユーザーのログイン失敗回数をリセットしようとすると403エラーになる()
+    // async fn 情シスが管理者ユーザーのログイン失敗回数をリセットしようとすると403エラーになる()
     //  {
     //     // Arrange
     //     let repos = prepare_test_data().await;
@@ -217,8 +216,7 @@ mod tests {
     // }
 
     #[tokio::test]
-    async fn reset_login_failure_count__存在しないユーザーのログイン失敗回数をリセットしようとすると404エラーになる()
-     {
+    async fn 存在しないユーザーのログイン失敗回数をリセットしようとすると404エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -241,7 +239,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn reset_login_failure_count__ユーザーIDが不正な場合は422エラーになる() {
+    async fn ユーザーIDが不正な場合は422エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);

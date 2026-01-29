@@ -53,7 +53,7 @@ mod tests {
     use tower::ServiceExt;
 
     #[tokio::test]
-    async fn list_users__管理者はユーザー一覧を取得できる() {
+    async fn 管理者はユーザー一覧を取得できる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -101,7 +101,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn list_users__情シスはユーザー一覧を取得できる() {
+    async fn 情シスはユーザー一覧を取得できる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
@@ -124,13 +124,12 @@ mod tests {
             .await
             .unwrap();
         let output: Vec<ListUsersOutputElement> = serde_json::from_slice(&bytes).unwrap();
-        // `list_users__管理者はユーザー一覧を取得できる`でアウトプットの中身は確認しているのでここでは件数のみ確認
+        // `管理者はユーザー一覧を取得できる`でアウトプットの中身は確認しているのでここでは件数のみ確認
         assert_eq!(output.len(), 4);
     }
 
     #[tokio::test]
-    async fn list_users__管理者でも情シスでもないユーザーがユーザー一覧を取得しようとすると403エラーになる()
-     {
+    async fn 管理者でも情シスでもないユーザーがユーザー一覧を取得しようとすると403エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
