@@ -71,17 +71,11 @@ impl AuthenticateUserUseCase {
             })?
             .unwrap_or_else(|| LoginFailureCount::new(*user.uuid()));
 
-        // ロックチェック
-        if login_failure_count.is_locked() {
-            return Err(AuthenticationError::Locked);
-        }
-
         // パスワード検証
         let parsed_hash =
             PasswordHash::new(user.password_hash()).map_err(|e| AuthenticationError::Other {
                 message: format!("パスワードハッシュの解析に失敗しました: {e}"),
             })?;
-
         let password_valid = Argon2::default()
             .verify_password(command.password.as_bytes(), &parsed_hash)
             .is_ok();
@@ -94,7 +88,17 @@ impl AuthenticateUserUseCase {
                 .login_failure_count_repository
                 .save(&login_failure_count)
                 .await;
-            return Err(AuthenticationError::InvalidCredentials);
+
+            return if login_failure_count.is_locked() {
+                Err(AuthenticationError::Locked)
+            } else {
+                Err(AuthenticationError::InvalidCredentials)
+            };
+        }
+
+        if login_failure_count.is_locked() {
+            // 認証に成功したがロックされている
+            return Err(AuthenticationError::Locked);
         }
 
         // 認証成功: ログイン失敗情報を削除（リセット）
