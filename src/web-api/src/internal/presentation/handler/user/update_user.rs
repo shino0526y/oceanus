@@ -615,22 +615,21 @@ mod tests {
             .header("x-csrf-token", csrf.clone())
             .body(Body::from(input3.to_string()))
             .unwrap();
-        // TODO: 名前が空文字のケースは現状はエラーにならない。バリデーションを追加する
         // 名前が空文字のケース
-        // let input4 = json!({
-        //     "id": "john",
-        //     "name": "",
-        //     "role": 2,
-        //     "password": null
-        // });
-        // let request4 = Request::builder()
-        //     .method("PUT")
-        //     .uri("/users/doctor")
-        //     .header("content-type", "application/json")
-        //     .header("cookie", format!("session_id={}", session_id.clone()))
-        //     .header("x-csrf-token", csrf.clone())
-        //     .body(Body::from(input4.to_string()))
-        //     .unwrap();
+        let input4 = json!({
+            "id": "john",
+            "name": "",
+            "role": 2,
+            "password": null
+        });
+        let request4 = Request::builder()
+            .method("PUT")
+            .uri("/users/doctor")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={}", session_id.clone()))
+            .header("x-csrf-token", csrf.clone())
+            .body(Body::from(input4.to_string()))
+            .unwrap();
         // ロールの指定がないケース
         let input5 = json!({
             "id": "john",
@@ -695,7 +694,7 @@ mod tests {
         let response1 = router.clone().oneshot(request1).await.unwrap();
         let response2 = router.clone().oneshot(request2).await.unwrap();
         let response3 = router.clone().oneshot(request3).await.unwrap();
-        // let response4 = router.clone().oneshot(request4).await.unwrap();
+        let response4 = router.clone().oneshot(request4).await.unwrap();
         let response5 = router.clone().oneshot(request5).await.unwrap();
         let response6 = router.clone().oneshot(request6).await.unwrap();
         let response7 = router.clone().oneshot(request7).await.unwrap();
@@ -705,7 +704,7 @@ mod tests {
         assert_eq!(response1.status(), StatusCode::UNPROCESSABLE_ENTITY);
         assert_eq!(response2.status(), StatusCode::UNPROCESSABLE_ENTITY);
         assert_eq!(response3.status(), StatusCode::UNPROCESSABLE_ENTITY);
-        // assert_eq!(response4.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(response4.status(), StatusCode::UNPROCESSABLE_ENTITY);
         assert_eq!(response5.status(), StatusCode::UNPROCESSABLE_ENTITY);
         assert_eq!(response6.status(), StatusCode::UNPROCESSABLE_ENTITY);
         assert_eq!(response7.status(), StatusCode::UNPROCESSABLE_ENTITY);

@@ -190,30 +190,28 @@ mod tests {
         assert_eq!(response.status(), StatusCode::FORBIDDEN);
     }
 
-    // TODO: 現状、情シスが管理者ユーザーのログイン失敗回数をリセットできてしまう。要修正
-    // #[tokio::test]
-    // async fn 情シスが管理者ユーザーのログイン失敗回数をリセットしようとすると403エラーになる()
-    //  {
-    //     // Arrange
-    //     let repos = prepare_test_data().await;
-    //     let app_state = utils::make_app_state(&repos);
-    //     let router = make_router(app_state, &repos);
-    //     let (session_id, csrf) = test_helpers::login(&router, "it", "Password#1234").await;
-    //     let request = Request::builder()
-    //         .method("DELETE")
-    //         .uri("/users/admin/login-failure-count")
-    //         .header("content-type", "application/json")
-    //         .header("cookie", format!("session_id={}", session_id))
-    //         .header("x-csrf-token", csrf.clone())
-    //         .body(Body::empty())
-    //         .unwrap();
+    #[tokio::test]
+    async fn 情シスが管理者ユーザーのログイン失敗回数をリセットしようとすると403エラーになる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let app_state = utils::make_app_state(&repos);
+        let router = make_router(app_state, &repos);
+        let (session_id, csrf) = test_helpers::login(&router, "it", "Password#1234").await;
+        let request = Request::builder()
+            .method("DELETE")
+            .uri("/users/admin/login-failure-count")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={}", session_id))
+            .header("x-csrf-token", csrf.clone())
+            .body(Body::empty())
+            .unwrap();
 
-    //     // Act
-    //     let response = router.clone().oneshot(request).await.unwrap();
+        // Act
+        let response = router.clone().oneshot(request).await.unwrap();
 
-    //     // Assert
-    //     assert_eq!(response.status(), StatusCode::FORBIDDEN);
-    // }
+        // Assert
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    }
 
     #[tokio::test]
     async fn 存在しないユーザーのログイン失敗回数をリセットしようとすると404エラーになる() {

@@ -329,22 +329,21 @@ mod tests {
             .header("x-csrf-token", csrf.clone())
             .body(Body::from(serde_json::to_string(&input3).unwrap()))
             .unwrap();
-        // TODO: 名前が空文字のケースは現状はエラーにならない。バリデーションを追加する
         // 名前が空文字のケース
-        // let input4 = json!({
-        //     "id": "john",
-        //     "name": "",
-        //     "role": 2, // Doctor
-        //     "password": "Password#1234",
-        // });
-        // let request4 = Request::builder()
-        //     .method("POST")
-        //     .uri("/users")
-        //     .header("content-type", "application/json")
-        //     .header("cookie", format!("session_id={}", session_id))
-        //     .header("x-csrf-token", csrf.clone())
-        //     .body(Body::from(serde_json::to_string(&input4).unwrap()))
-        //     .unwrap();
+        let input4 = json!({
+            "id": "john",
+            "name": "",
+            "role": 2, // Doctor
+            "password": "Password#1234",
+        });
+        let request4 = Request::builder()
+            .method("POST")
+            .uri("/users")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={}", session_id))
+            .header("x-csrf-token", csrf.clone())
+            .body(Body::from(serde_json::to_string(&input4).unwrap()))
+            .unwrap();
         // ロールの指定がないケース
         let input5 = json!({
             "id": "john",
@@ -423,7 +422,7 @@ mod tests {
         let response1 = router.clone().oneshot(request1).await.unwrap();
         let response2 = router.clone().oneshot(request2).await.unwrap();
         let response3 = router.clone().oneshot(request3).await.unwrap();
-        // let response4 = router.clone().oneshot(request4).await.unwrap();
+        let response4 = router.clone().oneshot(request4).await.unwrap();
         let response5 = router.clone().oneshot(request5).await.unwrap();
         let response6 = router.clone().oneshot(request6).await.unwrap();
         let response7 = router.clone().oneshot(request7).await.unwrap();
@@ -434,7 +433,7 @@ mod tests {
         assert_eq!(response1.status(), StatusCode::UNPROCESSABLE_ENTITY);
         assert_eq!(response2.status(), StatusCode::UNPROCESSABLE_ENTITY);
         assert_eq!(response3.status(), StatusCode::UNPROCESSABLE_ENTITY);
-        // assert_eq!(response4.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(response4.status(), StatusCode::UNPROCESSABLE_ENTITY);
         assert_eq!(response5.status(), StatusCode::UNPROCESSABLE_ENTITY);
         assert_eq!(response6.status(), StatusCode::UNPROCESSABLE_ENTITY);
         assert_eq!(response7.status(), StatusCode::UNPROCESSABLE_ENTITY);
