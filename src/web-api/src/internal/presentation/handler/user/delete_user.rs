@@ -80,13 +80,13 @@ mod tests {
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
-        let (session_id, csrf) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
             .uri("/users/doctor")
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf.clone())
+            .header("x-csrf-token", &csrf_token)
             .body(Body::empty())
             .unwrap();
 
@@ -113,13 +113,13 @@ mod tests {
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
-        let (session_id, csrf) = test_helpers::login(&router, "it", "Password#1234").await;
+        let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
             .uri("/users/doctor")
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf.clone())
+            .header("x-csrf-token", &csrf_token)
             .body(Body::empty())
             .unwrap();
 
@@ -146,13 +146,13 @@ mod tests {
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
-        let (session_id, csrf) = test_helpers::login(&router, "it", "Password#1234").await;
+        let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
             .uri("/users/admin")
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf)
+            .header("x-csrf-token", &csrf_token)
             .body(Body::empty())
             .unwrap();
 
@@ -169,13 +169,14 @@ mod tests {
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
-        let (session_id, csrf) = test_helpers::login(&router, "technician", "Password#1234").await;
+        let (session_id, csrf_token) =
+            test_helpers::login(&router, "technician", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
             .uri("/users/doctor")
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf)
+            .header("x-csrf-token", &csrf_token)
             .body(Body::empty())
             .unwrap();
 
@@ -192,13 +193,13 @@ mod tests {
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
-        let (session_id, csrf) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
             .uri("/users/john_doe")
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf)
+            .header("x-csrf-token", &csrf_token)
             .body(Body::empty())
             .unwrap();
 
@@ -215,13 +216,13 @@ mod tests {
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
-        let (session_id, csrf) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
             .uri("/users")
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf)
+            .header("x-csrf-token", &csrf_token)
             .body(Body::empty())
             .unwrap();
 
@@ -238,13 +239,13 @@ mod tests {
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
-        let (session_id, csrf) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
             .uri("/users/admin")
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf)
+            .header("x-csrf-token", &csrf_token)
             .body(Body::empty())
             .unwrap();
 

@@ -109,6 +109,7 @@ mod tests {
         http::{Request, StatusCode},
     };
     use chrono::Utc;
+    use futures::future::JoinAll;
     use serde_json::json;
     use std::str::FromStr;
     use tower::ServiceExt;
@@ -267,32 +268,33 @@ mod tests {
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
-        let input1 = json!({ // ユーザーIDの指定なし
-            "password": "Password#1234"
+        let inputs = [
+            json!({ // フィールドなし
+                "password": "Password#1234"
+            }),
+            json!({ // 空文字
+                "userId": "",
+                "password": "Password#1234"
+            }),
+        ];
+        let requests = inputs.iter().map(|input| {
+            Request::builder()
+                .method("POST")
+                .uri("/login")
+                .header("content-type", "application/json")
+                .body(Body::from(input.to_string()))
+                .unwrap()
         });
-        let input2 = json!({ // ユーザーIDが空文字
-            "userId": "",
-            "password": "Password#1234"
-        });
-        let request1 = Request::builder()
-            .method("POST")
-            .uri("/login")
-            .header("content-type", "application/json")
-            .body(Body::from(input1.to_string()))
-            .unwrap();
-        let request2 = Request::builder()
-            .method("POST")
-            .uri("/login")
-            .header("content-type", "application/json")
-            .body(Body::from(input2.to_string()))
-            .unwrap();
 
         // Act
-        let response1 = router.clone().oneshot(request1).await.unwrap();
-        let response2 = router.clone().oneshot(request2).await.unwrap();
+        let responses = requests
+            .map(async |request| router.clone().oneshot(request).await.unwrap())
+            .collect::<JoinAll<_>>()
+            .await;
 
         // Assert
-        assert_eq!(response1.status(), StatusCode::UNPROCESSABLE_ENTITY);
-        assert_eq!(response2.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        responses.iter().for_each(|response| {
+            assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        });
     }
 }

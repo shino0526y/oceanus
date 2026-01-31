@@ -82,6 +82,7 @@ mod tests {
         body::{self, Body},
         http::{Request, StatusCode},
     };
+    use futures::future::JoinAll;
     use serde_json::json;
     use tower::ServiceExt;
 
@@ -91,7 +92,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
-        let (session_id, csrf) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let input = json!({
             "id": "john",
             "name": "John Doe",
@@ -103,7 +104,7 @@ mod tests {
             .uri("/users")
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf)
+            .header("x-csrf-token", &csrf_token)
             .body(Body::from(serde_json::to_string(&input).unwrap()))
             .unwrap();
 
@@ -140,7 +141,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
-        let (session_id, csrf) = test_helpers::login(&router, "it", "Password#1234").await;
+        let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let input = json!({
             "id": "john",
             "name": "John Doe",
@@ -152,7 +153,7 @@ mod tests {
             .uri("/users")
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf)
+            .header("x-csrf-token", &csrf_token)
             .body(Body::from(serde_json::to_string(&input).unwrap()))
             .unwrap();
 
@@ -189,7 +190,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
-        let (session_id, csrf) = test_helpers::login(&router, "it", "Password#1234").await;
+        let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let input = json!({
             "id": "john",
             "name": "John Doe",
@@ -201,7 +202,7 @@ mod tests {
             .uri("/users")
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf)
+            .header("x-csrf-token", &csrf_token)
             .body(Body::from(serde_json::to_string(&input).unwrap()))
             .unwrap();
 
@@ -218,7 +219,8 @@ mod tests {
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
-        let (session_id, csrf) = test_helpers::login(&router, "technician", "Password#1234").await;
+        let (session_id, csrf_token) =
+            test_helpers::login(&router, "technician", "Password#1234").await;
         let input = json!({
             "id": "john",
             "name": "John Doe",
@@ -230,7 +232,7 @@ mod tests {
             .uri("/users")
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf)
+            .header("x-csrf-token", &csrf_token)
             .body(Body::from(serde_json::to_string(&input).unwrap()))
             .unwrap();
 
@@ -247,7 +249,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
-        let (session_id, csrf) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let input = json!({
             "id": "doctor",
             "name": "医師 太郎",
@@ -259,7 +261,7 @@ mod tests {
             .uri("/users")
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf)
+            .header("x-csrf-token", &csrf_token)
             .body(Body::from(serde_json::to_string(&input).unwrap()))
             .unwrap();
 
@@ -280,164 +282,192 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn バリデーション違反の場合は422エラーになる() {
+    async fn インプットのユーザーIDが不正な場合は422エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
-        let (session_id, csrf) = test_helpers::login(&router, "admin", "Password#1234").await;
-        // IDの指定がないケース
-        let input1 = json!({
-            "name": "John Doe",
-            "role": 2, // Doctor
-            "password": "Password#1234",
+        let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let inputs = [
+            json!({ // フィールドがない
+                "name": "John Doe",
+                "role": 2, // Doctor
+                "password": "Password#1234",
+            }),
+            json!({ // 空文字
+                "id": "",
+                "name": "John Doe",
+                "role": 2, // Doctor
+                "password": "Password#1234",
+            }),
+            json!({ // 空白を含む
+                "id": "john doe",
+                "name": "John Doe",
+                "role": 2, // Doctor
+                "password": "Password#1234",
+            }),
+        ];
+        let requests = inputs.iter().map(|input| {
+            Request::builder()
+                .method("POST")
+                .uri("/users")
+                .header("content-type", "application/json")
+                .header("cookie", format!("session_id={}", session_id))
+                .header("x-csrf-token", &csrf_token)
+                .body(Body::from(serde_json::to_string(&input).unwrap()))
+                .unwrap()
         });
-        let request1 = Request::builder()
-            .method("POST")
-            .uri("/users")
-            .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf.clone())
-            .body(Body::from(serde_json::to_string(&input1).unwrap()))
-            .unwrap();
-        // 空文字のIDを指定するケース
-        let input2 = json!({
-            "id": "",
-            "name": "John Doe",
-            "role": 2, // Doctor
-            "password": "Password#1234",
-        });
-        let request2 = Request::builder()
-            .method("POST")
-            .uri("/users")
-            .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf.clone())
-            .body(Body::from(serde_json::to_string(&input2).unwrap()))
-            .unwrap();
-        // 名前の指定がないケース
-        let input3 = json!({
-            "id": "john",
-            "role": 2, // Doctor
-            "password": "Password#1234",
-        });
-        let request3 = Request::builder()
-            .method("POST")
-            .uri("/users")
-            .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf.clone())
-            .body(Body::from(serde_json::to_string(&input3).unwrap()))
-            .unwrap();
-        // 名前が空文字のケース
-        let input4 = json!({
-            "id": "john",
-            "name": "",
-            "role": 2, // Doctor
-            "password": "Password#1234",
-        });
-        let request4 = Request::builder()
-            .method("POST")
-            .uri("/users")
-            .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf.clone())
-            .body(Body::from(serde_json::to_string(&input4).unwrap()))
-            .unwrap();
-        // ロールの指定がないケース
-        let input5 = json!({
-            "id": "john",
-            "name": "John Doe",
-            "password": "Password#1234",
-        });
-        let request5 = Request::builder()
-            .method("POST")
-            .uri("/users")
-            .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf.clone())
-            .body(Body::from(serde_json::to_string(&input5).unwrap()))
-            .unwrap();
-        // ロールが負の値のケース
-        let input6 = json!({
-            "id": "john",
-            "name": "John Doe",
-            "role": -1,
-            "password": "Password#1234",
-        });
-        let request6 = Request::builder()
-            .method("POST")
-            .uri("/users")
-            .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf.clone())
-            .body(Body::from(serde_json::to_string(&input6).unwrap()))
-            .unwrap();
-        // ロールが5以上の値のケース
-        let input7 = json!({
-            "id": "john",
-            "name": "John Doe",
-            "role": 5,
-            "password": "Password#1234",
-        });
-        let request7 = Request::builder()
-            .method("POST")
-            .uri("/users")
-            .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf.clone())
-            .body(Body::from(serde_json::to_string(&input7).unwrap()))
-            .unwrap();
-        // パスワードの指定がないケース
-        let input8 = json!({
-            "id": "john",
-            "name": "John Doe",
-            "role": 2, // Doctor
-        });
-        let request8 = Request::builder()
-            .method("POST")
-            .uri("/users")
-            .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf.clone())
-            .body(Body::from(serde_json::to_string(&input8).unwrap()))
-            .unwrap();
-        // パスワードが空文字のケース
-        let input9 = json!({
-            "id": "john",
-            "name": "John Doe",
-            "role": 2, // Doctor
-            "password": "",
-        });
-        let request9 = Request::builder()
-            .method("POST")
-            .uri("/users")
-            .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf.clone())
-            .body(Body::from(serde_json::to_string(&input9).unwrap()))
-            .unwrap();
 
         // Act
-        let response1 = router.clone().oneshot(request1).await.unwrap();
-        let response2 = router.clone().oneshot(request2).await.unwrap();
-        let response3 = router.clone().oneshot(request3).await.unwrap();
-        let response4 = router.clone().oneshot(request4).await.unwrap();
-        let response5 = router.clone().oneshot(request5).await.unwrap();
-        let response6 = router.clone().oneshot(request6).await.unwrap();
-        let response7 = router.clone().oneshot(request7).await.unwrap();
-        let response8 = router.clone().oneshot(request8).await.unwrap();
-        let response9 = router.clone().oneshot(request9).await.unwrap();
+        let responses = requests
+            .map(async |req| router.clone().oneshot(req).await.unwrap())
+            .collect::<JoinAll<_>>()
+            .await;
 
         // Assert
-        assert_eq!(response1.status(), StatusCode::UNPROCESSABLE_ENTITY);
-        assert_eq!(response2.status(), StatusCode::UNPROCESSABLE_ENTITY);
-        assert_eq!(response3.status(), StatusCode::UNPROCESSABLE_ENTITY);
-        assert_eq!(response4.status(), StatusCode::UNPROCESSABLE_ENTITY);
-        assert_eq!(response5.status(), StatusCode::UNPROCESSABLE_ENTITY);
-        assert_eq!(response6.status(), StatusCode::UNPROCESSABLE_ENTITY);
-        assert_eq!(response7.status(), StatusCode::UNPROCESSABLE_ENTITY);
-        assert_eq!(response8.status(), StatusCode::UNPROCESSABLE_ENTITY);
-        assert_eq!(response9.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        responses.iter().for_each(|response| {
+            assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        });
+    }
+
+    #[tokio::test]
+    async fn インプットのユーザー名が不正な場合は422エラーになる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let app_state = utils::make_app_state(&repos);
+        let router = make_router(app_state, &repos);
+        let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let inputs = [
+            json!({ // フィールドがない
+                "id": "john",
+                "role": 2, // Doctor
+                "password": "Password#1234",
+            }),
+            json!({ // 空文字
+                "id": "john",
+                "name": "",
+                "role": 2, // Doctor
+                "password": "Password#1234",
+            }),
+            json!({ // 空白のみ
+                "id": "john",
+                "name": " ",
+                "role": 2, // Doctor
+                "password": "Password#1234",
+            }),
+        ];
+        let requests = inputs.iter().map(|input| {
+            Request::builder()
+                .method("POST")
+                .uri("/users")
+                .header("content-type", "application/json")
+                .header("cookie", format!("session_id={}", session_id))
+                .header("x-csrf-token", &csrf_token)
+                .body(Body::from(serde_json::to_string(&input).unwrap()))
+                .unwrap()
+        });
+
+        // Act
+        let responses = requests
+            .map(async |req| router.clone().oneshot(req).await.unwrap())
+            .collect::<JoinAll<_>>()
+            .await;
+
+        // Assert
+        responses.iter().for_each(|response| {
+            assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        });
+    }
+
+    #[tokio::test]
+    async fn インプットのロールが不正な場合は422エラーになる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let app_state = utils::make_app_state(&repos);
+        let router = make_router(app_state, &repos);
+        let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let inputs = [
+            json!({ // フィールドがない
+                "id": "john",
+                "name": "John Doe",
+                "password": "Password#1234",
+            }),
+            json!({ // 負の値
+                "id": "john",
+                "name": "John Doe",
+                "role": -1,
+                "password": "Password#1234",
+            }),
+            json!({ // 5以上の値
+                "id": "john",
+                "name": "John Doe",
+                "role": 5,
+                "password": "Password#1234",
+            }),
+        ];
+        let requests = inputs.iter().map(|input| {
+            Request::builder()
+                .method("POST")
+                .uri("/users")
+                .header("content-type", "application/json")
+                .header("cookie", format!("session_id={}", session_id))
+                .header("x-csrf-token", &csrf_token)
+                .body(Body::from(serde_json::to_string(&input).unwrap()))
+                .unwrap()
+        });
+
+        // Act
+        let responses = requests
+            .map(async |req| router.clone().oneshot(req).await.unwrap())
+            .collect::<JoinAll<_>>()
+            .await;
+
+        // Assert
+        responses.iter().for_each(|response| {
+            assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        });
+    }
+
+    #[tokio::test]
+    async fn インプットのパスワードが不正な場合は422エラーになる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let app_state = utils::make_app_state(&repos);
+        let router = make_router(app_state, &repos);
+        let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let inputs = [
+            json!({ // フィールドがない
+                "id": "john",
+                "name": "John Doe",
+                "role": 2, // Doctor
+            }),
+            json!({ // 空文字
+                "id": "john",
+                "name": "John Doe",
+                "role": 2, // Doctor
+                "password": "",
+            }),
+        ];
+        let requests = inputs.iter().map(|input| {
+            Request::builder()
+                .method("POST")
+                .uri("/users")
+                .header("content-type", "application/json")
+                .header("cookie", format!("session_id={}", session_id))
+                .header("x-csrf-token", &csrf_token)
+                .body(Body::from(serde_json::to_string(&input).unwrap()))
+                .unwrap()
+        });
+
+        // Act
+        let responses = requests
+            .map(async |req| router.clone().oneshot(req).await.unwrap())
+            .collect::<JoinAll<_>>()
+            .await;
+
+        // Assert
+        responses.iter().for_each(|response| {
+            assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        });
     }
 }

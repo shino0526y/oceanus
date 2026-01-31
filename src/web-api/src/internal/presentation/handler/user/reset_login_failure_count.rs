@@ -93,13 +93,13 @@ mod tests {
         // リクエストの準備
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
-        let (session_id, csrf) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
             .uri("/users/doctor/login-failure-count")
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf.clone())
+            .header("x-csrf-token", &csrf_token)
             .body(Body::empty())
             .unwrap();
 
@@ -142,13 +142,13 @@ mod tests {
         // リクエストの準備
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
-        let (session_id, csrf) = test_helpers::login(&router, "it", "Password#1234").await;
+        let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
             .uri("/users/doctor/login-failure-count")
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf.clone())
+            .header("x-csrf-token", &csrf_token)
             .body(Body::empty())
             .unwrap();
 
@@ -173,13 +173,14 @@ mod tests {
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
-        let (session_id, csrf) = test_helpers::login(&router, "technician", "Password#1234").await;
+        let (session_id, csrf_token) =
+            test_helpers::login(&router, "technician", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
             .uri("/users/doctor/login-failure-count")
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf.clone())
+            .header("x-csrf-token", &csrf_token)
             .body(Body::empty())
             .unwrap();
 
@@ -196,13 +197,13 @@ mod tests {
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
-        let (session_id, csrf) = test_helpers::login(&router, "it", "Password#1234").await;
+        let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
             .uri("/users/admin/login-failure-count")
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf.clone())
+            .header("x-csrf-token", &csrf_token)
             .body(Body::empty())
             .unwrap();
 
@@ -219,13 +220,13 @@ mod tests {
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
-        let (session_id, csrf) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
             .uri("/users/notfound/login-failure-count")
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf.clone())
+            .header("x-csrf-token", &csrf_token)
             .body(Body::empty())
             .unwrap();
 
@@ -237,18 +238,18 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn ユーザーIDが不正な場合は422エラーになる() {
+    async fn パスパラメータのユーザーIDが不正な場合は422エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
-        let (session_id, csrf) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
-            .uri("/users//login-failure-count") // 空のIDは不正
+            .uri("/users//login-failure-count") // 空文字
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", csrf)
+            .header("x-csrf-token", &csrf_token)
             .body(Body::empty())
             .unwrap();
 
