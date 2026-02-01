@@ -5,10 +5,11 @@ use crate::{
             ResetLoginFailureCountCommand, ResetLoginFailureCountError,
         },
         domain::value_object::Id,
-        presentation::error::PresentationError,
+        presentation::{error::PresentationError, middleware::AuthenticatedUser},
     },
 };
 use axum::{
+    Extension,
     extract::{Path, State},
     http::StatusCode,
 };
@@ -34,6 +35,7 @@ use axum::{
 )]
 pub async fn reset_login_failure_count(
     State(state): State<AppState>,
+    Extension(user): Extension<AuthenticatedUser>,
     Path(id): Path<String>,
 ) -> Result<StatusCode, PresentationError> {
     // バリデーション
@@ -41,13 +43,17 @@ pub async fn reset_login_failure_count(
         .map_err(|e| PresentationError::UnprocessableContent(format!("無効なID: {}", e)))?;
 
     // リセット処理
-    let command = ResetLoginFailureCountCommand { id };
+    let command = ResetLoginFailureCountCommand {
+        target_id: id,
+        updated_by: user.uuid(),
+    };
     state
         .reset_login_failure_count_use_case
         .execute(command)
         .await
         .map_err(|e| match e {
             ResetLoginFailureCountError::Repository(repo_err) => PresentationError::from(repo_err),
+            ResetLoginFailureCountError::Forbidden => PresentationError::Forbidden(e.to_string()),
         })?;
 
     Ok(StatusCode::NO_CONTENT)
