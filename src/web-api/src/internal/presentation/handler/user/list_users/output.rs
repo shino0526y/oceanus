@@ -1,9 +1,9 @@
 use crate::internal::application::user::list_users_use_case::UserWithLoginFailureCount;
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use utoipa::ToSchema;
 
-#[derive(Serialize, Deserialize, ToSchema)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ListUsersOutputElement {
     pub id: String,

@@ -94,7 +94,7 @@ mod tests {
     };
     use chrono::{DateTime, Utc};
     use futures::future::JoinAll;
-    use serde_json::json;
+    use serde_json::{Value, json};
     use std::str::FromStr;
     use tower::ServiceExt;
     use uuid::Uuid;
@@ -130,16 +130,14 @@ mod tests {
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
-        let output: UpdateUserOutput = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(output.id, "doctor");
-        assert_eq!(output.name, "John Doe");
-        assert_eq!(output.role, 3);
-        assert_eq!(
-            output.created_at,
-            DateTime::<Utc>::from_str("2026-01-24T22:25:57.855+09:00").unwrap()
-        );
+        let output: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(output["id"], "doctor");
+        assert_eq!(output["name"], "John Doe");
+        assert_eq!(output["role"], 3);
+        assert_eq!(output["createdAt"], "2026-01-24T13:25:57.855Z");
         let now = Utc::now();
-        assert!((now - output.updated_at).num_seconds().abs() < 10);
+        let updated_at = DateTime::from_str(output["updatedAt"].as_str().unwrap()).unwrap();
+        assert!((now - updated_at).num_seconds().abs() < 10);
         // リポジトリに保存された内容の確認
         let user = repos
             .user_repository
@@ -187,16 +185,14 @@ mod tests {
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
-        let output: super::UpdateUserOutput = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(output.id, "john");
-        assert_eq!(output.name, "医師 太郎");
-        assert_eq!(output.role, 2);
-        assert_eq!(
-            output.created_at,
-            DateTime::<Utc>::from_str("2026-01-24T22:25:57.855+09:00").unwrap()
-        );
+        let output: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(output["id"], "john");
+        assert_eq!(output["name"], "医師 太郎");
+        assert_eq!(output["role"], 2);
+        assert_eq!(output["createdAt"], "2026-01-24T13:25:57.855Z");
         let now = Utc::now();
-        assert!((now - output.updated_at).num_seconds().abs() < 10);
+        let updated_at = DateTime::from_str(output["updatedAt"].as_str().unwrap()).unwrap();
+        assert!((now - updated_at).num_seconds().abs() < 10);
         // リポジトリに保存された内容の確認
         let old_user = repos
             .user_repository
@@ -248,16 +244,14 @@ mod tests {
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
-        let output: super::UpdateUserOutput = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(output.id, "doctor");
-        assert_eq!(output.name, "医師 太郎");
-        assert_eq!(output.role, 2);
-        assert_eq!(
-            output.created_at,
-            DateTime::<Utc>::from_str("2026-01-24T22:25:57.855+09:00").unwrap()
-        );
+        let output: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(output["id"], "doctor");
+        assert_eq!(output["name"], "医師 太郎");
+        assert_eq!(output["role"], 2);
+        assert_eq!(output["createdAt"], "2026-01-24T13:25:57.855Z");
         let now = Utc::now();
-        assert!((now - output.updated_at).num_seconds().abs() < 10);
+        let updated_at = DateTime::from_str(output["updatedAt"].as_str().unwrap()).unwrap();
+        assert!((now - updated_at).num_seconds().abs() < 10);
         // リポジトリに保存された内容の確認
         let user = repos
             .user_repository
@@ -307,16 +301,14 @@ mod tests {
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
-        let output: UpdateUserOutput = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(output.id, "doctor");
-        assert_eq!(output.name, "John Doe");
-        assert_eq!(output.role, 3);
-        assert_eq!(
-            output.created_at,
-            DateTime::<Utc>::from_str("2026-01-24T22:25:57.855+09:00").unwrap()
-        );
+        let output: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(output["id"], "doctor");
+        assert_eq!(output["name"], "John Doe");
+        assert_eq!(output["role"], 3);
+        assert_eq!(output["createdAt"], "2026-01-24T13:25:57.855Z");
         let now = Utc::now();
-        assert!((now - output.updated_at).num_seconds().abs() < 10);
+        let updated_at = DateTime::from_str(output["updatedAt"].as_str().unwrap()).unwrap();
+        assert!((now - updated_at).num_seconds().abs() < 10);
         // リポジトリに保存された内容の確認
         let user = repos
             .user_repository
@@ -364,16 +356,14 @@ mod tests {
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
-        let output: super::UpdateUserOutput = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(output.id, "john");
-        assert_eq!(output.name, "医師 太郎");
-        assert_eq!(output.role, 2);
-        assert_eq!(
-            output.created_at,
-            DateTime::<Utc>::from_str("2026-01-24T22:25:57.855+09:00").unwrap()
-        );
+        let output: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(output["id"], "john");
+        assert_eq!(output["name"], "医師 太郎");
+        assert_eq!(output["role"], 2);
+        assert_eq!(output["createdAt"], "2026-01-24T13:25:57.855Z");
         let now = Utc::now();
-        assert!((now - output.updated_at).num_seconds().abs() < 10);
+        let updated_at = DateTime::from_str(output["updatedAt"].as_str().unwrap()).unwrap();
+        assert!((now - updated_at).num_seconds().abs() < 10);
         // リポジトリに保存された内容の確認
         let old_user = repos
             .user_repository
@@ -425,16 +415,14 @@ mod tests {
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
-        let output: super::UpdateUserOutput = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(output.id, "doctor");
-        assert_eq!(output.name, "医師 太郎");
-        assert_eq!(output.role, 2);
-        assert_eq!(
-            output.created_at,
-            DateTime::<Utc>::from_str("2026-01-24T22:25:57.855+09:00").unwrap()
-        );
+        let output: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(output["id"], "doctor");
+        assert_eq!(output["name"], "医師 太郎");
+        assert_eq!(output["role"], 2);
+        assert_eq!(output["createdAt"], "2026-01-24T13:25:57.855Z");
         let now = Utc::now();
-        assert!((now - output.updated_at).num_seconds().abs() < 10);
+        let updated_at = DateTime::from_str(output["updatedAt"].as_str().unwrap()).unwrap();
+        assert!((now - updated_at).num_seconds().abs() < 10);
         // リポジトリに保存された内容の確認
         let user = repos
             .user_repository

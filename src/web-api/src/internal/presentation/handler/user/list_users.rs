@@ -39,7 +39,6 @@ pub async fn list_users(
 #[allow(non_snake_case)]
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::{
         internal::presentation::{handler::user::prepare_test_data, util::test_helpers},
         utils::{self, make_router},
@@ -48,8 +47,7 @@ mod tests {
         body::{self, Body},
         http::{Request, StatusCode},
     };
-    use chrono::{DateTime, Utc};
-    use std::str::FromStr;
+    use serde_json::Value;
     use tower::ServiceExt;
 
     #[tokio::test]
@@ -70,12 +68,12 @@ mod tests {
             (
                 "technician",
                 "技師 太郎",
-                3,                               // ロール
-                "2026-01-24T22:26:54.695+09:00", // 作成日時＆更新日時
+                3,                          // ロール
+                "2026-01-24T13:26:54.695Z", // 作成日時＆更新日時
             ),
-            ("doctor", "医師 太郎", 2, "2026-01-24T22:25:57.855+09:00"),
-            ("it", "情シス 太郎", 1, "2026-01-24T22:25:34.436+09:00"),
-            ("admin", "管理者 太郎", 0, "2026-01-20T23:10:24.332+09:00"),
+            ("doctor", "医師 太郎", 2, "2026-01-24T13:25:57.855Z"),
+            ("it", "情シス 太郎", 1, "2026-01-24T13:25:34.436Z"),
+            ("admin", "管理者 太郎", 0, "2026-01-20T14:10:24.332Z"),
         ];
 
         // Act
@@ -86,17 +84,16 @@ mod tests {
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
-        let output: Vec<ListUsersOutputElement> = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(output.len(), 4);
-        for (i, (id, name, role, dt_str)) in expected.iter().enumerate() {
+        let output: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(output.as_array().unwrap().len(), 4);
+        for (i, (id, name, role, dt)) in expected.iter().enumerate() {
             let u = &output[i];
-            assert_eq!(u.id, *id);
-            assert_eq!(u.name, *name);
-            assert_eq!(u.role, *role);
-            assert_eq!(u.login_failure_count, 0);
-            let dt = DateTime::<Utc>::from_str(dt_str).unwrap();
-            assert_eq!(u.created_at, dt);
-            assert_eq!(u.updated_at, dt);
+            assert_eq!(u["id"], *id);
+            assert_eq!(u["name"], *name);
+            assert_eq!(u["role"], *role);
+            assert_eq!(u["loginFailureCount"], 0);
+            assert_eq!(u["createdAt"], *dt);
+            assert_eq!(u["updatedAt"], *dt);
         }
     }
 
@@ -123,9 +120,9 @@ mod tests {
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
-        let output: Vec<ListUsersOutputElement> = serde_json::from_slice(&bytes).unwrap();
+        let output: Value = serde_json::from_slice(&bytes).unwrap();
         // `管理者はユーザー一覧を取得できる`でアウトプットの中身は確認しているのでここでは件数のみ確認
-        assert_eq!(output.len(), 4);
+        assert_eq!(output.as_array().unwrap().len(), 4);
     }
 
     #[tokio::test]

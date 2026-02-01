@@ -85,9 +85,12 @@ mod tests {
         body::{self, Body},
         http::{Request, StatusCode},
     };
+    use chrono::DateTime;
     use futures::future::JoinAll;
-    use serde_json::json;
+    use serde_json::{Value, json};
+    use std::str::FromStr;
     use tower::ServiceExt;
+    use uuid::Uuid;
 
     #[tokio::test]
     async fn 管理者はユーザーを作成できる() {
@@ -120,22 +123,36 @@ mod tests {
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
-        let output: CreateUserOutput = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(output.id, "john");
-        assert_eq!(output.name, "John Doe");
-        assert_eq!(output.role, 2);
+        let output: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(output["id"], "john");
+        assert_eq!(output["name"], "John Doe");
+        assert_eq!(output["role"], 2);
         let now = Utc::now();
-        assert!((now - output.created_at).num_seconds().abs() < 10);
-        assert_eq!(output.updated_at, output.created_at);
-        // ユーザーが作成されていることの確認
-        assert!(
-            repos
-                .user_repository
-                .find_by_id(&Id::new("john").unwrap())
-                .await
-                .unwrap()
-                .is_some()
+        let created_at = DateTime::from_str(output["createdAt"].as_str().unwrap()).unwrap();
+        let updated_at = DateTime::<Utc>::from_str(output["updatedAt"].as_str().unwrap()).unwrap();
+        assert!((now - created_at).num_seconds().abs() < 10);
+        assert_eq!(updated_at, created_at);
+        // リポジトリに反映されていることの確認
+        let stored = repos
+            .user_repository
+            .find_by_id(&Id::new("john").unwrap())
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(stored.id().value(), "john");
+        assert_eq!(stored.name().value(), "John Doe");
+        assert_eq!(stored.role(), Role::Doctor);
+        assert!(!stored.password_hash().is_empty());
+        assert_eq!(
+            stored.created_by(),
+            &Uuid::from_str("019bdbbe-0dcc-7474-8b43-95b89ca8b4fd").unwrap()
         );
+        assert!((now - stored.created_at()).num_seconds().abs() < 10);
+        assert_eq!(
+            stored.updated_by(),
+            &Uuid::from_str("019bdbbe-0dcc-7474-8b43-95b89ca8b4fd").unwrap()
+        );
+        assert_eq!(stored.updated_at(), stored.created_at());
     }
 
     #[tokio::test]
@@ -169,22 +186,36 @@ mod tests {
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
-        let output: CreateUserOutput = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(output.id, "john");
-        assert_eq!(output.name, "John Doe");
-        assert_eq!(output.role, 2);
+        let output: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(output["id"], "john");
+        assert_eq!(output["name"], "John Doe");
+        assert_eq!(output["role"], 2);
         let now = Utc::now();
-        assert!((now - output.created_at).num_seconds().abs() < 10);
-        assert_eq!(output.updated_at, output.created_at);
-        // ユーザーが作成されていることの確認
-        assert!(
-            repos
-                .user_repository
-                .find_by_id(&Id::new("john").unwrap())
-                .await
-                .unwrap()
-                .is_some()
+        let created_at = DateTime::from_str(output["createdAt"].as_str().unwrap()).unwrap();
+        let updated_at = DateTime::<Utc>::from_str(output["updatedAt"].as_str().unwrap()).unwrap();
+        assert!((now - created_at).num_seconds().abs() < 10);
+        assert_eq!(updated_at, created_at);
+        // リポジトリに反映されていることの確認
+        let stored = repos
+            .user_repository
+            .find_by_id(&Id::new("john").unwrap())
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(stored.id().value(), "john");
+        assert_eq!(stored.name().value(), "John Doe");
+        assert_eq!(stored.role(), Role::Doctor);
+        assert!(!stored.password_hash().is_empty());
+        assert_eq!(
+            stored.created_by(),
+            &Uuid::from_str("4922356e-d6a0-7083-8e18-93b7a023c328").unwrap()
         );
+        assert!((now - stored.created_at()).num_seconds().abs() < 10);
+        assert_eq!(
+            stored.updated_by(),
+            &Uuid::from_str("4922356e-d6a0-7083-8e18-93b7a023c328").unwrap()
+        );
+        assert_eq!(stored.updated_at(), stored.created_at());
     }
 
     #[tokio::test]
