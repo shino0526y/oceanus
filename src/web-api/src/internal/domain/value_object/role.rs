@@ -20,7 +20,7 @@ impl Role {
             2 => Ok(Self::Doctor),
             3 => Ok(Self::Technician),
             4 => Ok(Self::Clerk),
-            _ => Err(format!("不正な職種です: {}", value)),
+            _ => Err(format!("不正なロールです: {value}")),
         }
     }
 

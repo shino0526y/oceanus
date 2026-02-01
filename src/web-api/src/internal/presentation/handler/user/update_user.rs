@@ -72,7 +72,7 @@ pub async fn update_user(
             }
             UpdateUserError::Forbidden => PresentationError::Forbidden(e.to_string()),
             UpdateUserError::PasswordHashError(msg) => PresentationError::InternalServerError(
-                format!("パスワードのハッシュ化に失敗しました: {}", msg),
+                format!("パスワードのハッシュ化に失敗しました: {msg}"),
             ),
             UpdateUserError::Repository(e) => PresentationError::from(e),
         })?;
@@ -116,7 +116,7 @@ mod tests {
             .method("PUT")
             .uri("/users/doctor")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::from(input.to_string()))
             .unwrap();
@@ -173,7 +173,7 @@ mod tests {
             .method("PUT")
             .uri("/users/doctor")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::from(input.to_string()))
             .unwrap();
@@ -234,7 +234,7 @@ mod tests {
             .method("PUT")
             .uri("/users/doctor")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::from(input.to_string()))
             .unwrap();
@@ -293,7 +293,7 @@ mod tests {
             .method("PUT")
             .uri("/users/doctor")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::from(input.to_string()))
             .unwrap();
@@ -350,7 +350,7 @@ mod tests {
             .method("PUT")
             .uri("/users/doctor")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::from(input.to_string()))
             .unwrap();
@@ -411,7 +411,7 @@ mod tests {
             .method("PUT")
             .uri("/users/doctor")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::from(input.to_string()))
             .unwrap();
@@ -471,7 +471,7 @@ mod tests {
             .method("PUT")
             .uri("/users/doctor")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::from(input.to_string()))
             .unwrap();
@@ -500,7 +500,7 @@ mod tests {
             .method("PUT")
             .uri("/users/admin")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::from(input.to_string()))
             .unwrap();
@@ -529,7 +529,7 @@ mod tests {
             .method("PUT")
             .uri("/users/doctor")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::from(input.to_string()))
             .unwrap();
@@ -558,7 +558,7 @@ mod tests {
             .method("PUT")
             .uri("/users/john")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::from(input.to_string()))
             .unwrap();
@@ -596,7 +596,7 @@ mod tests {
                 .method("PUT")
                 .uri("/users/doctor") // 既存の医師ユーザーを更新しようとする
                 .header("content-type", "application/json")
-                .header("cookie", format!("session_id={}", session_id))
+                .header("cookie", format!("session_id={session_id}"))
                 .header("x-csrf-token", &csrf_token)
                 .body(Body::from(serde_json::to_string(&input).unwrap()))
                 .unwrap()
@@ -685,7 +685,7 @@ mod tests {
                 .method("PUT")
                 .uri("/users/doctor")
                 .header("content-type", "application/json")
-                .header("cookie", format!("session_id={}", session_id))
+                .header("cookie", format!("session_id={session_id}"))
                 .header("x-csrf-token", &csrf_token)
                 .body(Body::from(serde_json::to_string(input).unwrap()))
                 .unwrap()

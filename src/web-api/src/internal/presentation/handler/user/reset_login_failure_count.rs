@@ -40,7 +40,7 @@ pub async fn reset_login_failure_count(
 ) -> Result<StatusCode, PresentationError> {
     // バリデーション
     let id = Id::new(id)
-        .map_err(|e| PresentationError::UnprocessableContent(format!("無効なID: {}", e)))?;
+        .map_err(|e| PresentationError::UnprocessableContent(format!("無効なID: {e}")))?;
 
     // リセット処理
     let command = ResetLoginFailureCountCommand {
@@ -104,7 +104,7 @@ mod tests {
             .method("DELETE")
             .uri("/users/doctor/login-failure-count")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::empty())
             .unwrap();
@@ -153,7 +153,7 @@ mod tests {
             .method("DELETE")
             .uri("/users/doctor/login-failure-count")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::empty())
             .unwrap();
@@ -185,7 +185,7 @@ mod tests {
             .method("DELETE")
             .uri("/users/doctor/login-failure-count")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::empty())
             .unwrap();
@@ -208,7 +208,7 @@ mod tests {
             .method("DELETE")
             .uri("/users/admin/login-failure-count")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::empty())
             .unwrap();
@@ -231,7 +231,7 @@ mod tests {
             .method("DELETE")
             .uri("/users/notfound/login-failure-count")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::empty())
             .unwrap();
@@ -254,7 +254,7 @@ mod tests {
             .method("DELETE")
             .uri("/users//login-failure-count") // 空文字
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::empty())
             .unwrap();

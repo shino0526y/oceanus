@@ -39,7 +39,7 @@ pub async fn delete_user(
 ) -> Result<StatusCode, PresentationError> {
     // バリデーション
     let id = Id::new(id)
-        .map_err(|e| PresentationError::UnprocessableContent(format!("無効なID: {}", e)))?;
+        .map_err(|e| PresentationError::UnprocessableContent(format!("無効なID: {e}")))?;
 
     // 削除処理
     let deleted_at = Utc::now();
@@ -85,7 +85,7 @@ mod tests {
             .method("DELETE")
             .uri("/users/doctor")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::empty())
             .unwrap();
@@ -118,7 +118,7 @@ mod tests {
             .method("DELETE")
             .uri("/users/doctor")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::empty())
             .unwrap();
@@ -151,7 +151,7 @@ mod tests {
             .method("DELETE")
             .uri("/users/admin")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::empty())
             .unwrap();
@@ -175,7 +175,7 @@ mod tests {
             .method("DELETE")
             .uri("/users/doctor")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::empty())
             .unwrap();
@@ -198,7 +198,7 @@ mod tests {
             .method("DELETE")
             .uri("/users/john_doe")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::empty())
             .unwrap();
@@ -221,7 +221,7 @@ mod tests {
             .method("DELETE")
             .uri("/users")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::empty())
             .unwrap();
@@ -244,7 +244,7 @@ mod tests {
             .method("DELETE")
             .uri("/users/admin")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::empty())
             .unwrap();

@@ -62,7 +62,7 @@ pub async fn create_user(
             }
             CreateUserError::Forbidden => PresentationError::Forbidden(e.to_string()),
             CreateUserError::PasswordHashError(msg) => PresentationError::InternalServerError(
-                format!("パスワードのハッシュ化に失敗しました: {}", msg),
+                format!("パスワードのハッシュ化に失敗しました: {msg}"),
             ),
             CreateUserError::Repository(e) => PresentationError::from(e),
         })?;
@@ -106,7 +106,7 @@ mod tests {
             .method("POST")
             .uri("/users")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::from(serde_json::to_string(&input).unwrap()))
             .unwrap();
@@ -155,7 +155,7 @@ mod tests {
             .method("POST")
             .uri("/users")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::from(serde_json::to_string(&input).unwrap()))
             .unwrap();
@@ -204,7 +204,7 @@ mod tests {
             .method("POST")
             .uri("/users")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::from(serde_json::to_string(&input).unwrap()))
             .unwrap();
@@ -234,7 +234,7 @@ mod tests {
             .method("POST")
             .uri("/users")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
             .body(Body::from(serde_json::to_string(&input).unwrap()))
             .unwrap();
@@ -272,7 +272,7 @@ mod tests {
                 .method("POST")
                 .uri("/users")
                 .header("content-type", "application/json")
-                .header("cookie", format!("session_id={}", session_id))
+                .header("cookie", format!("session_id={session_id}"))
                 .header("x-csrf-token", &csrf_token)
                 .body(Body::from(serde_json::to_string(&input).unwrap()))
                 .unwrap()
@@ -366,7 +366,7 @@ mod tests {
                 .method("POST")
                 .uri("/users")
                 .header("content-type", "application/json")
-                .header("cookie", format!("session_id={}", session_id))
+                .header("cookie", format!("session_id={session_id}"))
                 .header("x-csrf-token", &csrf_token)
                 .body(Body::from(serde_json::to_string(&input).unwrap()))
                 .unwrap()

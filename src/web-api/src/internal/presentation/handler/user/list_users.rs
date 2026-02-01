@@ -63,7 +63,7 @@ mod tests {
             .method("GET")
             .uri("/users")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .body(Body::empty())
             .unwrap();
         let expected = [
@@ -111,7 +111,7 @@ mod tests {
             .method("GET")
             .uri("/users")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .body(Body::empty())
             .unwrap();
 
@@ -139,7 +139,7 @@ mod tests {
             .method("GET")
             .uri("/users")
             .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
+            .header("cookie", format!("session_id={session_id}"))
             .body(Body::empty())
             .unwrap();
 
