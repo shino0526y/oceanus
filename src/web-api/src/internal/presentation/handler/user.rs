@@ -16,7 +16,7 @@ async fn prepare_test_data() -> crate::utils::Repositories {
             domain::{
                 entity::User,
                 repository::UserRepository,
-                value_object::{Id, Role},
+                value_object::{Id, Role, UserName},
             },
             infrastructure::repository::TestUserRepository,
         },
@@ -29,7 +29,7 @@ async fn prepare_test_data() -> crate::utils::Repositories {
     let admin = User::construct(
         Uuid::from_str("019bdbbe-0dcc-7474-8b43-95b89ca8b4fd").unwrap(),
         Id::new("admin").unwrap(),
-        "管理者 太郎",
+        UserName::new("管理者 太郎").unwrap(),
         Role::Admin,
         "$argon2id$v=19$m=19456,t=2,p=1$Zf/xy2I09QAEAvKnXga60w$arwk9jM50i/6RAjgZ2+N6fiRq0WWJFX3GmngTw+n34Y",
         Uuid::from_str("00000000-0000-7000-8000-000000000000").unwrap(),
@@ -40,7 +40,7 @@ async fn prepare_test_data() -> crate::utils::Repositories {
     let it_staff = User::construct(
         Uuid::from_str("4922356e-d6a0-7083-8e18-93b7a023c328").unwrap(),
         Id::new("it").unwrap(),
-        "情シス 太郎",
+        UserName::new("情シス 太郎").unwrap(),
         Role::ItStaff,
         "$argon2id$v=19$m=19456,t=2,p=1$20Tk1g6xZ9BdBDcrKqWy1A$//ZKdw5sFbvtSwtbgnBapb3u1r112qUBz6QVG3JuzzU",
         Uuid::from_str("019bdbbe-0dcc-7474-8b43-95b89ca8b4fd").unwrap(),
@@ -51,7 +51,7 @@ async fn prepare_test_data() -> crate::utils::Repositories {
     let doctor = User::construct(
         Uuid::from_str("492236d4-2f18-76ab-a82f-84e29fcf92f8").unwrap(),
         Id::new("doctor").unwrap(),
-        "医師 太郎",
+        UserName::new("医師 太郎").unwrap(),
         Role::Doctor,
         "$argon2id$v=19$m=19456,t=2,p=1$1E/vEPPwrHBsW1fLuzdUVQ$1sAIm/nnFMIyc1IBuKW8+6KcdyHtdzjHCv7ae8lG6sA",
         Uuid::from_str("019bdbbe-0dcc-7474-8b43-95b89ca8b4fd").unwrap(),
@@ -62,7 +62,7 @@ async fn prepare_test_data() -> crate::utils::Repositories {
     let technician = User::construct(
         Uuid::from_str("49223a37-7e58-717c-b222-754550659249").unwrap(),
         Id::new("technician").unwrap(),
-        "技師 太郎",
+        UserName::new("技師 太郎").unwrap(),
         Role::Technician,
         "$argon2id$v=19$m=19456,t=2,p=1$HLCrMDHifn55j/Kq5M6t0g$lIVsN8r8+osWzQmU6n5khyRZk8TNeB9/qn4NeULwVfI",
         Uuid::from_str("019bdbbe-0dcc-7474-8b43-95b89ca8b4fd").unwrap(),

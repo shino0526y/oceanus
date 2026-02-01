@@ -7,7 +7,7 @@ use crate::{
     AppState,
     internal::{
         application::user::create_user_use_case::{CreateUserCommand, CreateUserError},
-        domain::value_object::{Id, Role},
+        domain::value_object::{Id, Role, UserName},
         presentation::{error::PresentationError, middleware::AuthenticatedUser},
     },
 };
@@ -37,13 +37,16 @@ pub async fn create_user(
 ) -> Result<Json<CreateUserOutput>, PresentationError> {
     // バリデーション
     let id = Id::new(input.id)
-        .map_err(|e| PresentationError::UnprocessableContent(format!("無効なID: {}", e)))?;
-    let role = Role::from_i16(input.role).map_err(PresentationError::UnprocessableContent)?;
+        .map_err(|e| PresentationError::UnprocessableContent(format!("無効なID: {e}")))?;
+    let name = UserName::new(input.name)
+        .map_err(|e| PresentationError::UnprocessableContent(format!("無効な名前: {e}")))?;
+    let role = Role::from_i16(input.role)
+        .map_err(|e| PresentationError::UnprocessableContent(format!("無効なロール: {e}")))?;
 
     // 登録処理
     let command = CreateUserCommand {
         id,
-        name: input.name,
+        name,
         role,
         password: input.password,
         created_by: user.uuid(),

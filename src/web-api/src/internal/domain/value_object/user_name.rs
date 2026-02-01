@@ -1,16 +1,16 @@
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Id(String);
+pub struct UserName(String);
 
-impl Id {
+impl UserName {
     pub fn new(value: impl Into<String>) -> Result<Self, String> {
         let value = value.into();
 
         if value.is_empty() {
-            return Err("IDは空にできません".to_string());
+            return Err("ユーザー名は空にできません".to_string());
         }
 
-        if value.contains(char::is_whitespace) {
-            return Err("IDに空白を含めることはできません".to_string());
+        if value.trim().is_empty() {
+            return Err("ユーザー名は空白のみにはできません".to_string());
         }
 
         Ok(Self(value))

@@ -7,7 +7,7 @@ use crate::{
     AppState,
     internal::{
         application::user::update_user_use_case::{UpdateUserCommand, UpdateUserError},
-        domain::value_object::{Id, Role},
+        domain::value_object::{Id, Role, UserName},
         presentation::{error::PresentationError, middleware::AuthenticatedUser},
     },
 };
@@ -44,16 +44,19 @@ pub async fn update_user(
 ) -> Result<Json<UpdateUserOutput>, PresentationError> {
     // バリデーション
     let old_id = Id::new(id)
-        .map_err(|e| PresentationError::UnprocessableContent(format!("無効なID: {}", e)))?;
+        .map_err(|e| PresentationError::UnprocessableContent(format!("無効なID: {e}")))?;
     let new_id = Id::new(input.id)
-        .map_err(|e| PresentationError::UnprocessableContent(format!("無効なID: {}", e)))?;
-    let role = Role::from_i16(input.role).map_err(PresentationError::UnprocessableContent)?;
+        .map_err(|e| PresentationError::UnprocessableContent(format!("無効なID: {e}")))?;
+    let name = UserName::new(input.name)
+        .map_err(|e| PresentationError::UnprocessableContent(format!("無効な名前: {e}")))?;
+    let role = Role::from_i16(input.role)
+        .map_err(|e| PresentationError::UnprocessableContent(format!("無効なロール: {e}")))?;
 
     // 更新処理
     let command = UpdateUserCommand {
         old_id,
         id: new_id,
-        name: input.name,
+        name,
         role,
         password: input.password,
         updated_by: user.uuid(),
@@ -144,7 +147,7 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        assert_eq!(user.name().to_string(), "John Doe");
+        assert_eq!(user.name().value(), "John Doe");
         assert_eq!(user.role().as_i16(), 3);
         assert_eq!(
             user.updated_by(),
@@ -321,7 +324,7 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        assert_eq!(user.name().to_string(), "John Doe");
+        assert_eq!(user.name().value(), "John Doe");
         assert_eq!(user.role().as_i16(), 3);
         assert_eq!(
             user.updated_by(),

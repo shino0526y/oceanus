@@ -2,7 +2,7 @@ use crate::internal::domain::{
     entity::User,
     error::RepositoryError,
     repository::UserRepository,
-    value_object::{Id, Role},
+    value_object::{Id, Role, UserName},
 };
 use argon2::{
     Argon2,
@@ -18,7 +18,7 @@ pub struct CreateUserUseCase {
 
 pub struct CreateUserCommand {
     pub id: Id,
-    pub name: String,
+    pub name: UserName,
     pub role: Role,
     pub password: String,
     pub created_by: Uuid,

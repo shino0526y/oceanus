@@ -2,7 +2,7 @@ use crate::internal::domain::{
     entity::User,
     error::RepositoryError,
     repository::UserRepository,
-    value_object::{Id, Role},
+    value_object::{Id, Role, UserName},
 };
 use argon2::{
     Argon2,
@@ -20,7 +20,7 @@ pub struct UpdateUserCommand {
     pub old_id: Id,
 
     pub id: Id,
-    pub name: String,
+    pub name: UserName,
     pub role: Role,
     pub password: Option<String>,
     pub updated_by: Uuid,

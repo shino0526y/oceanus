@@ -18,7 +18,7 @@ impl From<UserWithLoginFailureCount> for ListUsersOutputElement {
     fn from(data: UserWithLoginFailureCount) -> Self {
         Self {
             id: data.user.id().value().into(),
-            name: data.user.name().to_string(),
+            name: data.user.name().value().into(),
             role: data.user.role().as_i16(),
             login_failure_count: data.login_failure_count,
             created_at: *data.user.created_at(),

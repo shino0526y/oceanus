@@ -17,7 +17,7 @@ impl From<User> for UpdateUserOutput {
     fn from(user: User) -> Self {
         Self {
             id: user.id().value().into(),
-            name: user.name().to_string(),
+            name: user.name().value().into(),
             role: user.role().as_i16(),
             created_at: *user.created_at(),
             updated_at: *user.updated_at(),

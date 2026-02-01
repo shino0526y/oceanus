@@ -2,7 +2,7 @@ use crate::internal::domain::{
     entity::User,
     error::RepositoryError,
     repository::UserRepository,
-    value_object::{Id, Role},
+    value_object::{Id, Role, UserName},
 };
 use chrono::{DateTime, Utc};
 use sqlx::{FromRow, Pool, Postgres};
@@ -26,11 +26,12 @@ impl TryFrom<UserRecord> for User {
 
     fn try_from(record: UserRecord) -> Result<Self, Self::Error> {
         let user_id = Id::new(record.id)?;
+        let user_name = UserName::new(record.name)?;
         let role = Role::from_i16(record.role)?;
         Ok(User::construct(
             record.uuid,
             user_id,
-            record.name,
+            user_name,
             role,
             record.password_hash,
             record.created_by,
@@ -131,7 +132,7 @@ impl UserRepository for PostgresUserRepository {
         )
         .bind(user.uuid())
         .bind(user.id().value())
-        .bind(user.name())
+        .bind(user.name().value())
         .bind(user.role().as_i16())
         .bind(user.password_hash())
         .bind(user.created_by())
@@ -168,7 +169,7 @@ impl UserRepository for PostgresUserRepository {
              RETURNING uuid, id, name, role, password_hash, created_by, created_at, updated_by, updated_at",
         )
         .bind(user.id().value())
-        .bind(user.name())
+        .bind(user.name().value())
         .bind(user.role().as_i16())
         .bind(user.password_hash())
         .bind(user.updated_by())

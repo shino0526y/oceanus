@@ -11,7 +11,7 @@ pub async fn prepare_test_data() -> crate::utils::Repositories {
             domain::{
                 entity::User,
                 repository::UserRepository,
-                value_object::{Id, Role},
+                value_object::{Id, Role, UserName},
             },
             infrastructure::repository::TestUserRepository,
         },
@@ -24,7 +24,7 @@ pub async fn prepare_test_data() -> crate::utils::Repositories {
     let doctor = User::construct(
         Uuid::from_str("492236d4-2f18-76ab-a82f-84e29fcf92f8").unwrap(),
         Id::new("doctor").unwrap(),
-        "医師 太郎",
+        UserName::new("医師 太郎").unwrap(),
         Role::Doctor,
         "$argon2id$v=19$m=19456,t=2,p=1$1E/vEPPwrHBsW1fLuzdUVQ$1sAIm/nnFMIyc1IBuKW8+6KcdyHtdzjHCv7ae8lG6sA",
         Uuid::from_str("019bdbbe-0dcc-7474-8b43-95b89ca8b4fd").unwrap(),

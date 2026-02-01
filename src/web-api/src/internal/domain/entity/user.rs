@@ -1,4 +1,4 @@
-use crate::internal::domain::value_object::{Id, Role};
+use crate::internal::domain::value_object::{Id, Role, UserName};
 use chrono::{DateTime, Utc};
 use uuid::{NoContext, Timestamp, Uuid};
 
@@ -6,7 +6,7 @@ use uuid::{NoContext, Timestamp, Uuid};
 pub struct User {
     uuid: Uuid,
     id: Id,
-    name: String,
+    name: UserName,
     role: Role,
     password_hash: String,
     created_by: Uuid,
@@ -24,7 +24,7 @@ impl User {
         &self.id
     }
 
-    pub fn name(&self) -> &str {
+    pub fn name(&self) -> &UserName {
         &self.name
     }
 
@@ -56,7 +56,7 @@ impl User {
     pub fn construct(
         uuid: Uuid,
         id: Id,
-        name: impl Into<String>,
+        name: UserName,
         role: Role,
         password_hash: impl Into<String>,
         created_by: Uuid,
@@ -67,7 +67,7 @@ impl User {
         Self {
             uuid,
             id,
-            name: name.into(),
+            name,
             role,
             password_hash: password_hash.into(),
             created_by,
@@ -79,7 +79,7 @@ impl User {
 
     pub fn create(
         id: Id,
-        name: impl Into<String>,
+        name: UserName,
         role: Role,
         password_hash: impl Into<String>,
         created_by: Uuid,
@@ -90,7 +90,7 @@ impl User {
         Self {
             uuid: Uuid::new_v7(timestamp),
             id,
-            name: name.into(),
+            name,
             role,
             password_hash: password_hash.into(),
             created_by,
@@ -107,7 +107,7 @@ impl User {
     pub fn update(
         &mut self,
         id: Id,
-        name: impl Into<String>,
+        name: UserName,
         role: Role,
         password_hash: impl Into<String>,
         updated_by: Uuid,
@@ -121,7 +121,6 @@ impl User {
         );
 
         // 変更がない場合は何もしない
-        let name = name.into();
         let password_hash = password_hash.into();
         if self.id == id
             && self.name == name
