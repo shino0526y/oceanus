@@ -37,7 +37,7 @@ impl IntoResponse for PresentationError {
 impl From<RepositoryError> for PresentationError {
     fn from(error: RepositoryError) -> Self {
         match error {
-            RepositoryError::AlreadyExists { .. } => PresentationError::Conflict(error.to_string()),
+            RepositoryError::Conflict { .. } => PresentationError::Conflict(error.to_string()),
             RepositoryError::NotFound { .. } => PresentationError::NotFound(error.to_string()),
             RepositoryError::Other { .. } => {
                 PresentationError::InternalServerError(error.to_string())

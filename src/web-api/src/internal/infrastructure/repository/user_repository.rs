@@ -145,7 +145,7 @@ impl UserRepository for PostgresUserRepository {
             if let Some(db_err) = e.as_database_error()
                 && db_err.is_unique_violation()
             {
-                return RepositoryError::AlreadyExists {
+                return RepositoryError::Conflict {
                     resource: "ユーザー".to_string(),
                     key: user.id().value().to_string(),
                 };
@@ -181,7 +181,7 @@ impl UserRepository for PostgresUserRepository {
             if let Some(db_err) = e.as_database_error()
                 && db_err.is_unique_violation()
             {
-                return RepositoryError::AlreadyExists {
+                return RepositoryError::Conflict {
                     resource: "ユーザー".to_string(),
                     key: user.id().value().to_string(),
                 };
@@ -320,9 +320,22 @@ impl UserRepository for TestUserRepository {
     }
 
     async fn add(&self, user: &User) -> Result<User, RepositoryError> {
-        let exists = self.find_by_id(user.id()).await?.is_some();
-        if exists {
-            return Err(RepositoryError::AlreadyExists {
+        // IDが既存ユーザーと競合する場合はエラー
+        if self.find_by_id(user.id()).await?.is_some() {
+            return Err(RepositoryError::Conflict {
+                resource: "ユーザー".to_string(),
+                key: user.id().value().to_string(),
+            });
+        }
+        // 名前が既存ユーザーと競合する場合はエラー
+        if self
+            .inner
+            .read()
+            .unwrap()
+            .values()
+            .any(|e| e.name() == user.name())
+        {
+            return Err(RepositoryError::Conflict {
                 resource: "ユーザー".to_string(),
                 key: user.id().value().to_string(),
             });
@@ -335,19 +348,56 @@ impl UserRepository for TestUserRepository {
         Ok(user.clone())
     }
 
-    async fn update(&self, old_id: &Id, user: &User) -> Result<User, RepositoryError> {
-        let uuid = self.find_uuid_by_id(old_id).unwrap();
+    async fn update(&self, target_id: &Id, user: &User) -> Result<User, RepositoryError> {
+        // 更新対象のユーザーが存在しない場合はエラー
+        let Some(existing_user) = self.find_by_id(target_id).await? else {
+            return Err(RepositoryError::NotFound {
+                resource: "ユーザー".to_string(),
+                key: target_id.value().to_string(),
+            });
+        };
+
+        // 更新後のIDが他のユーザーと競合する場合はエラー
+        if user.id() != existing_user.id() && self.find_by_id(user.id()).await?.is_some() {
+            return Err(RepositoryError::Conflict {
+                resource: "ユーザー".to_string(),
+                key: user.id().value().to_string(),
+            });
+        }
+        // 更新後の名前が他のユーザーと競合する場合はエラー
+        if user.name() != existing_user.name()
+            && self
+                .inner
+                .read()
+                .unwrap()
+                .values()
+                .any(|e| e.name() == user.name())
+        {
+            return Err(RepositoryError::Conflict {
+                resource: "ユーザー".to_string(),
+                key: user.id().value().to_string(),
+            });
+        }
+
+        let uuid = self.find_uuid_by_id(target_id).unwrap();
         self.inner.write().unwrap().insert(uuid, user.clone());
         Ok(user.clone())
     }
 
     async fn delete(
         &self,
-        id: &Id,
+        target_id: &Id,
         _deleted_by: &Uuid,
         _deleted_at: &DateTime<Utc>,
     ) -> Result<(), RepositoryError> {
-        let uuid = self.find_uuid_by_id(id).unwrap();
+        // 削除対象のユーザーが存在しない場合はエラー
+        let Some(uuid) = self.find_uuid_by_id(target_id) else {
+            return Err(RepositoryError::NotFound {
+                resource: "ユーザー".to_string(),
+                key: target_id.value().to_string(),
+            });
+        };
+
         self.inner.write().unwrap().remove(&uuid);
         Ok(())
     }

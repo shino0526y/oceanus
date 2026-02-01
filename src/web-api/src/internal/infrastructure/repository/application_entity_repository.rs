@@ -123,7 +123,7 @@ impl ApplicationEntityRepository for PostgresApplicationEntityRepository {
             if let Some(db_err) = e.as_database_error()
                 && db_err.is_unique_violation()
             {
-                return RepositoryError::AlreadyExists {
+                return RepositoryError::Conflict {
                     resource: "AEタイトル".to_string(),
                     key: entity.title().value().to_string(),
                 };
@@ -163,7 +163,7 @@ impl ApplicationEntityRepository for PostgresApplicationEntityRepository {
             if let Some(db_err) = e.as_database_error()
                 && db_err.is_unique_violation()
             {
-                return RepositoryError::AlreadyExists {
+                return RepositoryError::Conflict {
                     resource: "AEタイトル".to_string(),
                     key: entity.title().value().to_string(),
                 };
@@ -293,6 +293,26 @@ impl ApplicationEntityRepository for TestApplicationEntityRepository {
     }
 
     async fn add(&self, entity: &ApplicationEntity) -> Result<ApplicationEntity, RepositoryError> {
+        // タイトルが既存エンティティと競合する場合はエラー
+        if self.find_by_title(entity.title()).await?.is_some() {
+            return Err(RepositoryError::Conflict {
+                resource: "AEタイトル".to_string(),
+                key: entity.title().value().to_string(),
+            });
+        }
+        // ホスト名/IPアドレスとポート番号の組が既存エンティティと競合する場合はエラー
+        if self
+            .inner
+            .read()
+            .unwrap()
+            .values()
+            .any(|e| e.host() == entity.host() && e.port() == entity.port())
+        {
+            return Err(RepositoryError::Conflict {
+                resource: "AEタイトル".to_string(),
+                key: entity.title().value().to_string(),
+            });
+        }
         self.inner
             .write()
             .unwrap()
@@ -302,24 +322,63 @@ impl ApplicationEntityRepository for TestApplicationEntityRepository {
 
     async fn update(
         &self,
-        _old_title: &AeValue,
+        target_title: &AeValue,
         application_entity: &ApplicationEntity,
     ) -> Result<ApplicationEntity, RepositoryError> {
-        let uuid = self.find_uuid_by_title(application_entity.title()).unwrap();
+        // 更新対象のエンティティが存在しない場合はエラー
+        let Some(existing_uuid) = self.find_uuid_by_title(target_title) else {
+            return Err(RepositoryError::NotFound {
+                resource: "AEタイトル".to_string(),
+                key: target_title.value().to_string(),
+            });
+        };
+
+        // 更新後のタイトルが他のエンティティと重複する場合はエラー
+        let inner = self.inner.read().unwrap();
+        if application_entity.title() != target_title
+            && inner
+                .values()
+                .any(|e| e.title() == application_entity.title())
+        {
+            return Err(RepositoryError::Conflict {
+                resource: "AEタイトル".to_string(),
+                key: application_entity.title().value().to_string(),
+            });
+        }
+        // 更新後のホスト名/IPアドレスとポート番号の組が他のエンティティと重複する場合はエラー
+        if inner.values().any(|e| {
+            e.uuid() != &existing_uuid
+                && e.host() == application_entity.host()
+                && e.port() == application_entity.port()
+        }) {
+            return Err(RepositoryError::Conflict {
+                resource: "AEタイトル".to_string(),
+                key: application_entity.title().value().to_string(),
+            });
+        }
+        drop(inner);
+
         self.inner
             .write()
             .unwrap()
-            .insert(uuid, application_entity.clone());
+            .insert(existing_uuid, application_entity.clone());
         Ok(application_entity.clone())
     }
 
     async fn delete(
         &self,
-        title: &AeValue,
+        target_title: &AeValue,
         _deleted_by: &Uuid,
         _deleted_at: &DateTime<Utc>,
     ) -> Result<(), RepositoryError> {
-        let uuid = self.find_uuid_by_title(title).unwrap();
+        // 削除対象のタイトルを持つエンティティが存在しない場合はエラー
+        let Some(uuid) = self.find_uuid_by_title(target_title) else {
+            return Err(RepositoryError::NotFound {
+                resource: "AEタイトル".to_string(),
+                key: target_title.value().to_string(),
+            });
+        };
+
         self.inner.write().unwrap().remove(&uuid);
         Ok(())
     }

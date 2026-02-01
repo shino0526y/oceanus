@@ -2,9 +2,9 @@ use thiserror::Error;
 
 #[derive(Debug, Clone, Error)]
 pub enum RepositoryError {
-    /// リソースが既に存在している(重複エラー)
-    #[error("{resource} '{key}' は既に存在しています")]
-    AlreadyExists { resource: String, key: String },
+    /// データが競合する（一意制約違反）
+    #[error("{resource} '{key}' とデータが競合します")]
+    Conflict { resource: String, key: String },
     /// リソースが見つからない
     #[error("{resource} '{key}' が見つかりません")]
     NotFound { resource: String, key: String },

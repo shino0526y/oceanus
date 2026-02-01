@@ -571,127 +571,113 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn インプットのユーザーIDが不正な場合は422エラーになる() {
+    async fn すでに存在するユーザーと競合する内容でユーザーを更新しようとすると409エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let inputs = [
-            json!({ // フィールドがない
+            json!({ // IDが既存ユーザーと競合
+                "id": "technician", // 既存の技師ユーザーと同じID
+                "name": "John Doe",
+                "role": 3, // Technician
+                "password": "Password#1234",
+            }),
+            json!({ // 名前が既存ユーザーと競合
+                "id": "john",
+                "name": "技師 太郎", // 既存の技師ユーザーと同じ名前
+                "role": 3, // Technician
+                "password": "Password#1234",
+            }),
+        ];
+        let requests = inputs.iter().map(|input| {
+            Request::builder()
+                .method("PUT")
+                .uri("/users/doctor") // 既存の医師ユーザーを更新しようとする
+                .header("content-type", "application/json")
+                .header("cookie", format!("session_id={}", session_id))
+                .header("x-csrf-token", &csrf_token)
+                .body(Body::from(serde_json::to_string(&input).unwrap()))
+                .unwrap()
+        });
+
+        // Act
+        let responses = requests
+            .map(async |req| router.clone().oneshot(req).await.unwrap())
+            .collect::<JoinAll<_>>()
+            .await;
+
+        // Assert
+        responses.iter().for_each(|response| {
+            assert_eq!(response.status(), StatusCode::CONFLICT);
+        });
+    }
+
+    #[tokio::test]
+    async fn リクエストボディのバリデーション違反の場合に422エラーになる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let app_state = utils::make_app_state(&repos);
+        let router = make_router(app_state, &repos);
+        let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let inputs = [
+            json!({ // IDのフィールドがない
                 "name": "John Doe",
                 "role": 2, // Doctor
                 "password": null,
             }),
-            json!({ // 空文字
+            json!({ // IDが空文字
                 "id": "",
                 "name": "John Doe",
                 "role": 2, // Doctor
                 "password": null,
             }),
-            json!({ // 空白を含む
+            json!({ // IDに空白を含む
                 "id": "john doe",
                 "name": "John Doe",
                 "role": 2, // Doctor
                 "password": null,
             }),
-        ];
-        let requests = inputs.iter().map(|input| {
-            Request::builder()
-                .method("PUT")
-                .uri("/users/doctor")
-                .header("content-type", "application/json")
-                .header("cookie", format!("session_id={}", session_id))
-                .header("x-csrf-token", &csrf_token)
-                .body(Body::from(serde_json::to_string(input).unwrap()))
-                .unwrap()
-        });
-
-        // Act
-        let responses = requests
-            .map(async |request| router.clone().oneshot(request).await.unwrap())
-            .collect::<JoinAll<_>>()
-            .await;
-
-        // Assert
-        responses.iter().for_each(|response| {
-            assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
-        });
-    }
-
-    #[tokio::test]
-    async fn インプットのユーザー名が不正な場合は422エラーになる() {
-        // Arrange
-        let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
-        let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
-        let inputs = [
-            json!({ // フィールドがない
+            json!({ // 名前のフィールドがない
                 "id": "john",
                 "role": 2, // Doctor
                 "password": null,
             }),
-            json!({ // 空文字
+            json!({ // 名前が空文字
                 "id": "john",
                 "name": "",
                 "role": 2, // Doctor
                 "password": null,
             }),
-            json!({ // 空白のみ
+            json!({ // 名前が空白のみ
                 "id": "john",
                 "name": " ",
                 "role": 2, // Doctor
                 "password": null,
             }),
-        ];
-        let requests = inputs.iter().map(|input| {
-            Request::builder()
-                .method("PUT")
-                .uri("/users/doctor")
-                .header("content-type", "application/json")
-                .header("cookie", format!("session_id={}", session_id))
-                .header("x-csrf-token", &csrf_token)
-                .body(Body::from(serde_json::to_string(input).unwrap()))
-                .unwrap()
-        });
-
-        // Act
-        let responses = requests
-            .map(async |request| router.clone().oneshot(request).await.unwrap())
-            .collect::<JoinAll<_>>()
-            .await;
-
-        // Assert
-        responses.iter().for_each(|response| {
-            assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
-        });
-    }
-
-    #[tokio::test]
-    async fn インプットのロールが不正な場合は422エラーになる() {
-        // Arrange
-        let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
-        let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
-        let inputs = [
-            json!({ // フィールドがない
+            json!({ // ロールのフィールドがない
                 "id": "john",
                 "name": "John Doe",
                 "password": null,
             }),
-            json!({ // 負の値
+            json!({ // ロールが負の値
                 "id": "john",
                 "name": "John Doe",
                 "role": -1,
                 "password": null,
             }),
-            json!({ // 5以上の値
+            json!({ // ロールが5以上の値
                 "id": "john",
                 "name": "John Doe",
                 "role": 5,
                 "password": null,
+            }),
+            json!({ // パスワードが空文字
+                "id": "john",
+                "name": "John Doe",
+                "role": 2, // Doctor
+                "password": "",
             }),
         ];
         let requests = inputs.iter().map(|input| {
@@ -715,34 +701,5 @@ mod tests {
         responses.iter().for_each(|response| {
             assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
         });
-    }
-
-    #[tokio::test]
-    async fn インプットのパスワードが不正な場合は422エラーになる() {
-        // Arrange
-        let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
-        let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
-        let input = json!({ // 空文字
-            "id": "john",
-            "name": "John Doe",
-            "role": 2, // Doctor
-            "password": "",
-        });
-        let request = Request::builder()
-            .method("PUT")
-            .uri("/users/doctor")
-            .header("content-type", "application/json")
-            .header("cookie", format!("session_id={}", session_id))
-            .header("x-csrf-token", &csrf_token)
-            .body(Body::from(serde_json::to_string(&input).unwrap()))
-            .unwrap();
-
-        // Act
-        let response = router.clone().oneshot(request).await.unwrap();
-
-        // Assert
-        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
     }
 }
