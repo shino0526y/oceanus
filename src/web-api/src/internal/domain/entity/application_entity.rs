@@ -1,4 +1,4 @@
-use crate::internal::domain::value_object::Port;
+use crate::internal::domain::value_object::{HostName, Port};
 use chrono::{DateTime, Utc};
 use dicom_lib::core::value::value_representations::ae::AeValue;
 use uuid::{NoContext, Timestamp, Uuid};
@@ -7,7 +7,7 @@ use uuid::{NoContext, Timestamp, Uuid};
 pub struct ApplicationEntity {
     uuid: Uuid,
     title: AeValue,
-    host: String,
+    host: HostName,
     port: Port,
     comment: String,
     created_by: Uuid,
@@ -25,7 +25,7 @@ impl ApplicationEntity {
         &self.title
     }
 
-    pub fn host(&self) -> &str {
+    pub fn host(&self) -> &HostName {
         &self.host
     }
 
@@ -57,7 +57,7 @@ impl ApplicationEntity {
     pub fn construct(
         uuid: Uuid,
         title: AeValue,
-        host: impl Into<String>,
+        host: HostName,
         port: Port,
         comment: impl Into<String>,
         created_by: Uuid,
@@ -68,7 +68,7 @@ impl ApplicationEntity {
         Self {
             uuid,
             title,
-            host: host.into(),
+            host,
             port,
             comment: comment.into(),
             created_by,
@@ -80,7 +80,7 @@ impl ApplicationEntity {
 
     pub fn create(
         title: AeValue,
-        host: impl Into<String>,
+        host: HostName,
         port: Port,
         comment: impl Into<String>,
         created_by: Uuid,
@@ -91,7 +91,7 @@ impl ApplicationEntity {
         Self {
             uuid: Uuid::new_v7(timestamp),
             title,
-            host: host.into(),
+            host,
             port,
             comment: comment.into(),
             created_by,
@@ -108,7 +108,7 @@ impl ApplicationEntity {
     pub fn update(
         &mut self,
         title: AeValue,
-        host: impl Into<String>,
+        host: HostName,
         port: Port,
         comment: impl Into<String>,
         updated_by: Uuid,
@@ -122,7 +122,6 @@ impl ApplicationEntity {
         );
 
         // 変更がない場合は何もしない
-        let host = host.into();
         let comment = comment.into();
         if title == self.title && host == self.host && port == self.port && comment == self.comment
         {

@@ -7,7 +7,7 @@ use crate::{
     AppState,
     internal::{
         application::application_entity::update_application_entity_use_case::UpdateApplicationEntityCommand,
-        domain::value_object::Port,
+        domain::value_object::{HostName, Port},
         presentation::{error::PresentationError, middleware::AuthenticatedUser},
     },
 };
@@ -50,6 +50,8 @@ pub async fn update_application_entity(
     let title = AeValue::from_string(&input.title).map_err(|e| {
         PresentationError::UnprocessableContent(format!("AEタイトルが不正です: {e}"))
     })?;
+    let host = HostName::new(&input.host)
+        .map_err(|e| PresentationError::UnprocessableContent(format!("ホスト名が不正です: {e}")))?;
     let port = Port::from_u16(input.port).map_err(|e| {
         PresentationError::UnprocessableContent(format!("ポート番号が不正です: {e}"))
     })?;
@@ -58,7 +60,7 @@ pub async fn update_application_entity(
     let command = UpdateApplicationEntityCommand {
         old_title,
         title,
-        host: input.host,
+        host,
         port,
         comment: input.comment,
         updated_by: user.uuid(),

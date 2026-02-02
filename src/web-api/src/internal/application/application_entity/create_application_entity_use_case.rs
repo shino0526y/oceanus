@@ -1,6 +1,8 @@
 use crate::internal::domain::{
-    entity::ApplicationEntity, error::RepositoryError, repository::ApplicationEntityRepository,
-    value_object::Port,
+    entity::ApplicationEntity,
+    error::RepositoryError,
+    repository::ApplicationEntityRepository,
+    value_object::{HostName, Port},
 };
 use chrono::{DateTime, Utc};
 use dicom_lib::core::value::value_representations::ae::AeValue;
@@ -13,7 +15,7 @@ pub struct CreateApplicationEntityUseCase {
 
 pub struct CreateApplicationEntityCommand {
     pub title: AeValue,
-    pub host: String,
+    pub host: HostName,
     pub port: Port,
     pub comment: String,
     pub created_by: Uuid,

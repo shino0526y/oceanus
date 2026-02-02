@@ -17,7 +17,7 @@ async fn prepare_test_data() -> crate::utils::Repositories {
             domain::{
                 entity::{ApplicationEntity, User},
                 repository::{ApplicationEntityRepository, UserRepository},
-                value_object::{Id, Port, Role, UserName},
+                value_object::{HostName, Id, Port, Role, UserName},
             },
             infrastructure::repository::{TestApplicationEntityRepository, TestUserRepository},
         },
@@ -67,7 +67,7 @@ async fn prepare_test_data() -> crate::utils::Repositories {
         .add(&ApplicationEntity::construct(
             Uuid::from_str("019bdbbf-e0c2-7c24-8c21-5132ac857f26").unwrap(),
             AeValue::from_string("DCMTK").unwrap(),
-            "localhost",
+            HostName::new("localhost").unwrap(),
             Port::from_u16(11112).unwrap(),
             "開発＆デバッグ用",
             Uuid::from_str("019bdbbe-0dcc-7474-8b43-95b89ca8b4fd").unwrap(),

@@ -1,6 +1,8 @@
 use crate::internal::domain::{
-    entity::ApplicationEntity, error::RepositoryError, repository::ApplicationEntityRepository,
-    value_object::Port,
+    entity::ApplicationEntity,
+    error::RepositoryError,
+    repository::ApplicationEntityRepository,
+    value_object::{HostName, Port},
 };
 use chrono::{DateTime, Utc};
 use dicom_lib::core::value::value_representations::ae::AeValue;
@@ -26,11 +28,12 @@ impl TryFrom<ApplicationEntityRecord> for ApplicationEntity {
     fn try_from(record: ApplicationEntityRecord) -> Result<Self, Self::Error> {
         let title = AeValue::from_string(&record.title)
             .map_err(|e| format!("AEタイトルが不正です: {e}"))?;
+        let host = HostName::new(record.host).map_err(|e| format!("ホスト名が不正です: {e}"))?;
         let port = Port::from_i32(record.port).map_err(|e| format!("ポート番号が不正です: {e}"))?;
         Ok(ApplicationEntity::construct(
             record.uuid,
             title,
-            record.host,
+            host,
             port,
             record.comment,
             record.created_by,
@@ -110,7 +113,7 @@ impl ApplicationEntityRepository for PostgresApplicationEntityRepository {
         )
         .bind(entity.uuid())
         .bind(entity.title().value())
-        .bind(entity.host())
+        .bind(entity.host().value())
         .bind(entity.port().value() as i32)
         .bind(entity.comment())
         .bind(entity.created_by())
@@ -151,7 +154,7 @@ impl ApplicationEntityRepository for PostgresApplicationEntityRepository {
              RETURNING uuid, title, host, port, comment, created_by, created_at, updated_by, updated_at",
         )
         .bind(entity.title().value())
-        .bind(entity.host())
+        .bind(entity.host().value())
         .bind(entity.port().value() as i32)
         .bind(entity.comment())
         .bind(entity.updated_by())

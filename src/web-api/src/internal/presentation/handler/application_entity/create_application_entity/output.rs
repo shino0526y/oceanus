@@ -18,7 +18,7 @@ impl From<ApplicationEntity> for CreateApplicationEntityOutput {
     fn from(entity: ApplicationEntity) -> Self {
         Self {
             title: entity.title().to_string(),
-            host: entity.host().to_string(),
+            host: entity.host().value().to_string(),
             port: entity.port().value(),
             comment: entity.comment().to_string(),
             created_at: *entity.created_at(),

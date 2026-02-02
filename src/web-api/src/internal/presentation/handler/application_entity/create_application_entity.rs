@@ -7,7 +7,7 @@ use crate::{
     AppState,
     internal::{
         application::application_entity::create_application_entity_use_case::CreateApplicationEntityCommand,
-        domain::value_object::Port,
+        domain::value_object::{HostName, Port},
         presentation::{error::PresentationError, middleware::AuthenticatedUser},
     },
 };
@@ -40,6 +40,8 @@ pub async fn create_application_entity(
     let title = AeValue::from_string(&input.title).map_err(|e| {
         PresentationError::UnprocessableContent(format!("AEタイトルが不正です: {e}"))
     })?;
+    let host = HostName::new(&input.host)
+        .map_err(|e| PresentationError::UnprocessableContent(format!("ホスト名が不正です: {e}")))?;
     let port = Port::from_u16(input.port).map_err(|e| {
         PresentationError::UnprocessableContent(format!("ポート番号が不正です: {e}"))
     })?;
@@ -47,7 +49,7 @@ pub async fn create_application_entity(
     // 登録処理
     let command = CreateApplicationEntityCommand {
         title,
-        host: input.host,
+        host,
         port,
         comment: input.comment,
         created_by: user.uuid(),
@@ -132,7 +134,7 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        assert_eq!(stored.host(), "192.0.2.0");
+        assert_eq!(stored.host().value(), "192.0.2.0");
         assert_eq!(stored.port().value(), 104);
         assert_eq!(stored.comment(), "");
         assert_eq!(
@@ -192,7 +194,7 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        assert_eq!(stored.host(), "192.0.2.0");
+        assert_eq!(stored.host().value(), "192.0.2.0");
         assert_eq!(stored.port().value(), 104);
         assert_eq!(stored.comment(), "");
         assert_eq!(
@@ -311,6 +313,12 @@ mod tests {
             json!({ // ホスト名が空文字
                 "title": "TEST",
                 "host": "",
+                "port": 104,
+                "comment": "",
+            }),
+            json!({ // ホスト名に不正な文字が含まれる
+                "title": "TEST",
+                "host": "invalid_host_name!",
                 "port": 104,
                 "comment": "",
             }),
