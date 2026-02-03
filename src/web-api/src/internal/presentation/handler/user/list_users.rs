@@ -121,7 +121,7 @@ mod tests {
             .await
             .unwrap();
         let body: Value = serde_json::from_slice(&bytes).unwrap();
-        // `管理者はユーザー一覧を取得できる`でアウトプットの中身は確認しているのでここでは件数のみ確認
+        // `管理者はユーザー一覧を取得できる`でレスポンスボディの中身は確認しているのでここでは件数のみ確認
         assert_eq!(body.as_array().unwrap().len(), 4);
     }
 

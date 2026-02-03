@@ -35,3 +35,119 @@ pub async fn list_application_entities(
 
     Ok(Json(output))
 }
+
+#[allow(non_snake_case)]
+#[cfg(test)]
+mod tests {
+    use crate::{
+        internal::presentation::{
+            handler::application_entity::prepare_test_data, util::test_helpers,
+        },
+        utils::{self, make_router},
+    };
+    use axum::{
+        body::{self, Body},
+        http::{Request, StatusCode},
+    };
+    use chrono::{DateTime, Utc};
+    use serde_json::Value;
+    use std::str::FromStr;
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn 管理者はアプリケーションエンティティ一覧を取得できる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let app_state = utils::make_app_state(&repos);
+        let router = make_router(app_state, &repos);
+        let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let request = Request::builder()
+            .method("GET")
+            .uri("/application-entities")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={session_id}"))
+            .header("x-csrf-token", &csrf_token)
+            .body(Body::empty())
+            .unwrap();
+
+        // Act
+        let response = router.clone().oneshot(request).await.unwrap();
+
+        // Assert
+        assert_eq!(response.status(), StatusCode::OK);
+        let bytes = body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let body: Value = serde_json::from_slice(&bytes).unwrap();
+        let entities = body.as_array().unwrap();
+        assert_eq!(entities.len(), 1);
+        let entity = &entities[0];
+        assert_eq!(entity["title"], "DCMTK");
+        assert_eq!(entity["host"], "localhost");
+        assert_eq!(entity["port"], 11112);
+        assert_eq!(entity["comment"], "開発＆デバッグ用");
+        let created_at = DateTime::<Utc>::from_str(entity["createdAt"].as_str().unwrap()).unwrap();
+        assert_eq!(
+            created_at,
+            DateTime::<Utc>::from_str("2026-01-20T23:12:23.874+09:00").unwrap()
+        );
+        let updated_at = DateTime::<Utc>::from_str(entity["updatedAt"].as_str().unwrap()).unwrap();
+        assert_eq!(
+            updated_at,
+            DateTime::<Utc>::from_str("2026-01-20T23:12:23.874+09:00").unwrap()
+        );
+    }
+
+    #[tokio::test]
+    async fn 情シスはアプリケーションエンティティ一覧を取得できる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let app_state = utils::make_app_state(&repos);
+        let router = make_router(app_state, &repos);
+        let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
+        let request = Request::builder()
+            .method("GET")
+            .uri("/application-entities")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={session_id}"))
+            .header("x-csrf-token", &csrf_token)
+            .body(Body::empty())
+            .unwrap();
+
+        // Act
+        let response = router.clone().oneshot(request).await.unwrap();
+
+        // Assert
+        assert_eq!(response.status(), StatusCode::OK);
+        let bytes = body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let body: Value = serde_json::from_slice(&bytes).unwrap();
+        // `管理者はアプリケーションエンティティ一覧を取得できる`でレスポンスボディの中身は確認しているのでここでは件数のみ確認
+        assert_eq!(body.as_array().unwrap().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn 管理者でも情シスでもないユーザーがAE一覧を取得しようとすると403エラーになる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let app_state = utils::make_app_state(&repos);
+        let router = make_router(app_state, &repos);
+        let (session_id, csrf_token) =
+            test_helpers::login(&router, "technician", "Password#1234").await;
+        let request = Request::builder()
+            .method("GET")
+            .uri("/application-entities")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={session_id}"))
+            .header("x-csrf-token", &csrf_token)
+            .body(Body::empty())
+            .unwrap();
+
+        // Act
+        let response = router.clone().oneshot(request).await.unwrap();
+
+        // Assert
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    }
+}
