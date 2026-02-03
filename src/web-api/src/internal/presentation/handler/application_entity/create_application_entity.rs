@@ -70,8 +70,9 @@ pub async fn create_application_entity(
 #[cfg(test)]
 mod tests {
     use crate::{
-        internal::presentation::handler::application_entity::prepare_test_data,
-        internal::presentation::util::test_helpers,
+        internal::presentation::{
+            handler::application_entity::prepare_test_data, util::test_helpers,
+        },
         utils::{self, make_router},
     };
     use axum::{
@@ -93,9 +94,9 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
-        let input = json!({
-            "title": "TEST",
-            "host": "192.0.2.0",
+        let body = json!({
+            "title": "OsiriX",
+            "host": "192.0.2.1",
             "port": 104,
             "comment": "",
         });
@@ -105,21 +106,21 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
-            .body(Body::from(serde_json::to_string(&input).unwrap()))
+            .body(Body::from(serde_json::to_string(&body).unwrap()))
             .unwrap();
 
         // Act
         let response = router.clone().oneshot(request).await.unwrap();
 
         // Assert
-        // HTTPレスポンスの確認
+        // レスポンスの確認
         assert_eq!(response.status(), StatusCode::OK);
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
         let body: Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(body["title"], "TEST");
-        assert_eq!(body["host"], "192.0.2.0");
+        assert_eq!(body["title"], "OsiriX");
+        assert_eq!(body["host"], "192.0.2.1");
         assert_eq!(body["port"], 104);
         assert_eq!(body["comment"], "");
         let created_at = DateTime::from_str(body["createdAt"].as_str().unwrap()).unwrap();
@@ -130,11 +131,11 @@ mod tests {
         // リポジトリ内に正しく保存されていることの確認
         let stored = repos
             .application_entity_repository
-            .find_by_title(&AeValue::from_string("TEST").unwrap())
+            .find_by_title(&AeValue::from_string("OsiriX").unwrap())
             .await
             .unwrap()
             .unwrap();
-        assert_eq!(stored.host().value(), "192.0.2.0");
+        assert_eq!(stored.host().value(), "192.0.2.1");
         assert_eq!(stored.port().value(), 104);
         assert_eq!(stored.comment(), "");
         assert_eq!(
@@ -153,9 +154,9 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
-        let input = json!({
-            "title": "TEST",
-            "host": "192.0.2.0",
+        let body = json!({
+            "title": "OsiriX",
+            "host": "192.0.2.1",
             "port": 104,
             "comment": "",
         });
@@ -165,21 +166,21 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
-            .body(Body::from(serde_json::to_string(&input).unwrap()))
+            .body(Body::from(serde_json::to_string(&body).unwrap()))
             .unwrap();
 
         // Act
         let response = router.clone().oneshot(request).await.unwrap();
 
         // Assert
-        // HTTPレスポンスの確認
+        // レスポンスの確認
         assert_eq!(response.status(), StatusCode::OK);
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
         let body: Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(body["title"], "TEST");
-        assert_eq!(body["host"], "192.0.2.0");
+        assert_eq!(body["title"], "OsiriX");
+        assert_eq!(body["host"], "192.0.2.1");
         assert_eq!(body["port"], 104);
         assert_eq!(body["comment"], "");
         let created_at = DateTime::from_str(body["createdAt"].as_str().unwrap()).unwrap();
@@ -190,11 +191,11 @@ mod tests {
         // リポジトリ内に正しく保存されていることの確認
         let stored = repos
             .application_entity_repository
-            .find_by_title(&AeValue::from_string("TEST").unwrap())
+            .find_by_title(&AeValue::from_string("OsiriX").unwrap())
             .await
             .unwrap()
             .unwrap();
-        assert_eq!(stored.host().value(), "192.0.2.0");
+        assert_eq!(stored.host().value(), "192.0.2.1");
         assert_eq!(stored.port().value(), 104);
         assert_eq!(stored.comment(), "");
         assert_eq!(
@@ -214,9 +215,9 @@ mod tests {
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) =
             test_helpers::login(&router, "technician", "Password#1234").await;
-        let input = json!({
-            "title": "TEST",
-            "host": "192.0.2.0",
+        let body = json!({
+            "title": "OsiriX",
+            "host": "192.0.2.1",
             "port": 104,
             "comment": "",
         });
@@ -226,7 +227,7 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
-            .body(Body::from(serde_json::to_string(&input).unwrap()))
+            .body(Body::from(serde_json::to_string(&body).unwrap()))
             .unwrap();
 
         // Act
@@ -243,28 +244,28 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
-        let inputs = [
+        let bodies = [
             json!({
                 "title": "DCMTK", // タイトルが既存と競合
-                "host": "192.0.2.0",
+                "host": "192.0.2.1",
                 "port": 104,
                 "comment": "開発＆デバッグ用",
             }),
             json!({
-                "title": "TEST",
+                "title": "OsiriX",
                 "host": "localhost", // ホスト名とポート番号の組が既存と競合
                 "port": 11112,
                 "comment": "開発＆デバッグ用",
             }),
         ];
-        let requests = inputs.iter().map(|input| {
+        let requests = bodies.iter().map(|body| {
             Request::builder()
                 .method("POST")
                 .uri("/application-entities")
                 .header("content-type", "application/json")
                 .header("cookie", format!("session_id={session_id}"))
                 .header("x-csrf-token", &csrf_token)
-                .body(Body::from(serde_json::to_string(&input).unwrap()))
+                .body(Body::from(serde_json::to_string(&body).unwrap()))
                 .unwrap()
         });
 
@@ -287,72 +288,72 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
-        let inputs = [
+        let bodies = [
             json!({ // タイトルのフィールドがない
-                "host": "192.0.2.0",
+                "host": "192.0.2.1",
                 "port": 104,
                 "comment": "",
             }),
             json!({ // タイトルが空文字
                 "title": "",
-                "host": "192.0.2.0",
+                "host": "192.0.2.1",
                 "port": 104,
                 "comment": "",
             }),
             json!({ // タイトルが長すぎる(17文字)
                 "title": "12345678901234567",
-                "host": "192.0.2.0",
+                "host": "192.0.2.1",
                 "port": 104,
                 "comment": "",
             }),
             json!({ // ホスト名のフィールドがない
-                "title": "TEST",
+                "title": "OsiriX",
                 "port": 104,
                 "comment": "",
             }),
             json!({ // ホスト名が空文字
-                "title": "TEST",
+                "title": "OsiriX",
                 "host": "",
                 "port": 104,
                 "comment": "",
             }),
             json!({ // ホスト名に不正な文字が含まれる
-                "title": "TEST",
+                "title": "OsiriX",
                 "host": "invalid_host_name!",
                 "port": 104,
                 "comment": "",
             }),
             json!({ // ポート番号のフィールドがない
-                "title": "TEST",
-                "host": "192.0.2.0",
+                "title": "OsiriX",
+                "host": "192.0.2.1",
                 "comment": "",
             }),
             json!({ // ポート番号が不正(0)
-                "title": "TEST",
-                "host": "192.0.2.0",
+                "title": "OsiriX",
+                "host": "192.0.2.1",
                 "port": 0,
                 "comment": "",
             }),
             json!({ // ポート番号が不正(65536)
-                "title": "TEST",
-                "host": "192.0.2.0",
+                "title": "OsiriX",
+                "host": "192.0.2.1",
                 "port": 65536,
                 "comment": "",
             }),
             json!({ // コメントのフィールドがない
-                "title": "TEST",
-                "host": "192.0.2.0",
+                "title": "OsiriX",
+                "host": "192.0.2.1",
                 "port": 104,
             }),
         ];
-        let requests = inputs.iter().map(|input| {
+        let requests = bodies.iter().map(|body| {
             Request::builder()
                 .method("POST")
                 .uri("/application-entities")
                 .header("content-type", "application/json")
                 .header("cookie", format!("session_id={session_id}"))
                 .header("x-csrf-token", &csrf_token)
-                .body(Body::from(serde_json::to_string(&input).unwrap()))
+                .body(Body::from(serde_json::to_string(&body).unwrap()))
                 .unwrap()
         });
 

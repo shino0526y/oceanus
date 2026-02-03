@@ -5,7 +5,7 @@ pub mod me;
 pub use self::{login::login, logout::logout, me::me};
 
 #[cfg(test)]
-async fn prepare_test_data() -> crate::utils::Repositories {
+pub(crate) async fn prepare_test_data() -> crate::utils::Repositories {
     use crate::{
         internal::{
             domain::{

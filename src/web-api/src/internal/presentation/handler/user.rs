@@ -10,7 +10,7 @@ pub use self::{
 };
 
 #[cfg(test)]
-async fn prepare_test_data() -> crate::utils::Repositories {
+pub(crate) async fn prepare_test_data() -> crate::utils::Repositories {
     use crate::{
         internal::{
             domain::{

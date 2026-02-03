@@ -1,14 +1,13 @@
-use crate::internal::presentation::handler::auth::login::LoginOutput;
 use axum::{
     Router,
     body::{self, Body},
     http::Request,
 };
-use serde_json::json;
+use serde_json::{Value, json};
 use tower::ServiceExt;
 
 pub async fn login(router: &Router, user_id: &str, password: &str) -> (String, String) {
-    let input = json!({
+    let body = json!({
         "userId": user_id,
         "password": password,
     });
@@ -16,7 +15,7 @@ pub async fn login(router: &Router, user_id: &str, password: &str) -> (String, S
         .method("POST")
         .uri("/login")
         .header("content-type", "application/json")
-        .body(Body::from(serde_json::to_string(&input).unwrap()))
+        .body(Body::from(serde_json::to_string(&body).unwrap()))
         .unwrap();
 
     let response = router.clone().oneshot(request).await.unwrap();
@@ -38,7 +37,7 @@ pub async fn login(router: &Router, user_id: &str, password: &str) -> (String, S
     let bytes = body::to_bytes(response.into_body(), usize::MAX)
         .await
         .unwrap();
-    let parsed: LoginOutput = serde_json::from_slice(&bytes).unwrap();
+    let body: Value = serde_json::from_slice(&bytes).unwrap();
 
-    (session_id, parsed.csrf_token)
+    (session_id, body["csrfToken"].as_str().unwrap().to_string())
 }

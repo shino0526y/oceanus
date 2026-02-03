@@ -99,7 +99,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
-        let input = json!({
+        let body = json!({
             "id": "john",
             "name": "John Doe",
             "role": 2, // Doctor
@@ -111,25 +111,25 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
-            .body(Body::from(serde_json::to_string(&input).unwrap()))
+            .body(Body::from(serde_json::to_string(&body).unwrap()))
             .unwrap();
 
         // Act
         let response = router.clone().oneshot(request).await.unwrap();
 
         // Assert
-        // HTTPレスポンスの確認
+        // レスポンスの確認
         assert_eq!(response.status(), StatusCode::OK);
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
-        let output: Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(output["id"], "john");
-        assert_eq!(output["name"], "John Doe");
-        assert_eq!(output["role"], 2);
+        let body: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(body["id"], "john");
+        assert_eq!(body["name"], "John Doe");
+        assert_eq!(body["role"], 2);
         let now = Utc::now();
-        let created_at = DateTime::from_str(output["createdAt"].as_str().unwrap()).unwrap();
-        let updated_at = DateTime::<Utc>::from_str(output["updatedAt"].as_str().unwrap()).unwrap();
+        let created_at = DateTime::from_str(body["createdAt"].as_str().unwrap()).unwrap();
+        let updated_at = DateTime::<Utc>::from_str(body["updatedAt"].as_str().unwrap()).unwrap();
         assert!((now - created_at).num_seconds().abs() < 10);
         assert_eq!(updated_at, created_at);
         // リポジトリに反映されていることの確認
@@ -162,7 +162,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
-        let input = json!({
+        let body = json!({
             "id": "john",
             "name": "John Doe",
             "role": 2, // Doctor
@@ -174,25 +174,25 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
-            .body(Body::from(serde_json::to_string(&input).unwrap()))
+            .body(Body::from(serde_json::to_string(&body).unwrap()))
             .unwrap();
 
         // Act
         let response = router.clone().oneshot(request).await.unwrap();
 
         // Assert
-        // HTTPレスポンスの確認
+        // レスポンスの確認
         assert_eq!(response.status(), StatusCode::OK);
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
-        let output: Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(output["id"], "john");
-        assert_eq!(output["name"], "John Doe");
-        assert_eq!(output["role"], 2);
+        let body: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(body["id"], "john");
+        assert_eq!(body["name"], "John Doe");
+        assert_eq!(body["role"], 2);
         let now = Utc::now();
-        let created_at = DateTime::from_str(output["createdAt"].as_str().unwrap()).unwrap();
-        let updated_at = DateTime::<Utc>::from_str(output["updatedAt"].as_str().unwrap()).unwrap();
+        let created_at = DateTime::from_str(body["createdAt"].as_str().unwrap()).unwrap();
+        let updated_at = DateTime::<Utc>::from_str(body["updatedAt"].as_str().unwrap()).unwrap();
         assert!((now - created_at).num_seconds().abs() < 10);
         assert_eq!(updated_at, created_at);
         // リポジトリに反映されていることの確認
@@ -225,7 +225,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
-        let input = json!({
+        let body = json!({
             "id": "john",
             "name": "John Doe",
             "role": 0, // Admin
@@ -237,7 +237,7 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
-            .body(Body::from(serde_json::to_string(&input).unwrap()))
+            .body(Body::from(serde_json::to_string(&body).unwrap()))
             .unwrap();
 
         // Act
@@ -255,7 +255,7 @@ mod tests {
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) =
             test_helpers::login(&router, "technician", "Password#1234").await;
-        let input = json!({
+        let body = json!({
             "id": "john",
             "name": "John Doe",
             "role": 2, // Doctor
@@ -267,7 +267,7 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
-            .body(Body::from(serde_json::to_string(&input).unwrap()))
+            .body(Body::from(serde_json::to_string(&body).unwrap()))
             .unwrap();
 
         // Act
@@ -284,7 +284,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
-        let inputs = [
+        let bodies = [
             json!({ // IDが既存ユーザーと競合
                 "id": "doctor",
                 "name": "John Doe",
@@ -298,14 +298,14 @@ mod tests {
                 "password": "Password#1234",
             }),
         ];
-        let requests = inputs.iter().map(|input| {
+        let requests = bodies.iter().map(|body| {
             Request::builder()
                 .method("POST")
                 .uri("/users")
                 .header("content-type", "application/json")
                 .header("cookie", format!("session_id={session_id}"))
                 .header("x-csrf-token", &csrf_token)
-                .body(Body::from(serde_json::to_string(&input).unwrap()))
+                .body(Body::from(serde_json::to_string(&body).unwrap()))
                 .unwrap()
         });
 
@@ -328,7 +328,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
-        let inputs = [
+        let bodies = [
             json!({ // IDのフィールドがない
                 "name": "John Doe",
                 "role": 2, // Doctor
@@ -392,14 +392,14 @@ mod tests {
                 "password": "",
             }),
         ];
-        let requests = inputs.iter().map(|input| {
+        let requests = bodies.iter().map(|body| {
             Request::builder()
                 .method("POST")
                 .uri("/users")
                 .header("content-type", "application/json")
                 .header("cookie", format!("session_id={session_id}"))
                 .header("x-csrf-token", &csrf_token)
-                .body(Body::from(serde_json::to_string(&input).unwrap()))
+                .body(Body::from(serde_json::to_string(&body).unwrap()))
                 .unwrap()
         });
 

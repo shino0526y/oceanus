@@ -106,7 +106,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
-        let input = json!({
+        let body = json!({
             "id": "doctor",
             "name": "John Doe", // 名前を変更
             "role": 3, // ロールを技師に変更
@@ -118,25 +118,25 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
-            .body(Body::from(input.to_string()))
+            .body(Body::from(serde_json::to_string(&body).unwrap()))
             .unwrap();
 
         // Act
         let response = router.clone().oneshot(request).await.unwrap();
 
         // Assert
-        // HTTPレスポンスの確認
+        // レスポンスの確認
         assert_eq!(response.status(), StatusCode::OK);
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
-        let output: Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(output["id"], "doctor");
-        assert_eq!(output["name"], "John Doe");
-        assert_eq!(output["role"], 3);
-        assert_eq!(output["createdAt"], "2026-01-24T13:25:57.855Z");
+        let body: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(body["id"], "doctor");
+        assert_eq!(body["name"], "John Doe");
+        assert_eq!(body["role"], 3);
+        assert_eq!(body["createdAt"], "2026-01-24T13:25:57.855Z");
         let now = Utc::now();
-        let updated_at = DateTime::from_str(output["updatedAt"].as_str().unwrap()).unwrap();
+        let updated_at = DateTime::from_str(body["updatedAt"].as_str().unwrap()).unwrap();
         assert!((now - updated_at).num_seconds().abs() < 10);
         // リポジトリに保存された内容の確認
         let user = repos
@@ -161,7 +161,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
-        let input = json!({
+        let body = json!({
             "id": "john", // IDを変更
             "name": "医師 太郎",
             "role": 2,
@@ -173,25 +173,25 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
-            .body(Body::from(input.to_string()))
+            .body(Body::from(serde_json::to_string(&body).unwrap()))
             .unwrap();
 
         // Act
         let response = router.clone().oneshot(request).await.unwrap();
 
         // Assert
-        // HTTPレスポンスの確認
+        // レスポンスの確認
         assert_eq!(response.status(), StatusCode::OK);
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
-        let output: Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(output["id"], "john");
-        assert_eq!(output["name"], "医師 太郎");
-        assert_eq!(output["role"], 2);
-        assert_eq!(output["createdAt"], "2026-01-24T13:25:57.855Z");
+        let body: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(body["id"], "john");
+        assert_eq!(body["name"], "医師 太郎");
+        assert_eq!(body["role"], 2);
+        assert_eq!(body["createdAt"], "2026-01-24T13:25:57.855Z");
         let now = Utc::now();
-        let updated_at = DateTime::from_str(output["updatedAt"].as_str().unwrap()).unwrap();
+        let updated_at = DateTime::from_str(body["updatedAt"].as_str().unwrap()).unwrap();
         assert!((now - updated_at).num_seconds().abs() < 10);
         // リポジトリに保存された内容の確認
         let old_user = repos
@@ -220,7 +220,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
-        let input = json!({
+        let body = json!({
             "id": "doctor",
             "name": "医師 太郎",
             "role": 2,
@@ -232,25 +232,25 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
-            .body(Body::from(input.to_string()))
+            .body(Body::from(serde_json::to_string(&body).unwrap()))
             .unwrap();
 
         // Act
         let response = router.clone().oneshot(request).await.unwrap();
 
         // Assert
-        // HTTPレスポンスの確認
+        // レスポンスの確認
         assert_eq!(response.status(), StatusCode::OK);
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
-        let output: Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(output["id"], "doctor");
-        assert_eq!(output["name"], "医師 太郎");
-        assert_eq!(output["role"], 2);
-        assert_eq!(output["createdAt"], "2026-01-24T13:25:57.855Z");
+        let body: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(body["id"], "doctor");
+        assert_eq!(body["name"], "医師 太郎");
+        assert_eq!(body["role"], 2);
+        assert_eq!(body["createdAt"], "2026-01-24T13:25:57.855Z");
         let now = Utc::now();
-        let updated_at = DateTime::from_str(output["updatedAt"].as_str().unwrap()).unwrap();
+        let updated_at = DateTime::from_str(body["updatedAt"].as_str().unwrap()).unwrap();
         assert!((now - updated_at).num_seconds().abs() < 10);
         // リポジトリに保存された内容の確認
         let user = repos
@@ -277,7 +277,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
-        let input = json!({
+        let body = json!({
             "id": "doctor",
             "name": "John Doe", // 名前を変更
             "role": 3, // ロールを技師に変更
@@ -289,25 +289,25 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
-            .body(Body::from(input.to_string()))
+            .body(Body::from(serde_json::to_string(&body).unwrap()))
             .unwrap();
 
         // Act
         let response = router.clone().oneshot(request).await.unwrap();
 
         // Assert
-        // HTTPレスポンスの確認
+        // レスポンスの確認
         assert_eq!(response.status(), StatusCode::OK);
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
-        let output: Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(output["id"], "doctor");
-        assert_eq!(output["name"], "John Doe");
-        assert_eq!(output["role"], 3);
-        assert_eq!(output["createdAt"], "2026-01-24T13:25:57.855Z");
+        let body: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(body["id"], "doctor");
+        assert_eq!(body["name"], "John Doe");
+        assert_eq!(body["role"], 3);
+        assert_eq!(body["createdAt"], "2026-01-24T13:25:57.855Z");
         let now = Utc::now();
-        let updated_at = DateTime::from_str(output["updatedAt"].as_str().unwrap()).unwrap();
+        let updated_at = DateTime::from_str(body["updatedAt"].as_str().unwrap()).unwrap();
         assert!((now - updated_at).num_seconds().abs() < 10);
         // リポジトリに保存された内容の確認
         let user = repos
@@ -332,7 +332,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
-        let input = json!({
+        let body = json!({
             "id": "john", // IDを変更
             "name": "医師 太郎",
             "role": 2,
@@ -344,25 +344,25 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
-            .body(Body::from(input.to_string()))
+            .body(Body::from(serde_json::to_string(&body).unwrap()))
             .unwrap();
 
         // Act
         let response = router.clone().oneshot(request).await.unwrap();
 
         // Assert
-        // HTTPレスポンスの確認
+        // レスポンスの確認
         assert_eq!(response.status(), StatusCode::OK);
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
-        let output: Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(output["id"], "john");
-        assert_eq!(output["name"], "医師 太郎");
-        assert_eq!(output["role"], 2);
-        assert_eq!(output["createdAt"], "2026-01-24T13:25:57.855Z");
+        let body: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(body["id"], "john");
+        assert_eq!(body["name"], "医師 太郎");
+        assert_eq!(body["role"], 2);
+        assert_eq!(body["createdAt"], "2026-01-24T13:25:57.855Z");
         let now = Utc::now();
-        let updated_at = DateTime::from_str(output["updatedAt"].as_str().unwrap()).unwrap();
+        let updated_at = DateTime::from_str(body["updatedAt"].as_str().unwrap()).unwrap();
         assert!((now - updated_at).num_seconds().abs() < 10);
         // リポジトリに保存された内容の確認
         let old_user = repos
@@ -391,7 +391,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
-        let input = json!({
+        let body = json!({
             "id": "doctor",
             "name": "医師 太郎",
             "role": 2,
@@ -403,25 +403,25 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
-            .body(Body::from(input.to_string()))
+            .body(Body::from(serde_json::to_string(&body).unwrap()))
             .unwrap();
 
         // Act
         let response = router.clone().oneshot(request).await.unwrap();
 
         // Assert
-        // HTTPレスポンスの確認
+        // レスポンスの確認
         assert_eq!(response.status(), StatusCode::OK);
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
-        let output: Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(output["id"], "doctor");
-        assert_eq!(output["name"], "医師 太郎");
-        assert_eq!(output["role"], 2);
-        assert_eq!(output["createdAt"], "2026-01-24T13:25:57.855Z");
+        let body: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(body["id"], "doctor");
+        assert_eq!(body["name"], "医師 太郎");
+        assert_eq!(body["role"], 2);
+        assert_eq!(body["createdAt"], "2026-01-24T13:25:57.855Z");
         let now = Utc::now();
-        let updated_at = DateTime::from_str(output["updatedAt"].as_str().unwrap()).unwrap();
+        let updated_at = DateTime::from_str(body["updatedAt"].as_str().unwrap()).unwrap();
         assert!((now - updated_at).num_seconds().abs() < 10);
         // リポジトリに保存された内容の確認
         let user = repos
@@ -449,7 +449,7 @@ mod tests {
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) =
             test_helpers::login(&router, "technician", "Password#1234").await;
-        let input = json!({
+        let body = json!({
             "id": "doctor",
             "name": "John Doe",
             "role": 1,
@@ -461,7 +461,7 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
-            .body(Body::from(input.to_string()))
+            .body(Body::from(serde_json::to_string(&body).unwrap()))
             .unwrap();
 
         // Act
@@ -478,7 +478,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
-        let input = json!({
+        let body = json!({
             "id": "admin",
             "name": "John Doe", // 名前を変更しようとする
             "role": 0, // TODO: ロール変更を行ったら403エラーにならない。要修正
@@ -490,7 +490,7 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
-            .body(Body::from(input.to_string()))
+            .body(Body::from(serde_json::to_string(&body).unwrap()))
             .unwrap();
 
         // Act
@@ -507,7 +507,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
-        let input = json!({
+        let body = json!({
             "id": "doctor",
             "name": "医師 太郎",
             "role": 0, // 管理者に変更しようとする
@@ -519,7 +519,7 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
-            .body(Body::from(input.to_string()))
+            .body(Body::from(serde_json::to_string(&body).unwrap()))
             .unwrap();
 
         // Act
@@ -536,7 +536,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
-        let input = json!({
+        let body = json!({
             "id": "john",
             "name": "John Doe",
             "role": 2,
@@ -548,7 +548,7 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
-            .body(Body::from(input.to_string()))
+            .body(Body::from(serde_json::to_string(&body).unwrap()))
             .unwrap();
 
         // Act
@@ -565,7 +565,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
-        let inputs = [
+        let bodies = [
             json!({ // IDが既存ユーザーと競合
                 "id": "technician", // 既存の技師ユーザーと同じID
                 "name": "John Doe",
@@ -579,14 +579,14 @@ mod tests {
                 "password": "Password#1234",
             }),
         ];
-        let requests = inputs.iter().map(|input| {
+        let requests = bodies.iter().map(|body| {
             Request::builder()
                 .method("PUT")
                 .uri("/users/doctor") // 既存の医師ユーザーを更新しようとする
                 .header("content-type", "application/json")
                 .header("cookie", format!("session_id={session_id}"))
                 .header("x-csrf-token", &csrf_token)
-                .body(Body::from(serde_json::to_string(&input).unwrap()))
+                .body(Body::from(serde_json::to_string(&body).unwrap()))
                 .unwrap()
         });
 
@@ -609,7 +609,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
-        let inputs = [
+        let bodies = [
             json!({ // IDのフィールドがない
                 "name": "John Doe",
                 "role": 2, // Doctor
@@ -668,14 +668,14 @@ mod tests {
                 "password": "",
             }),
         ];
-        let requests = inputs.iter().map(|input| {
+        let requests = bodies.iter().map(|body| {
             Request::builder()
                 .method("PUT")
                 .uri("/users/doctor")
                 .header("content-type", "application/json")
                 .header("cookie", format!("session_id={session_id}"))
                 .header("x-csrf-token", &csrf_token)
-                .body(Body::from(serde_json::to_string(input).unwrap()))
+                .body(Body::from(serde_json::to_string(body).unwrap()))
                 .unwrap()
         });
 

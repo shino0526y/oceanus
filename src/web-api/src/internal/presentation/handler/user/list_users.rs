@@ -84,10 +84,10 @@ mod tests {
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
-        let output: Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(output.as_array().unwrap().len(), 4);
+        let body: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(body.as_array().unwrap().len(), 4);
         for (i, (id, name, role, dt)) in expected.iter().enumerate() {
-            let u = &output[i];
+            let u = &body[i];
             assert_eq!(u["id"], *id);
             assert_eq!(u["name"], *name);
             assert_eq!(u["role"], *role);
@@ -120,9 +120,9 @@ mod tests {
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
-        let output: Value = serde_json::from_slice(&bytes).unwrap();
+        let body: Value = serde_json::from_slice(&bytes).unwrap();
         // `管理者はユーザー一覧を取得できる`でアウトプットの中身は確認しているのでここでは件数のみ確認
-        assert_eq!(output.as_array().unwrap().len(), 4);
+        assert_eq!(body.as_array().unwrap().len(), 4);
     }
 
     #[tokio::test]

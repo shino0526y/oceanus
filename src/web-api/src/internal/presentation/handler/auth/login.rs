@@ -99,7 +99,6 @@ impl IntoResponse for LoginError {
 #[allow(non_snake_case)]
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::{
         internal::presentation::handler::auth::prepare_test_data,
         utils::{self, make_router},
@@ -110,7 +109,7 @@ mod tests {
     };
     use chrono::Utc;
     use futures::future::JoinAll;
-    use serde_json::json;
+    use serde_json::{Value, json};
     use std::str::FromStr;
     use tower::ServiceExt;
     use uuid::Uuid;
@@ -121,7 +120,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
-        let input = json!({
+        let body = json!({
             "userId": "doctor",
             "password": "Password#1234"
         });
@@ -129,7 +128,7 @@ mod tests {
             .method("POST")
             .uri("/login")
             .header("content-type", "application/json")
-            .body(Body::from(input.to_string()))
+            .body(Body::from(serde_json::to_string(&body).unwrap()))
             .unwrap();
 
         // Act
@@ -140,10 +139,10 @@ mod tests {
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
-        let output: LoginOutput = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(output.user_id, "doctor");
-        assert!(!output.csrf_token.is_empty());
-        assert_eq!(output.role, 2); // doctor
+        let body: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(body["userId"], "doctor");
+        assert!(!body["csrfToken"].as_str().unwrap().is_empty());
+        assert_eq!(body["role"], 2); // doctor
     }
 
     #[tokio::test]
@@ -152,7 +151,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
-        let input = json!({
+        let body = json!({
             "userId": "notfound",
             "password": "Password#1234"
         });
@@ -160,7 +159,7 @@ mod tests {
             .method("POST")
             .uri("/login")
             .header("content-type", "application/json")
-            .body(Body::from(input.to_string()))
+            .body(Body::from(serde_json::to_string(&body).unwrap()))
             .unwrap();
 
         // Act
@@ -176,7 +175,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
-        let input = json!({
+        let body = json!({
             "userId": "doctor",
             "password": "wrongpassword"
         });
@@ -184,7 +183,7 @@ mod tests {
             .method("POST")
             .uri("/login")
             .header("content-type", "application/json")
-            .body(Body::from(input.to_string()))
+            .body(Body::from(serde_json::to_string(&body).unwrap()))
             .unwrap();
 
         // Act
@@ -200,11 +199,11 @@ mod tests {
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
-        let wrong_input = json!({
+        let wrong_body = json!({
             "userId": "doctor",
             "password": "wrongpassword"
         });
-        let correct_input = json!({
+        let correct_body = json!({
             "userId": "doctor",
             "password": "Password#1234"
         });
@@ -213,7 +212,7 @@ mod tests {
                 .method("POST")
                 .uri("/login")
                 .header("content-type", "application/json")
-                .body(Body::from(wrong_input.to_string()))
+                .body(Body::from(serde_json::to_string(&wrong_body).unwrap()))
                 .unwrap()
         };
         let correct_request = || {
@@ -221,7 +220,7 @@ mod tests {
                 .method("POST")
                 .uri("/login")
                 .header("content-type", "application/json")
-                .body(Body::from(correct_input.to_string()))
+                .body(Body::from(serde_json::to_string(&correct_body).unwrap()))
                 .unwrap()
         };
 
@@ -268,7 +267,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
-        let inputs = [
+        let bodies = [
             json!({ // フィールドなし
                 "password": "Password#1234"
             }),
@@ -277,12 +276,12 @@ mod tests {
                 "password": "Password#1234"
             }),
         ];
-        let requests = inputs.iter().map(|input| {
+        let requests = bodies.iter().map(|body| {
             Request::builder()
                 .method("POST")
                 .uri("/login")
                 .header("content-type", "application/json")
-                .body(Body::from(input.to_string()))
+                .body(Body::from(serde_json::to_string(&body).unwrap()))
                 .unwrap()
         });
 

@@ -94,7 +94,7 @@ mod tests {
         let response = router.clone().oneshot(request).await.unwrap();
 
         // Assert
-        // HTTPレスポンスの確認
+        // レスポンスの確認
         assert_eq!(response.status(), StatusCode::NO_CONTENT);
         // ユーザーが削除されていることの確認
         assert!(
@@ -127,7 +127,7 @@ mod tests {
         let response = router.clone().oneshot(request).await.unwrap();
 
         // Assert
-        // HTTPレスポンスの確認
+        // レスポンスの確認
         assert_eq!(response.status(), StatusCode::NO_CONTENT);
         // ユーザーが削除されていることの確認
         assert!(

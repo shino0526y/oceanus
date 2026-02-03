@@ -109,7 +109,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
-        let input = json!({
+        let body = json!({
             "title": "OsiriX",
             "host": "192.0.2.1",
             "port": 104,
@@ -121,7 +121,7 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
-            .body(Body::from(serde_json::to_string(&input).unwrap()))
+            .body(Body::from(serde_json::to_string(&body).unwrap()))
             .unwrap();
 
         // Act
@@ -170,7 +170,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
-        let input = json!({
+        let body = json!({
             "title": "OsiriX",
             "host": "192.0.2.1",
             "port": 104,
@@ -182,7 +182,7 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
-            .body(Body::from(serde_json::to_string(&input).unwrap()))
+            .body(Body::from(serde_json::to_string(&body).unwrap()))
             .unwrap();
 
         // Act
@@ -231,7 +231,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
-        let input = json!({ // すでに存在するAEと同じ内容
+        let body = json!({ // すでに存在するAEと同じ内容
             "title": "DCMTK",
             "host": "localhost",
             "port": 11112,
@@ -243,7 +243,7 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
-            .body(Body::from(serde_json::to_string(&input).unwrap()))
+            .body(Body::from(serde_json::to_string(&body).unwrap()))
             .unwrap();
 
         // Act
@@ -281,7 +281,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
-        let input = json!({
+        let body = json!({
             "title": "OsiriX",
             "host": "192.0.2.1",
             "port": 104,
@@ -293,7 +293,7 @@ mod tests {
             .header("content-type", "application/json")
             .header("cookie", format!("session_id={session_id}"))
             .header("x-csrf-token", &csrf_token)
-            .body(Body::from(serde_json::to_string(&input).unwrap()))
+            .body(Body::from(serde_json::to_string(&body).unwrap()))
             .unwrap();
 
         // Act
@@ -323,7 +323,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
-        let inputs = [
+        let bodies = [
             json!({ // タイトルが既存と競合
                 "title": "OsiriX",
                 "host": "192.0.2.2",
@@ -337,14 +337,14 @@ mod tests {
                 "comment": "",
             }),
         ];
-        let requests = inputs.iter().map(|input| {
+        let requests = bodies.iter().map(|body| {
             Request::builder()
                 .method("PUT")
                 .uri("/application-entities/DCMTK")
                 .header("content-type", "application/json")
                 .header("cookie", format!("session_id={session_id}"))
                 .header("x-csrf-token", &csrf_token)
-                .body(Body::from(serde_json::to_string(&input).unwrap()))
+                .body(Body::from(serde_json::to_string(&body).unwrap()))
                 .unwrap()
         });
 
@@ -368,7 +368,7 @@ mod tests {
         let app_state = utils::make_app_state(&repos);
         let router = make_router(app_state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
-        let inputs = [
+        let bodies = [
             json!({ // タイトルが空文字
                 "title": "",
                 "host": "192.0.2.1",
@@ -406,14 +406,14 @@ mod tests {
                 "comment": "",
             }),
         ];
-        let requests = inputs.iter().map(|input| {
+        let requests = bodies.iter().map(|body| {
             Request::builder()
                 .method("PUT")
                 .uri("/application-entities/DCMTK")
                 .header("content-type", "application/json")
                 .header("cookie", format!("session_id={session_id}"))
                 .header("x-csrf-token", &csrf_token)
-                .body(Body::from(serde_json::to_string(&input).unwrap()))
+                .body(Body::from(serde_json::to_string(&body).unwrap()))
                 .unwrap()
         });
 
