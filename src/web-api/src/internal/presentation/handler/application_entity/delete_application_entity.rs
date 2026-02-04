@@ -57,3 +57,126 @@ pub async fn delete_application_entity(
 
     Ok(StatusCode::NO_CONTENT)
 }
+
+#[allow(non_snake_case)]
+#[cfg(test)]
+mod tests {
+    use crate::{
+        internal::presentation::{
+            handler::application_entity::prepare_test_data, util::test_helpers,
+        },
+        utils::{self, make_router},
+    };
+    use axum::{
+        body::Body,
+        http::{Request, StatusCode},
+    };
+    use dicom_lib::core::value::value_representations::ae::AeValue;
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn 管理者はアプリケーションエンティティを削除できる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let app_state = utils::make_app_state(&repos);
+        let router = make_router(app_state, &repos);
+        let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let request = Request::builder()
+            .method("DELETE")
+            .uri("/application-entities/DCMTK")
+            .header("cookie", format!("session_id={session_id}"))
+            .header("x-csrf-token", &csrf_token)
+            .body(Body::empty())
+            .unwrap();
+
+        // Act
+        let response = router.clone().oneshot(request).await.unwrap();
+
+        // Assert
+        // レスポンスの確認
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
+        // リポジトリから削除されていることの確認
+        let stored = repos
+            .application_entity_repository
+            .find_by_title(&AeValue::from_string("DCMTK").unwrap())
+            .await
+            .unwrap();
+        assert!(stored.is_none());
+    }
+
+    #[tokio::test]
+    async fn 情シスはアプリケーションエンティティを削除できる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let app_state = utils::make_app_state(&repos);
+        let router = make_router(app_state, &repos);
+        let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
+        let request = Request::builder()
+            .method("DELETE")
+            .uri("/application-entities/DCMTK")
+            .header("cookie", format!("session_id={session_id}"))
+            .header("x-csrf-token", &csrf_token)
+            .body(Body::empty())
+            .unwrap();
+
+        // Act
+        let response = router.clone().oneshot(request).await.unwrap();
+
+        // Assert
+        // レスポンスの確認
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
+        // リポジトリから削除されていることの確認
+        let stored = repos
+            .application_entity_repository
+            .find_by_title(&AeValue::from_string("DCMTK").unwrap())
+            .await
+            .unwrap();
+        assert!(stored.is_none());
+    }
+
+    #[tokio::test]
+    async fn 存在しないアプリケーションエンティティを削除しようとすると404エラーになる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let app_state = utils::make_app_state(&repos);
+        let router = make_router(app_state, &repos);
+        let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let request = Request::builder()
+            .method("DELETE")
+            .uri("/application-entities/OsiriX")
+            .header("cookie", format!("session_id={session_id}"))
+            .header("x-csrf-token", &csrf_token)
+            .body(Body::empty())
+            .unwrap();
+
+        // Act
+        let response = router.clone().oneshot(request).await.unwrap();
+
+        // Assert
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn 不正なAEタイトルの場合に422エラーになる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let app_state = utils::make_app_state(&repos);
+        let router = make_router(app_state, &repos);
+        let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
+        // AEタイトルは16文字以内である必要がある。17文字のタイトルを指定する。
+        let invalid_title = "A".repeat(17);
+        let request = Request::builder()
+            .method("DELETE")
+            .uri(format!("/application-entities/{invalid_title}"))
+            .header("cookie", format!("session_id={session_id}"))
+            .header("x-csrf-token", &csrf_token)
+            .body(Body::empty())
+            .unwrap();
+
+        // Act
+        let response = router.clone().oneshot(request).await.unwrap();
+
+        // Assert
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+}
