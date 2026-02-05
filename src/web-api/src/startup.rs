@@ -1,3 +1,27 @@
+use crate::internal::{
+    application::{
+        application_entity::{
+            CreateApplicationEntityUseCase, DeleteApplicationEntityUseCase,
+            ListApplicationEntitiesUseCase, UpdateApplicationEntityUseCase,
+        },
+        auth::{AuthenticateUserUseCase, LoginUseCase, LogoutUseCase},
+        session::{CreateSessionUseCase, DeleteSessionUseCase, ExtendSessionUseCase},
+        user::{
+            create_user_use_case::CreateUserUseCase, delete_user_use_case::DeleteUserUseCase,
+            list_users_use_case::ListUsersUseCase,
+            reset_login_failure_count_use_case::ResetLoginFailureCountUseCase,
+            update_user_use_case::UpdateUserUseCase,
+        },
+    },
+    domain::repository::{
+        ApplicationEntityRepository, LoginFailureCountRepository, SessionRepository, UserRepository,
+    },
+    infrastructure::repository::{
+        InMemorySessionRepository, PostgresApplicationEntityRepository,
+        PostgresLoginFailureCountRepository, PostgresUserRepository,
+    },
+    presentation::{self, handler},
+};
 use axum::{
     Router,
     routing::{delete, get, post, put},
@@ -7,43 +31,14 @@ use std::sync::Arc;
 use tower_cookies::CookieManagerLayer;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
-use crate::{
-    AppState,
-    internal::{
-        application::{
-            application_entity::{
-                CreateApplicationEntityUseCase, DeleteApplicationEntityUseCase,
-                ListApplicationEntitiesUseCase, UpdateApplicationEntityUseCase,
-            },
-            auth::{AuthenticateUserUseCase, LoginUseCase, LogoutUseCase},
-            session::{DeleteSessionUseCase, ExtendSessionUseCase},
-            user::{
-                create_user_use_case::CreateUserUseCase, delete_user_use_case::DeleteUserUseCase,
-                list_users_use_case::ListUsersUseCase,
-                reset_login_failure_count_use_case::ResetLoginFailureCountUseCase,
-                update_user_use_case::UpdateUserUseCase,
-            },
-        },
-        domain::repository::{
-            ApplicationEntityRepository, LoginFailureCountRepository, SessionRepository,
-            UserRepository,
-        },
-        infrastructure::repository::{
-            InMemorySessionRepository, PostgresApplicationEntityRepository,
-            PostgresLoginFailureCountRepository, PostgresUserRepository,
-        },
-        presentation::{self, handler},
-    },
-};
-
-pub struct Repositories {
+pub struct Repos {
     pub application_entity_repository: Arc<dyn ApplicationEntityRepository>,
     pub user_repository: Arc<dyn UserRepository>,
     pub login_failure_count_repository: Arc<dyn LoginFailureCountRepository>,
     pub session_repository: Arc<dyn SessionRepository>,
 }
 
-impl Repositories {
+impl Repos {
     pub fn new(pool: Pool<Postgres>) -> Self {
         Self {
             application_entity_repository: Arc::new(PostgresApplicationEntityRepository::new(
@@ -73,7 +68,23 @@ impl Repositories {
     }
 }
 
-pub fn make_app_state(repos: &Repositories) -> AppState {
+#[derive(Clone)]
+pub struct AppState {
+    pub create_application_entity_use_case: Arc<CreateApplicationEntityUseCase>,
+    pub list_application_entities_use_case: Arc<ListApplicationEntitiesUseCase>,
+    pub update_application_entity_use_case: Arc<UpdateApplicationEntityUseCase>,
+    pub delete_application_entity_use_case: Arc<DeleteApplicationEntityUseCase>,
+    pub create_user_use_case: Arc<CreateUserUseCase>,
+    pub list_users_use_case: Arc<ListUsersUseCase>,
+    pub update_user_use_case: Arc<UpdateUserUseCase>,
+    pub delete_user_use_case: Arc<DeleteUserUseCase>,
+    pub reset_login_failure_count_use_case: Arc<ResetLoginFailureCountUseCase>,
+    pub login_use_case: Arc<LoginUseCase>,
+    pub logout_use_case: Arc<LogoutUseCase>,
+    pub extend_session_use_case: Arc<ExtendSessionUseCase>,
+}
+
+pub fn make_state(repos: &Repos) -> AppState {
     let create_application_entity_use_case = Arc::new(CreateApplicationEntityUseCase::new(
         repos.application_entity_repository.clone(),
     ));
@@ -106,11 +117,8 @@ pub fn make_app_state(repos: &Repositories) -> AppState {
         repos.user_repository.clone(),
         repos.login_failure_count_repository.clone(),
     ));
-    let create_session_use_case = Arc::new(
-        crate::internal::application::session::CreateSessionUseCase::new(
-            repos.session_repository.clone(),
-        ),
-    );
+    let create_session_use_case =
+        Arc::new(CreateSessionUseCase::new(repos.session_repository.clone()));
     let login_use_case = Arc::new(LoginUseCase::new(
         authenticate_user_use_case,
         create_session_use_case,
@@ -139,13 +147,13 @@ pub fn make_app_state(repos: &Repositories) -> AppState {
     }
 }
 
-pub fn make_router(app_state: AppState, repos: &Repositories) -> Router {
+pub fn make_router(state: AppState, repos: &Repos) -> Router {
     let session_repository_for_me = repos.session_repository.clone();
     let user_repository_for_me = repos.user_repository.clone();
 
     let user_repository = repos.user_repository.clone();
 
-    let extend_session_use_case = app_state.extend_session_use_case.clone();
+    let extend_session_use_case = state.extend_session_use_case.clone();
 
     Router::new()
         // 認証不要なエンドポイント
@@ -211,5 +219,5 @@ pub fn make_router(app_state: AppState, repos: &Repositories) -> Router {
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())
         .layer(CookieManagerLayer::new())
-        .with_state(app_state)
+        .with_state(state)
 }

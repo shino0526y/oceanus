@@ -4,12 +4,12 @@ mod output;
 pub use self::{input::UpdateApplicationEntityInput, output::UpdateApplicationEntityOutput};
 
 use crate::{
-    AppState,
     internal::{
         application::application_entity::update_application_entity_use_case::UpdateApplicationEntityCommand,
         domain::value_object::{HostName, Port},
         presentation::{error::PresentationError, middleware::AuthenticatedUser},
     },
+    startup::AppState,
 };
 use axum::{
     Extension, Json,
@@ -80,15 +80,16 @@ pub async fn update_application_entity(
 #[allow(non_snake_case)]
 #[cfg(test)]
 mod tests {
+    use super::super::prepare_test_data;
     use crate::{
         internal::{
             domain::{
                 entity::ApplicationEntity,
                 value_object::{HostName, Port},
             },
-            presentation::{handler::application_entity::prepare_test_data, util::test_helpers},
+            presentation::util::test_helpers,
         },
-        utils::{self, make_router},
+        startup,
     };
     use axum::{
         body::{self, Body},
@@ -106,8 +107,8 @@ mod tests {
     async fn 管理者はAEを更新できる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let body = json!({
             "title": "OsiriX",
@@ -167,8 +168,8 @@ mod tests {
     async fn 情シスはAEを更新できる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let body = json!({
             "title": "OsiriX",
@@ -228,8 +229,8 @@ mod tests {
     async fn 内容に変更がない場合は更新されない() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let body = json!({ // すでに存在するAEと同じ内容
             "title": "DCMTK",
@@ -278,8 +279,8 @@ mod tests {
     async fn 存在しないAEを更新しようとすると404エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let body = json!({
             "title": "OsiriX",
@@ -315,13 +316,13 @@ mod tests {
                 HostName::new("192.0.2.1").unwrap(),
                 Port::from_u16(104).unwrap(),
                 "",
-                Uuid::from_str("019bdbbe-0dcc-7474-8b43-95b89ca8b4fd").unwrap(),
+                Uuid::parse_str("019bdbbe-0dcc-7474-8b43-95b89ca8b4fd").unwrap(),
                 Utc::now(),
             ))
             .await
             .unwrap();
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let bodies = [
             json!({ // タイトルが既存と競合
@@ -365,8 +366,8 @@ mod tests {
     async fn リクエストボディのバリデーション違反の場合に422エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let bodies = [
             json!({ // タイトルが空文字

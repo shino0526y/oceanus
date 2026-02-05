@@ -4,12 +4,12 @@ mod output;
 pub use self::{input::UpdateUserInput, output::UpdateUserOutput};
 
 use crate::{
-    AppState,
     internal::{
         application::user::update_user_use_case::{UpdateUserCommand, UpdateUserError},
         domain::value_object::{Id, Role, UserName},
         presentation::{error::PresentationError, middleware::AuthenticatedUser},
     },
+    startup::AppState,
 };
 use axum::{
     Extension, Json,
@@ -83,10 +83,10 @@ pub async fn update_user(
 #[allow(non_snake_case)]
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::super::prepare_test_data;
     use crate::{
-        internal::presentation::{handler::user::prepare_test_data, util::test_helpers},
-        utils::{self, make_router},
+        internal::{domain::value_object::Id, presentation::util::test_helpers},
+        startup,
     };
     use axum::{
         body::{self, Body},
@@ -103,8 +103,8 @@ mod tests {
     async fn 管理者はユーザー名とロールを変更できる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let body = json!({
             "id": "doctor",
@@ -149,7 +149,7 @@ mod tests {
         assert_eq!(user.role().as_i16(), 3);
         assert_eq!(
             user.updated_by(),
-            &Uuid::from_str("019bdbbe-0dcc-7474-8b43-95b89ca8b4fd").unwrap()
+            &Uuid::parse_str("019bdbbe-0dcc-7474-8b43-95b89ca8b4fd").unwrap()
         );
         assert!((now - *user.updated_at()).num_seconds().abs() < 10);
     }
@@ -158,8 +158,8 @@ mod tests {
     async fn 管理者はユーザーIDを変更できる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let body = json!({
             "id": "john", // IDを変更
@@ -208,7 +208,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             new_user.updated_by(),
-            &Uuid::from_str("019bdbbe-0dcc-7474-8b43-95b89ca8b4fd").unwrap()
+            &Uuid::parse_str("019bdbbe-0dcc-7474-8b43-95b89ca8b4fd").unwrap()
         );
         assert!((now - *new_user.updated_at()).num_seconds().abs() < 10);
     }
@@ -217,8 +217,8 @@ mod tests {
     async fn 管理者はパスワードを変更できる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let body = json!({
             "id": "doctor",
@@ -265,7 +265,7 @@ mod tests {
         );
         assert_eq!(
             user.updated_by(),
-            &Uuid::from_str("019bdbbe-0dcc-7474-8b43-95b89ca8b4fd").unwrap()
+            &Uuid::parse_str("019bdbbe-0dcc-7474-8b43-95b89ca8b4fd").unwrap()
         );
         assert!((now - *user.updated_at()).num_seconds().abs() < 10);
     }
@@ -274,8 +274,8 @@ mod tests {
     async fn 情シスはユーザー名とロールを変更できる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let body = json!({
             "id": "doctor",
@@ -320,7 +320,7 @@ mod tests {
         assert_eq!(user.role().as_i16(), 3);
         assert_eq!(
             user.updated_by(),
-            &Uuid::from_str("4922356e-d6a0-7083-8e18-93b7a023c328").unwrap()
+            &Uuid::parse_str("4922356e-d6a0-7083-8e18-93b7a023c328").unwrap()
         );
         assert!((now - *user.updated_at()).num_seconds().abs() < 10);
     }
@@ -329,8 +329,8 @@ mod tests {
     async fn 情シスはユーザーIDを変更できる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let body = json!({
             "id": "john", // IDを変更
@@ -379,7 +379,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             new_user.updated_by(),
-            &Uuid::from_str("4922356e-d6a0-7083-8e18-93b7a023c328").unwrap()
+            &Uuid::parse_str("4922356e-d6a0-7083-8e18-93b7a023c328").unwrap()
         );
         assert!((now - *new_user.updated_at()).num_seconds().abs() < 10);
     }
@@ -388,8 +388,8 @@ mod tests {
     async fn 情シスはパスワードを変更できる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let body = json!({
             "id": "doctor",
@@ -436,7 +436,7 @@ mod tests {
         );
         assert_eq!(
             user.updated_by(),
-            &Uuid::from_str("4922356e-d6a0-7083-8e18-93b7a023c328").unwrap()
+            &Uuid::parse_str("4922356e-d6a0-7083-8e18-93b7a023c328").unwrap()
         );
         assert!((now - *user.updated_at()).num_seconds().abs() < 10);
     }
@@ -445,8 +445,8 @@ mod tests {
     async fn 管理者でも情シスでもないユーザーが他のユーザーを変更しようとすると403エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) =
             test_helpers::login(&router, "technician", "Password#1234").await;
         let body = json!({
@@ -475,8 +475,8 @@ mod tests {
     async fn 情シスが管理者ユーザーを変更しようとすると403エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let body = json!({
             "id": "admin",
@@ -504,8 +504,8 @@ mod tests {
     async fn 情シスが管理者でないユーザーを管理者ユーザーに変更しようとすると403エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let body = json!({
             "id": "doctor",
@@ -533,8 +533,8 @@ mod tests {
     async fn 存在しないユーザーを変更しようとすると404エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let body = json!({
             "id": "john",
@@ -562,8 +562,8 @@ mod tests {
     async fn すでに存在するユーザーと競合する内容でユーザーを更新しようとすると409エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let bodies = [
             json!({ // IDが既存ユーザーと競合
@@ -606,8 +606,8 @@ mod tests {
     async fn リクエストボディのバリデーション違反の場合に422エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let bodies = [
             json!({ // IDのフィールドがない

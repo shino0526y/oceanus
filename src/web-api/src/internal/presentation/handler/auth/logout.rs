@@ -1,4 +1,4 @@
-use crate::{AppState, internal::presentation::util::CookieHelper};
+use crate::{internal::presentation::util::CookieHelper, startup::AppState};
 use axum::{
     Json,
     extract::State,

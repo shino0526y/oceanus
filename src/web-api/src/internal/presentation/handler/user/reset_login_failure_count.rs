@@ -1,5 +1,4 @@
 use crate::{
-    AppState,
     internal::{
         application::user::reset_login_failure_count_use_case::{
             ResetLoginFailureCountCommand, ResetLoginFailureCountError,
@@ -7,6 +6,7 @@ use crate::{
         domain::value_object::Id,
         presentation::{error::PresentationError, middleware::AuthenticatedUser},
     },
+    startup::AppState,
 };
 use axum::{
     Extension,
@@ -62,15 +62,18 @@ pub async fn reset_login_failure_count(
 #[allow(non_snake_case)]
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::super::prepare_test_data;
     use crate::{
         internal::{
-            domain::entity::LoginFailureCount,
-            presentation::{handler::user::prepare_test_data, util::test_helpers},
+            domain::{entity::LoginFailureCount, value_object::Id},
+            presentation::util::test_helpers,
         },
-        utils::{self, make_router},
+        startup,
     };
-    use axum::{body::Body, http::Request};
+    use axum::{
+        body::Body,
+        http::{Request, StatusCode},
+    };
     use chrono::DateTime;
     use std::str::FromStr;
     use tower::ServiceExt;
@@ -97,8 +100,8 @@ mod tests {
             .await
             .unwrap();
         // リクエストの準備
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
@@ -146,8 +149,8 @@ mod tests {
             .await
             .unwrap();
         // リクエストの準備
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
@@ -177,8 +180,8 @@ mod tests {
     async fn 管理者でも情シスでもないユーザーがリセットしようとすると403エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) =
             test_helpers::login(&router, "technician", "Password#1234").await;
         let request = Request::builder()
@@ -201,8 +204,8 @@ mod tests {
     async fn 情シスが管理者ユーザーのログイン失敗回数をリセットしようとすると403エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
@@ -224,8 +227,8 @@ mod tests {
     async fn 存在しないユーザーのログイン失敗回数をリセットしようとすると404エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
@@ -247,8 +250,8 @@ mod tests {
     async fn パスパラメータのユーザーIDが不正な場合は422エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")

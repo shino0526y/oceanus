@@ -1,10 +1,10 @@
 use crate::{
-    AppState,
     internal::{
         application::user::delete_user_use_case::{DeleteUserCommand, DeleteUserError},
         domain::value_object::Id,
         presentation::{error::PresentationError, middleware::AuthenticatedUser},
     },
+    startup::AppState,
 };
 use axum::{
     Extension,
@@ -66,20 +66,23 @@ pub async fn delete_user(
 #[allow(non_snake_case)]
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::super::prepare_test_data;
     use crate::{
-        internal::presentation::{handler::user::prepare_test_data, util::test_helpers},
-        utils::{self, make_router},
+        internal::{domain::value_object::Id, presentation::util::test_helpers},
+        startup,
     };
-    use axum::{body::Body, http::Request};
+    use axum::{
+        body::Body,
+        http::{Request, StatusCode},
+    };
     use tower::ServiceExt;
 
     #[tokio::test]
     async fn 管理者は他のユーザーを削除できる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
@@ -111,8 +114,8 @@ mod tests {
     async fn 情シスは他の管理者でないユーザーを削除できる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
@@ -144,8 +147,8 @@ mod tests {
     async fn 情シスが管理者を削除しようとすると403エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
@@ -167,8 +170,8 @@ mod tests {
     async fn 管理者や情シスでないユーザーがユーザーを削除しようとすると403エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) =
             test_helpers::login(&router, "technician", "Password#1234").await;
         let request = Request::builder()
@@ -191,8 +194,8 @@ mod tests {
     async fn 存在しないユーザーを削除しようとすると404エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
@@ -214,8 +217,8 @@ mod tests {
     async fn ユーザーIDを指定せず削除しようとすると405エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
@@ -237,8 +240,8 @@ mod tests {
     async fn 自分自身を削除しようとすると422エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")

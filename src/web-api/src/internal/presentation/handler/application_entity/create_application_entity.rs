@@ -4,12 +4,12 @@ mod output;
 pub use self::{input::CreateApplicationEntityInput, output::CreateApplicationEntityOutput};
 
 use crate::{
-    AppState,
     internal::{
         application::application_entity::create_application_entity_use_case::CreateApplicationEntityCommand,
         domain::value_object::{HostName, Port},
         presentation::{error::PresentationError, middleware::AuthenticatedUser},
     },
+    startup::AppState,
 };
 use axum::{Extension, Json, extract::State};
 use chrono::Utc;
@@ -69,12 +69,8 @@ pub async fn create_application_entity(
 #[allow(non_snake_case)]
 #[cfg(test)]
 mod tests {
-    use crate::{
-        internal::presentation::{
-            handler::application_entity::prepare_test_data, util::test_helpers,
-        },
-        utils::{self, make_router},
-    };
+    use super::super::prepare_test_data;
+    use crate::{internal::presentation::util::test_helpers, startup};
     use axum::{
         body::{self, Body},
         http::{Request, StatusCode},
@@ -91,8 +87,8 @@ mod tests {
     async fn 管理者はアプリケーションエンティティを作成できる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let body = json!({
             "title": "OsiriX",
@@ -140,7 +136,7 @@ mod tests {
         assert_eq!(stored.comment(), "");
         assert_eq!(
             stored.created_by(),
-            &Uuid::from_str("019bdbbe-0dcc-7474-8b43-95b89ca8b4fd").unwrap()
+            &Uuid::parse_str("019bdbbe-0dcc-7474-8b43-95b89ca8b4fd").unwrap()
         );
         assert_eq!(*stored.created_at(), created_at);
         assert_eq!(*stored.updated_at(), updated_at);
@@ -151,8 +147,8 @@ mod tests {
     async fn 情シスはアプリケーションエンティティを作成できる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let body = json!({
             "title": "OsiriX",
@@ -200,7 +196,7 @@ mod tests {
         assert_eq!(stored.comment(), "");
         assert_eq!(
             stored.created_by(),
-            &Uuid::from_str("4922356e-d6a0-7083-8e18-93b7a023c328").unwrap()
+            &Uuid::parse_str("4922356e-d6a0-7083-8e18-93b7a023c328").unwrap()
         );
         assert_eq!(*stored.created_at(), created_at);
         assert_eq!(*stored.updated_at(), updated_at);
@@ -211,8 +207,8 @@ mod tests {
     async fn 管理者でも情シスでもないユーザーがAEを作成しようとすると403エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) =
             test_helpers::login(&router, "technician", "Password#1234").await;
         let body = json!({
@@ -241,8 +237,8 @@ mod tests {
     async fn すでに存在するAEと競合するAEを作成しようとすると409エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let bodies = [
             json!({
@@ -285,8 +281,8 @@ mod tests {
     async fn リクエストボディのバリデーション違反の場合に422エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let bodies = [
             json!({ // タイトルのフィールドがない

@@ -1,9 +1,9 @@
 use crate::{
-    AppState,
     internal::{
         application::application_entity::delete_application_entity_use_case::DeleteApplicationEntityCommand,
         presentation::{error::PresentationError, middleware::AuthenticatedUser},
     },
+    startup::AppState,
 };
 use axum::{
     Extension,
@@ -61,12 +61,8 @@ pub async fn delete_application_entity(
 #[allow(non_snake_case)]
 #[cfg(test)]
 mod tests {
-    use crate::{
-        internal::presentation::{
-            handler::application_entity::prepare_test_data, util::test_helpers,
-        },
-        utils::{self, make_router},
-    };
+    use super::super::prepare_test_data;
+    use crate::{internal::presentation::util::test_helpers, startup};
     use axum::{
         body::Body,
         http::{Request, StatusCode},
@@ -78,8 +74,8 @@ mod tests {
     async fn 管理者はアプリケーションエンティティを削除できる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
@@ -108,8 +104,8 @@ mod tests {
     async fn 情シスはアプリケーションエンティティを削除できる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
@@ -138,8 +134,8 @@ mod tests {
     async fn 存在しないアプリケーションエンティティを削除しようとすると404エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
@@ -160,8 +156,8 @@ mod tests {
     async fn 不正なAEタイトルの場合に422エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         // AEタイトルは16文字以内である必要がある。17文字のタイトルを指定する。
         let invalid_title = "A".repeat(17);

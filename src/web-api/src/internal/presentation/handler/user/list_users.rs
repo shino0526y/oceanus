@@ -2,7 +2,7 @@ mod output;
 
 pub use output::ListUsersOutputElement;
 
-use crate::{AppState, internal::presentation::error::PresentationError};
+use crate::{internal::presentation::error::PresentationError, startup::AppState};
 use axum::{Json, extract::State};
 
 #[utoipa::path(
@@ -39,10 +39,8 @@ pub async fn list_users(
 #[allow(non_snake_case)]
 #[cfg(test)]
 mod tests {
-    use crate::{
-        internal::presentation::{handler::user::prepare_test_data, util::test_helpers},
-        utils::{self, make_router},
-    };
+    use super::super::prepare_test_data;
+    use crate::{internal::presentation::util::test_helpers, startup};
     use axum::{
         body::{self, Body},
         http::{Request, StatusCode},
@@ -54,8 +52,8 @@ mod tests {
     async fn 管理者はユーザー一覧を取得できる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, _csrf) = test_helpers::login(&router, "admin", "Password#1234").await;
         let request = Request::builder()
             .method("GET")
@@ -101,8 +99,8 @@ mod tests {
     async fn 情シスはユーザー一覧を取得できる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, _csrf) = test_helpers::login(&router, "it", "Password#1234").await;
         let request = Request::builder()
             .method("GET")
@@ -129,8 +127,8 @@ mod tests {
     async fn 管理者でも情シスでもないユーザーがユーザー一覧を取得しようとすると403エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let (session_id, _csrf) = test_helpers::login(&router, "technician", "Password#1234").await;
         let request = Request::builder()
             .method("GET")

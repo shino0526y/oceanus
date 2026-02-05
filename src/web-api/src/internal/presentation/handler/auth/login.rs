@@ -4,12 +4,12 @@ mod output;
 pub use self::{input::LoginInput, output::LoginOutput};
 
 use crate::{
-    AppState,
     internal::{
         application::auth::{AuthenticationError, LoginCommand},
         domain::{entity::Session, value_object::Id},
         presentation::util::CookieHelper,
     },
+    startup::AppState,
 };
 use axum::{
     Json,
@@ -99,10 +99,8 @@ impl IntoResponse for LoginError {
 #[allow(non_snake_case)]
 #[cfg(test)]
 mod tests {
-    use crate::{
-        internal::presentation::handler::auth::prepare_test_data,
-        utils::{self, make_router},
-    };
+    use super::super::prepare_test_data;
+    use crate::startup;
     use axum::{
         body::{self, Body},
         http::{Request, StatusCode},
@@ -110,7 +108,6 @@ mod tests {
     use chrono::Utc;
     use futures::future::JoinAll;
     use serde_json::{Value, json};
-    use std::str::FromStr;
     use tower::ServiceExt;
     use uuid::Uuid;
 
@@ -118,8 +115,8 @@ mod tests {
     async fn 正しいIDとパスワードでログインできる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let body = json!({
             "userId": "doctor",
             "password": "Password#1234"
@@ -149,8 +146,8 @@ mod tests {
     async fn 存在しないユーザーIDの場合は401エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let body = json!({
             "userId": "notfound",
             "password": "Password#1234"
@@ -173,8 +170,8 @@ mod tests {
     async fn パスワードが間違っている場合は401エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let body = json!({
             "userId": "doctor",
             "password": "wrongpassword"
@@ -197,8 +194,8 @@ mod tests {
     async fn ログイン失敗回数が5回に達したらユーザーがロックされ403エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let wrong_body = json!({
             "userId": "doctor",
             "password": "wrongpassword"
@@ -251,7 +248,7 @@ mod tests {
         // ログイン失敗回数がリポジトリに反映されていることを確認
         let login_failure_count = repos
             .login_failure_count_repository
-            .find_by_user_uuid(&Uuid::from_str("492236d4-2f18-76ab-a82f-84e29fcf92f8").unwrap())
+            .find_by_user_uuid(&Uuid::parse_str("492236d4-2f18-76ab-a82f-84e29fcf92f8").unwrap())
             .await
             .unwrap()
             .unwrap();
@@ -265,8 +262,8 @@ mod tests {
     async fn バリデーション違反の場合は422エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
-        let app_state = utils::make_app_state(&repos);
-        let router = make_router(app_state, &repos);
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
         let bodies = [
             json!({ // フィールドなし
                 "password": "Password#1234"

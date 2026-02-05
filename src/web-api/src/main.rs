@@ -1,28 +1,12 @@
 mod args;
 mod internal;
-mod utils;
+mod startup;
 
-use self::{
-    args::Args,
-    internal::application::{
-        application_entity::CreateApplicationEntityUseCase,
-        application_entity::DeleteApplicationEntityUseCase,
-        application_entity::ListApplicationEntitiesUseCase,
-        application_entity::UpdateApplicationEntityUseCase,
-        auth::{LoginUseCase, LogoutUseCase},
-        session::ExtendSessionUseCase,
-        user::create_user_use_case::CreateUserUseCase,
-        user::delete_user_use_case::DeleteUserUseCase,
-        user::list_users_use_case::ListUsersUseCase,
-        user::reset_login_failure_count_use_case::ResetLoginFailureCountUseCase,
-        user::update_user_use_case::UpdateUserUseCase,
-    },
-};
-use crate::utils::make_router;
+use self::args::Args;
 use clap::Parser;
 use dotenvy::dotenv;
 use sqlx::postgres::PgPoolOptions;
-use std::{io::IsTerminal, net::Ipv4Addr, process::exit, sync::Arc};
+use std::{io::IsTerminal, net::Ipv4Addr, process::exit};
 use tokio::net::TcpListener;
 use tracing::{debug, error, info, level_filters::LevelFilter};
 use tracing_subscriber::fmt::time::LocalTime;
@@ -102,22 +86,6 @@ impl utoipa::Modify for SecurityAddon {
     }
 }
 
-#[derive(Clone)]
-pub struct AppState {
-    pub create_application_entity_use_case: Arc<CreateApplicationEntityUseCase>,
-    pub list_application_entities_use_case: Arc<ListApplicationEntitiesUseCase>,
-    pub update_application_entity_use_case: Arc<UpdateApplicationEntityUseCase>,
-    pub delete_application_entity_use_case: Arc<DeleteApplicationEntityUseCase>,
-    pub create_user_use_case: Arc<CreateUserUseCase>,
-    pub list_users_use_case: Arc<ListUsersUseCase>,
-    pub update_user_use_case: Arc<UpdateUserUseCase>,
-    pub delete_user_use_case: Arc<DeleteUserUseCase>,
-    pub reset_login_failure_count_use_case: Arc<ResetLoginFailureCountUseCase>,
-    pub login_use_case: Arc<LoginUseCase>,
-    pub logout_use_case: Arc<LogoutUseCase>,
-    pub extend_session_use_case: Arc<ExtendSessionUseCase>,
-}
-
 #[tokio::main]
 async fn main() {
     // 環境変数の読み込み
@@ -156,7 +124,7 @@ async fn main() {
     };
 
     // リポジトリの初期化
-    let repos = utils::Repositories::new(pool);
+    let repos = startup::Repos::new(pool);
 
     // セッションクリーンアップの定期実行ジョブ（メモリ内セッションの期限切れ削除）
     {
@@ -171,16 +139,16 @@ async fn main() {
     }
 
     // アプリケーション状態の初期化
-    let app_state = utils::make_app_state(&repos);
+    let state = startup::make_state(&repos);
 
     // ルーター設定
-    let app = make_router(app_state, &repos);
+    let router = startup::make_router(state, &repos);
 
     // Swagger UIの設定
     #[cfg(debug_assertions)]
-    let app = {
+    let router = {
         use utoipa_swagger_ui::SwaggerUi;
-        app.merge(
+        router.merge(
             SwaggerUi::new("/swagger-ui")
                 .url("/api-docs/openapi.json", ApiDoc::openapi())
                 .config(
@@ -202,7 +170,7 @@ async fn main() {
         }
     };
     info!("サーバーが起動しました (ポート={port})");
-    if let Err(e) = axum::serve(listener, app).await {
+    if let Err(e) = axum::serve(listener, router).await {
         error!("HTTPサービスの実行に失敗しました: {e}");
         exit(1);
     }

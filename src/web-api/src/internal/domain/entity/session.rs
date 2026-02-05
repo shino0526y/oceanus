@@ -40,6 +40,7 @@ impl Session {
         &self.csrf_token
     }
 
+    #[allow(dead_code)]
     pub fn expires_at(&self) -> &DateTime<Utc> {
         &self.expires_at
     }
