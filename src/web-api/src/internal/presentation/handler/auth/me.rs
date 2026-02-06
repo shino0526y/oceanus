@@ -98,3 +98,73 @@ impl IntoResponse for MeError {
         (status, Json(error_response)).into_response()
     }
 }
+
+#[allow(non_snake_case)]
+#[cfg(test)]
+mod tests {
+    use super::super::prepare_test_data;
+    use crate::{internal::domain::entity::Session, startup};
+    use axum::{
+        body::{self, Body},
+        http::{Request, StatusCode},
+    };
+    use chrono::{Duration, Utc};
+    use serde_json::Value;
+    use tower::ServiceExt;
+    use uuid::Uuid;
+
+    #[tokio::test]
+    async fn 認証済みユーザー情報を取得できる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
+
+        // 事前にセッションを作成してリポジトリに保存しておく
+        let user_uuid = Uuid::parse_str("492236d4-2f18-76ab-a82f-84e29fcf92f8").unwrap();
+        let session = Session::create(user_uuid);
+        let session_id = session.session_id().to_string();
+        let csrf_token = session.csrf_token().to_string();
+        repos.session_repository.save(session).await;
+
+        let request = Request::builder()
+            .method("GET")
+            .uri("/me")
+            .header("cookie", format!("session_id={session_id}"))
+            .body(Body::empty())
+            .unwrap();
+
+        // Act
+        let response = router.oneshot(request).await.unwrap();
+
+        // Assert
+        // ステータスコードの確認
+        assert_eq!(response.status(), StatusCode::OK);
+
+        // レスポンスボディの確認
+        let bytes = body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let body: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(body["userId"], user_uuid.to_string());
+        assert_eq!(body["csrfToken"], csrf_token);
+        assert_eq!(body["role"], 2); // Doctor
+
+        // セッションが延長されたことを確認
+        let updated_session = repos
+            .session_repository
+            .find_by_session_id(&session_id)
+            .await
+            .unwrap();
+        assert_eq!(
+            updated_session.user_uuid().to_string(),
+            user_uuid.to_string()
+        );
+        assert_eq!(updated_session.csrf_token(), csrf_token);
+        let expected_expiry = Utc::now() + Duration::minutes(Session::DEFAULT_EXPIRY_MINUTES);
+        let duration = updated_session
+            .expires_at()
+            .signed_duration_since(expected_expiry);
+        assert!(duration.num_seconds().abs() < 10);
+    }
+}
