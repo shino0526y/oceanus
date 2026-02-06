@@ -33,10 +33,24 @@ impl UpdateUserUseCase {
     }
 
     pub async fn execute(&self, command: UpdateUserCommand) -> Result<User, UpdateUserError> {
-        // 更新実行前に更新者の権限を確認: 情シスは管理者への変更を行えない
+        let mut entity = self
+            .repository
+            .find_by_id(&command.old_id)
+            .await?
+            .ok_or_else(|| {
+                UpdateUserError::Repository(RepositoryError::NotFound {
+                    resource: "ユーザー".to_string(),
+                    key: command.old_id.value().to_string(),
+                })
+            })?;
+
+        // 更新者の権限を確認
         match self.repository.find_by_uuid(&command.updated_by).await {
             Ok(Some(actor)) => {
-                if actor.role() == Role::ItStaff && command.role == Role::Admin {
+                // 情シスは管理者を変更できないし、誰かを管理者に昇格させることもできない
+                if actor.role() == Role::ItStaff
+                    && (entity.role() == Role::Admin || command.role == Role::Admin)
+                {
                     return Err(UpdateUserError::Forbidden);
                 }
             }
@@ -48,17 +62,6 @@ impl UpdateUserUseCase {
             }
             Err(e) => return Err(UpdateUserError::Repository(e)),
         }
-
-        let mut entity = self
-            .repository
-            .find_by_id(&command.old_id)
-            .await?
-            .ok_or_else(|| {
-                UpdateUserError::Repository(RepositoryError::NotFound {
-                    resource: "ユーザー".to_string(),
-                    key: command.old_id.value().to_string(),
-                })
-            })?;
 
         // パスワードが指定された場合のみハッシュ化、それ以外は既存のハッシュを維持
         let password_hash = match command.password {

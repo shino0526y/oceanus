@@ -576,26 +576,44 @@ mod tests {
         let router = startup::make_router(state, &repos);
 
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
-        let body = json!({
-            "id": "admin",
-            "name": "John Doe", // 名前を変更しようとする
-            "role": 0, // TODO: ロール変更を行ったら403エラーにならない。要修正
-            "password": null
+        let bodies = [
+            json!({
+                "id": "admin",
+                "name": "John Doe", // 名前を変更しようとする
+                "role": 0,
+                "password": null
+            }),
+            json!({
+                "id": "admin",
+                "name": "管理者 太郎",
+                "role": 1, // 管理者を情シスに格下げしようとする
+                "password": null
+            }),
+            json!({
+                "id": "admin",
+                "name": "管理者 太郎",
+                "role": 0,
+                "password": "NewPassword#5678" // 管理者のパスワードを変更しようとする
+            }),
+        ];
+        let requests = bodies.iter().map(|body| {
+            Request::builder()
+                .method("PUT")
+                .uri("/users/admin")
+                .header("content-type", "application/json")
+                .header("cookie", format!("session_id={session_id}"))
+                .header("x-csrf-token", &csrf_token)
+                .body(Body::from(serde_json::to_string(&body).unwrap()))
+                .unwrap()
         });
-        let request = Request::builder()
-            .method("PUT")
-            .uri("/users/admin")
-            .header("content-type", "application/json")
-            .header("cookie", format!("session_id={session_id}"))
-            .header("x-csrf-token", &csrf_token)
-            .body(Body::from(serde_json::to_string(&body).unwrap()))
-            .unwrap();
 
         // Act
-        let response = router.oneshot(request).await.unwrap();
+        let responses = join_all(requests.map(|req| router.clone().oneshot(req))).await;
 
         // Assert
-        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+        responses.into_iter().for_each(|res| {
+            assert_eq!(res.unwrap().status(), StatusCode::FORBIDDEN);
+        });
 
         // リポジトリが変更されていないことを確認
         let user = repos
