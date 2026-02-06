@@ -81,8 +81,10 @@ mod tests {
     #[tokio::test]
     async fn 管理者はユーザーのログイン失敗回数をリセットできる() {
         // Arrange
-        // 事前に失敗回数を3回にセット
         let repos = prepare_test_data().await;
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
+
         let user = repos
             .user_repository
             .find_by_id(&Id::new("doctor").unwrap())
@@ -99,9 +101,7 @@ mod tests {
             ))
             .await
             .unwrap();
-        // リクエストの準備
-        let state = startup::make_state(&repos);
-        let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
@@ -113,11 +113,11 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
-        // レスポンスの確認
         assert_eq!(response.status(), StatusCode::NO_CONTENT);
+
         // 失敗回数の情報自体が削除されていることの確認
         let login_failure_count = repos
             .login_failure_count_repository
@@ -130,8 +130,10 @@ mod tests {
     #[tokio::test]
     async fn 情シスはユーザーのログイン失敗回数をリセットできる() {
         // Arrange
-        // 事前に失敗回数を3回にセット
         let repos = prepare_test_data().await;
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
+
         let user = repos
             .user_repository
             .find_by_id(&Id::new("doctor").unwrap())
@@ -148,9 +150,7 @@ mod tests {
             ))
             .await
             .unwrap();
-        // リクエストの準備
-        let state = startup::make_state(&repos);
-        let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
@@ -162,11 +162,11 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
-        // レスポンスの確認
         assert_eq!(response.status(), StatusCode::NO_CONTENT);
+
         // 失敗回数の情報自体が削除されていることの確認
         let login_failure_count = repos
             .login_failure_count_repository
@@ -182,6 +182,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) =
             test_helpers::login(&router, "technician", "Password#1234").await;
         let request = Request::builder()
@@ -194,7 +195,7 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
         assert_eq!(response.status(), StatusCode::FORBIDDEN);
@@ -206,6 +207,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
@@ -217,7 +219,7 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
         assert_eq!(response.status(), StatusCode::FORBIDDEN);
@@ -229,6 +231,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
@@ -240,7 +243,7 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
@@ -252,6 +255,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
@@ -263,7 +267,7 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
         assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);

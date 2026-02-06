@@ -97,7 +97,7 @@ mod tests {
     };
     use chrono::{DateTime, Utc};
     use dicom_lib::core::value::value_representations::ae::AeValue;
-    use futures::future::JoinAll;
+    use futures::future::join_all;
     use serde_json::{Value, json};
     use std::str::FromStr;
     use tower::ServiceExt;
@@ -109,6 +109,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let body = json!({
             "title": "OsiriX",
@@ -126,11 +127,13 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
-        // レスポンスの確認
+        // ステータスコードの確認
         assert_eq!(response.status(), StatusCode::OK);
+
+        // レスポンスボディの確認
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
@@ -139,6 +142,7 @@ mod tests {
         assert_eq!(body["host"], "192.0.2.1");
         assert_eq!(body["port"], 104);
         assert_eq!(body["comment"], "DCMTKから変更しました");
+
         let created_at = DateTime::<Utc>::from_str(body["createdAt"].as_str().unwrap()).unwrap();
         assert_eq!(
             created_at,
@@ -147,6 +151,7 @@ mod tests {
         let updated_at = DateTime::<Utc>::from_str(body["updatedAt"].as_str().unwrap()).unwrap();
         let now = Utc::now();
         assert!((now - updated_at).num_seconds().abs() < 10);
+
         // リポジトリの確認
         let stored = repos
             .application_entity_repository
@@ -170,6 +175,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let body = json!({
             "title": "OsiriX",
@@ -187,11 +193,13 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
-        // レスポンスの確認
+        // ステータスコードの確認
         assert_eq!(response.status(), StatusCode::OK);
+
+        // レスポンスボディの確認
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
@@ -200,6 +208,7 @@ mod tests {
         assert_eq!(body["host"], "192.0.2.1");
         assert_eq!(body["port"], 104);
         assert_eq!(body["comment"], "DCMTKから変更しました");
+
         let created_at = DateTime::<Utc>::from_str(body["createdAt"].as_str().unwrap()).unwrap();
         assert_eq!(
             created_at,
@@ -208,6 +217,7 @@ mod tests {
         let updated_at = DateTime::<Utc>::from_str(body["updatedAt"].as_str().unwrap()).unwrap();
         let now = Utc::now();
         assert!((now - updated_at).num_seconds().abs() < 10);
+
         // リポジトリの確認
         let stored = repos
             .application_entity_repository
@@ -231,6 +241,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let body = json!({ // すでに存在するAEと同じ内容
             "title": "DCMTK",
@@ -248,11 +259,13 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
-        // レスポンスの確認
+        // ステータスコードの確認
         assert_eq!(response.status(), StatusCode::OK);
+
+        // レスポンスボディの確認
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
@@ -262,6 +275,7 @@ mod tests {
             updated_at,
             DateTime::<Utc>::from_str("2026-01-20T23:12:23.874+09:00").unwrap()
         );
+
         // リポジトリの確認
         let stored = repos
             .application_entity_repository
@@ -281,6 +295,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let body = json!({
             "title": "OsiriX",
@@ -298,9 +313,10 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
+        // ステータスコードの確認
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
     }
 
@@ -308,6 +324,9 @@ mod tests {
     async fn すでに存在するAEと競合する形でAEを更新しようとすると409エラーになる() {
         // Arrange
         let repos = prepare_test_data().await;
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
+
         // あらかじめ別のAEを登録しておく
         repos
             .application_entity_repository
@@ -321,8 +340,7 @@ mod tests {
             ))
             .await
             .unwrap();
-        let state = startup::make_state(&repos);
-        let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let bodies = [
             json!({ // タイトルが既存と競合
@@ -350,15 +368,12 @@ mod tests {
         });
 
         // Act
-        let responses = requests
-            .map(|request| router.clone().oneshot(request))
-            .collect::<JoinAll<_>>()
-            .await;
+        let responses = join_all(requests.map(|req| router.clone().oneshot(req))).await;
 
         // Assert
-        responses.into_iter().for_each(|result| {
-            let response = result.unwrap();
-            assert_eq!(response.status(), StatusCode::CONFLICT);
+        responses.into_iter().for_each(|res| {
+            // ステータスコードの確認
+            assert_eq!(res.unwrap().status(), StatusCode::CONFLICT);
         });
     }
 
@@ -368,6 +383,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let bodies = [
             json!({ // タイトルが空文字
@@ -419,15 +435,12 @@ mod tests {
         });
 
         // Act
-        let responses = requests
-            .map(|request| router.clone().oneshot(request))
-            .collect::<JoinAll<_>>()
-            .await;
+        let responses = join_all(requests.map(|req| router.clone().oneshot(req))).await;
 
         // Assert
-        responses.into_iter().for_each(|result| {
-            let response = result.unwrap();
-            assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        responses.into_iter().for_each(|res| {
+            // ステータスコードの確認
+            assert_eq!(res.unwrap().status(), StatusCode::UNPROCESSABLE_ENTITY);
         });
     }
 }

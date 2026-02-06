@@ -83,6 +83,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
@@ -94,20 +95,18 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
-        // レスポンスの確認
         assert_eq!(response.status(), StatusCode::NO_CONTENT);
+
         // ユーザーが削除されていることの確認
-        assert!(
-            repos
-                .user_repository
-                .find_by_id(&Id::new("doctor").unwrap())
-                .await
-                .unwrap()
-                .is_none()
-        );
+        let user = repos
+            .user_repository
+            .find_by_id(&Id::new("doctor").unwrap())
+            .await
+            .unwrap();
+        assert!(user.is_none());
     }
 
     #[tokio::test]
@@ -116,6 +115,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
@@ -127,20 +127,18 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
-        // レスポンスの確認
         assert_eq!(response.status(), StatusCode::NO_CONTENT);
+
         // ユーザーが削除されていることの確認
-        assert!(
-            repos
-                .user_repository
-                .find_by_id(&Id::new("doctor").unwrap())
-                .await
-                .unwrap()
-                .is_none()
-        );
+        let user = repos
+            .user_repository
+            .find_by_id(&Id::new("doctor").unwrap())
+            .await
+            .unwrap();
+        assert!(user.is_none());
     }
 
     #[tokio::test]
@@ -149,6 +147,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
@@ -160,10 +159,18 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
         assert_eq!(response.status(), StatusCode::FORBIDDEN);
+
+        // ユーザーが削除されていないことの確認
+        let user = repos
+            .user_repository
+            .find_by_id(&Id::new("admin").unwrap())
+            .await
+            .unwrap();
+        assert!(user.is_some());
     }
 
     #[tokio::test]
@@ -172,6 +179,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) =
             test_helpers::login(&router, "technician", "Password#1234").await;
         let request = Request::builder()
@@ -184,10 +192,18 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
         assert_eq!(response.status(), StatusCode::FORBIDDEN);
+
+        // ユーザーが削除されていないことの確認
+        let user = repos
+            .user_repository
+            .find_by_id(&Id::new("doctor").unwrap())
+            .await
+            .unwrap();
+        assert!(user.is_some());
     }
 
     #[tokio::test]
@@ -196,6 +212,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
@@ -207,7 +224,7 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
@@ -219,6 +236,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
@@ -230,7 +248,7 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
         assert_eq!(response.status(), StatusCode::METHOD_NOT_ALLOWED);
@@ -242,6 +260,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let request = Request::builder()
             .method("DELETE")
@@ -253,9 +272,17 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
         assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+        // ユーザーが削除されていないことの確認
+        let user = repos
+            .user_repository
+            .find_by_id(&Id::new("admin").unwrap())
+            .await
+            .unwrap();
+        assert!(user.is_some());
     }
 }

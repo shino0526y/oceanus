@@ -106,7 +106,7 @@ mod tests {
         http::{Request, StatusCode},
     };
     use chrono::Utc;
-    use futures::future::JoinAll;
+    use futures::future::join_all;
     use serde_json::{Value, json};
     use tower::ServiceExt;
     use uuid::Uuid;
@@ -117,6 +117,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let body = json!({
             "userId": "doctor",
             "password": "Password#1234"
@@ -129,10 +130,32 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
+        // ステータスコードの確認
         assert_eq!(response.status(), StatusCode::OK);
+
+        // セッションがリポジトリに保存されていることを確認
+        // Set-CookieヘッダーからセッションIDを抽出
+        let session_id = {
+            let cookie_header = response
+                .headers()
+                .get("set-cookie")
+                .unwrap()
+                .to_str()
+                .unwrap();
+            cookie_header
+                .split(';')
+                .next()
+                .unwrap()
+                .split('=')
+                .nth(1)
+                .unwrap()
+                .to_string()
+        };
+
+        // レスポンスボディの確認
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
@@ -140,6 +163,14 @@ mod tests {
         assert_eq!(body["userId"], "doctor");
         assert!(!body["csrfToken"].as_str().unwrap().is_empty());
         assert_eq!(body["role"], 2); // doctor
+
+        let session = repos
+            .session_repository
+            .find_by_session_id(&session_id)
+            .await;
+        assert!(session.is_some());
+        let session = session.unwrap();
+        assert_eq!(session.csrf_token(), body["csrfToken"].as_str().unwrap());
     }
 
     #[tokio::test]
@@ -148,6 +179,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let body = json!({
             "userId": "notfound",
             "password": "Password#1234"
@@ -160,9 +192,10 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
+        // ステータスコードの確認
         assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
     }
 
@@ -172,6 +205,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let body = json!({
             "userId": "doctor",
             "password": "wrongpassword"
@@ -184,9 +218,10 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
+        // ステータスコードの確認
         assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
     }
 
@@ -196,6 +231,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let wrong_body = json!({
             "userId": "doctor",
             "password": "wrongpassword"
@@ -239,12 +275,16 @@ mod tests {
         assert_eq!(response2.status(), StatusCode::UNAUTHORIZED);
         assert_eq!(response3.status(), StatusCode::UNAUTHORIZED);
         assert_eq!(response4.status(), StatusCode::UNAUTHORIZED);
+
         // 5回目でロック（403エラー）
         assert_eq!(response5.status(), StatusCode::FORBIDDEN);
+
         // ロック後は正しいパスワードでも403エラー
         assert_eq!(response6.status(), StatusCode::FORBIDDEN);
+
         // ロック後に再度間違ったパスワードを送っても403エラー。ログイン失敗回数は増える
         assert_eq!(response7.status(), StatusCode::FORBIDDEN);
+
         // ログイン失敗回数がリポジトリに反映されていることを確認
         let login_failure_count = repos
             .login_failure_count_repository
@@ -255,7 +295,7 @@ mod tests {
         assert_eq!(login_failure_count.failure_count(), 6); // 合計6回の失敗
         let last_failure_at = login_failure_count.last_failure_at().unwrap();
         let duration = Utc::now().signed_duration_since(*last_failure_at);
-        assert!(duration.num_seconds() < 10);
+        assert!(duration.num_seconds().abs() < 10);
     }
 
     #[tokio::test]
@@ -264,6 +304,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let bodies = [
             json!({ // フィールドなし
                 "password": "Password#1234"
@@ -283,14 +324,11 @@ mod tests {
         });
 
         // Act
-        let responses = requests
-            .map(async |request| router.clone().oneshot(request).await.unwrap())
-            .collect::<JoinAll<_>>()
-            .await;
+        let responses = join_all(requests.map(|req| router.clone().oneshot(req))).await;
 
         // Assert
-        responses.iter().for_each(|response| {
-            assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        responses.into_iter().for_each(|res| {
+            assert_eq!(res.unwrap().status(), StatusCode::UNPROCESSABLE_ENTITY);
         });
     }
 }

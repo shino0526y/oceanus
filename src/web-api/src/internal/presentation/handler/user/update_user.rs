@@ -93,7 +93,7 @@ mod tests {
         http::{Request, StatusCode},
     };
     use chrono::{DateTime, Utc};
-    use futures::future::JoinAll;
+    use futures::future::join_all;
     use serde_json::{Value, json};
     use std::str::FromStr;
     use tower::ServiceExt;
@@ -105,6 +105,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let body = json!({
             "id": "doctor",
@@ -122,11 +123,11 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
-        // レスポンスの確認
         assert_eq!(response.status(), StatusCode::OK);
+
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
@@ -138,15 +139,28 @@ mod tests {
         let now = Utc::now();
         let updated_at = DateTime::from_str(body["updatedAt"].as_str().unwrap()).unwrap();
         assert!((now - updated_at).num_seconds().abs() < 10);
-        // リポジトリに保存された内容の確認
+
         let user = repos
             .user_repository
             .find_by_id(&Id::new("doctor").unwrap())
             .await
             .unwrap()
             .unwrap();
+        assert_eq!(user.id().value(), "doctor");
         assert_eq!(user.name().value(), "John Doe");
         assert_eq!(user.role().as_i16(), 3);
+        assert_eq!(
+            user.password_hash(),
+            "$argon2id$v=19$m=19456,t=2,p=1$1E/vEPPwrHBsW1fLuzdUVQ$1sAIm/nnFMIyc1IBuKW8+6KcdyHtdzjHCv7ae8lG6sA"
+        );
+        assert_eq!(
+            user.created_by(),
+            &Uuid::parse_str("019bdbbe-0dcc-7474-8b43-95b89ca8b4fd").unwrap()
+        );
+        assert_eq!(
+            user.created_at().to_rfc3339(),
+            "2026-01-24T13:25:57.855+00:00"
+        );
         assert_eq!(
             user.updated_by(),
             &Uuid::parse_str("019bdbbe-0dcc-7474-8b43-95b89ca8b4fd").unwrap()
@@ -160,6 +174,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let body = json!({
             "id": "john", // IDを変更
@@ -177,11 +192,11 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
-        // レスポンスの確認
         assert_eq!(response.status(), StatusCode::OK);
+
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
@@ -193,19 +208,35 @@ mod tests {
         let now = Utc::now();
         let updated_at = DateTime::from_str(body["updatedAt"].as_str().unwrap()).unwrap();
         assert!((now - updated_at).num_seconds().abs() < 10);
-        // リポジトリに保存された内容の確認
+
         let old_user = repos
             .user_repository
             .find_by_id(&Id::new("doctor").unwrap())
             .await
             .unwrap();
         assert!(old_user.is_none());
+
         let new_user = repos
             .user_repository
             .find_by_id(&Id::new("john").unwrap())
             .await
             .unwrap()
             .unwrap();
+        assert_eq!(new_user.id().value(), "john");
+        assert_eq!(new_user.name().value(), "医師 太郎");
+        assert_eq!(new_user.role().as_i16(), 2);
+        assert_eq!(
+            new_user.password_hash(),
+            "$argon2id$v=19$m=19456,t=2,p=1$1E/vEPPwrHBsW1fLuzdUVQ$1sAIm/nnFMIyc1IBuKW8+6KcdyHtdzjHCv7ae8lG6sA"
+        );
+        assert_eq!(
+            new_user.created_by(),
+            &Uuid::parse_str("019bdbbe-0dcc-7474-8b43-95b89ca8b4fd").unwrap()
+        );
+        assert_eq!(
+            new_user.created_at().to_rfc3339(),
+            "2026-01-24T13:25:57.855+00:00"
+        );
         assert_eq!(
             new_user.updated_by(),
             &Uuid::parse_str("019bdbbe-0dcc-7474-8b43-95b89ca8b4fd").unwrap()
@@ -219,6 +250,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let body = json!({
             "id": "doctor",
@@ -236,11 +268,11 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
-        // レスポンスの確認
         assert_eq!(response.status(), StatusCode::OK);
+
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
@@ -252,16 +284,27 @@ mod tests {
         let now = Utc::now();
         let updated_at = DateTime::from_str(body["updatedAt"].as_str().unwrap()).unwrap();
         assert!((now - updated_at).num_seconds().abs() < 10);
-        // リポジトリに保存された内容の確認
+
         let user = repos
             .user_repository
             .find_by_id(&Id::new("doctor").unwrap())
             .await
             .unwrap()
             .unwrap();
+        assert_eq!(user.id().value(), "doctor");
+        assert_eq!(user.name().value(), "医師 太郎");
+        assert_eq!(user.role().as_i16(), 2);
         assert_ne!(
             user.password_hash(),
-            "$argon2id$v=19$m=19456,t=2,p=1$1E/vEPPwrHBsW1fLuzdUVQ$1sAIm/nnFMIyc1IBuKW8+6KcdyHtdzjHCv7ae8lG6sA" // 旧パスワードのハッシュ
+            "$argon2id$v=19$m=19456,t=2,p=1$1E/vEPPwrHBsW1fLuzdUVQ$1sAIm/nnFMIyc1IBuKW8+6KcdyHtdzjHCv7ae8lG6sA"
+        );
+        assert_eq!(
+            user.created_by(),
+            &Uuid::parse_str("019bdbbe-0dcc-7474-8b43-95b89ca8b4fd").unwrap()
+        );
+        assert_eq!(
+            user.created_at().to_rfc3339(),
+            "2026-01-24T13:25:57.855+00:00"
         );
         assert_eq!(
             user.updated_by(),
@@ -276,6 +319,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let body = json!({
             "id": "doctor",
@@ -293,11 +337,11 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
-        // レスポンスの確認
         assert_eq!(response.status(), StatusCode::OK);
+
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
@@ -309,15 +353,28 @@ mod tests {
         let now = Utc::now();
         let updated_at = DateTime::from_str(body["updatedAt"].as_str().unwrap()).unwrap();
         assert!((now - updated_at).num_seconds().abs() < 10);
-        // リポジトリに保存された内容の確認
+
         let user = repos
             .user_repository
             .find_by_id(&Id::new("doctor").unwrap())
             .await
             .unwrap()
             .unwrap();
+        assert_eq!(user.id().value(), "doctor");
         assert_eq!(user.name().value(), "John Doe");
         assert_eq!(user.role().as_i16(), 3);
+        assert_eq!(
+            user.password_hash(),
+            "$argon2id$v=19$m=19456,t=2,p=1$1E/vEPPwrHBsW1fLuzdUVQ$1sAIm/nnFMIyc1IBuKW8+6KcdyHtdzjHCv7ae8lG6sA"
+        );
+        assert_eq!(
+            user.created_by(),
+            &Uuid::parse_str("019bdbbe-0dcc-7474-8b43-95b89ca8b4fd").unwrap()
+        );
+        assert_eq!(
+            user.created_at().to_rfc3339(),
+            "2026-01-24T13:25:57.855+00:00"
+        );
         assert_eq!(
             user.updated_by(),
             &Uuid::parse_str("4922356e-d6a0-7083-8e18-93b7a023c328").unwrap()
@@ -331,6 +388,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let body = json!({
             "id": "john", // IDを変更
@@ -348,11 +406,11 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
-        // レスポンスの確認
         assert_eq!(response.status(), StatusCode::OK);
+
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
@@ -364,19 +422,35 @@ mod tests {
         let now = Utc::now();
         let updated_at = DateTime::from_str(body["updatedAt"].as_str().unwrap()).unwrap();
         assert!((now - updated_at).num_seconds().abs() < 10);
-        // リポジトリに保存された内容の確認
+
         let old_user = repos
             .user_repository
             .find_by_id(&Id::new("doctor").unwrap())
             .await
             .unwrap();
         assert!(old_user.is_none());
+
         let new_user = repos
             .user_repository
             .find_by_id(&Id::new("john").unwrap())
             .await
             .unwrap()
             .unwrap();
+        assert_eq!(new_user.id().value(), "john");
+        assert_eq!(new_user.name().value(), "医師 太郎");
+        assert_eq!(new_user.role().as_i16(), 2);
+        assert_eq!(
+            new_user.password_hash(),
+            "$argon2id$v=19$m=19456,t=2,p=1$1E/vEPPwrHBsW1fLuzdUVQ$1sAIm/nnFMIyc1IBuKW8+6KcdyHtdzjHCv7ae8lG6sA"
+        );
+        assert_eq!(
+            new_user.created_by(),
+            &Uuid::parse_str("019bdbbe-0dcc-7474-8b43-95b89ca8b4fd").unwrap()
+        );
+        assert_eq!(
+            new_user.created_at().to_rfc3339(),
+            "2026-01-24T13:25:57.855+00:00"
+        );
         assert_eq!(
             new_user.updated_by(),
             &Uuid::parse_str("4922356e-d6a0-7083-8e18-93b7a023c328").unwrap()
@@ -390,6 +464,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let body = json!({
             "id": "doctor",
@@ -407,11 +482,11 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
-        // レスポンスの確認
         assert_eq!(response.status(), StatusCode::OK);
+
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
@@ -423,16 +498,27 @@ mod tests {
         let now = Utc::now();
         let updated_at = DateTime::from_str(body["updatedAt"].as_str().unwrap()).unwrap();
         assert!((now - updated_at).num_seconds().abs() < 10);
-        // リポジトリに保存された内容の確認
+
         let user = repos
             .user_repository
             .find_by_id(&Id::new("doctor").unwrap())
             .await
             .unwrap()
             .unwrap();
+        assert_eq!(user.id().value(), "doctor");
+        assert_eq!(user.name().value(), "医師 太郎");
+        assert_eq!(user.role().as_i16(), 2);
         assert_ne!(
             user.password_hash(),
-            "$argon2id$v=19$m=19456,t=2,p=1$1E/vEPPwrHBsW1fLuzdUVQ$1sAIm/nnFMIyc1IBuKW8+6KcdyHtdzjHCv7ae8lG6sA" // 旧パスワードのハッシュ
+            "$argon2id$v=19$m=19456,t=2,p=1$1E/vEPPwrHBsW1fLuzdUVQ$1sAIm/nnFMIyc1IBuKW8+6KcdyHtdzjHCv7ae8lG6sA"
+        );
+        assert_eq!(
+            user.created_by(),
+            &Uuid::parse_str("019bdbbe-0dcc-7474-8b43-95b89ca8b4fd").unwrap()
+        );
+        assert_eq!(
+            user.created_at().to_rfc3339(),
+            "2026-01-24T13:25:57.855+00:00"
         );
         assert_eq!(
             user.updated_by(),
@@ -447,6 +533,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) =
             test_helpers::login(&router, "technician", "Password#1234").await;
         let body = json!({
@@ -465,10 +552,20 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
         assert_eq!(response.status(), StatusCode::FORBIDDEN);
+
+        // リポジトリが変更されていないことを確認
+        let user = repos
+            .user_repository
+            .find_by_id(&Id::new("doctor").unwrap())
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(user.name().value(), "医師 太郎");
+        assert_eq!(user.role().as_i16(), 2);
     }
 
     #[tokio::test]
@@ -477,6 +574,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let body = json!({
             "id": "admin",
@@ -494,10 +592,20 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
         assert_eq!(response.status(), StatusCode::FORBIDDEN);
+
+        // リポジトリが変更されていないことを確認
+        let user = repos
+            .user_repository
+            .find_by_id(&Id::new("admin").unwrap())
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(user.role().as_i16(), 0);
+        assert_eq!(user.name().value(), "管理者 太郎");
     }
 
     #[tokio::test]
@@ -506,6 +614,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let body = json!({
             "id": "doctor",
@@ -523,10 +632,19 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
         assert_eq!(response.status(), StatusCode::FORBIDDEN);
+
+        // リポジトリが変更されていないことを確認
+        let user = repos
+            .user_repository
+            .find_by_id(&Id::new("doctor").unwrap())
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(user.role().as_i16(), 2);
     }
 
     #[tokio::test]
@@ -535,6 +653,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let body = json!({
             "id": "john",
@@ -552,7 +671,7 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
@@ -564,21 +683,23 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let bodies = [
             json!({ // IDが既存ユーザーと競合
                 "id": "technician", // 既存の技師ユーザーと同じID
                 "name": "John Doe",
-                "role": 3, // Technician
+                "role": 3,
                 "password": "Password#1234",
             }),
             json!({ // 名前が既存ユーザーと競合
                 "id": "john",
                 "name": "技師 太郎", // 既存の技師ユーザーと同じ名前
-                "role": 3, // Technician
+                "role": 3,
                 "password": "Password#1234",
             }),
         ];
+
         let requests = bodies.iter().map(|body| {
             Request::builder()
                 .method("PUT")
@@ -591,15 +712,21 @@ mod tests {
         });
 
         // Act
-        let responses = requests
-            .map(async |req| router.clone().oneshot(req).await.unwrap())
-            .collect::<JoinAll<_>>()
-            .await;
+        let responses = join_all(requests.map(|req| router.clone().oneshot(req))).await;
 
         // Assert
-        responses.iter().for_each(|response| {
-            assert_eq!(response.status(), StatusCode::CONFLICT);
+        responses.into_iter().for_each(|res| {
+            assert_eq!(res.unwrap().status(), StatusCode::CONFLICT);
         });
+
+        // リポジトリが変更されていないことを確認
+        let user = repos
+            .user_repository
+            .find_by_id(&Id::new("doctor").unwrap())
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(user.name().value(), "医師 太郎");
     }
 
     #[tokio::test]
@@ -608,40 +735,41 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let bodies = [
             json!({ // IDのフィールドがない
                 "name": "John Doe",
-                "role": 2, // Doctor
+                "role": 2,
                 "password": null,
             }),
             json!({ // IDが空文字
                 "id": "",
                 "name": "John Doe",
-                "role": 2, // Doctor
+                "role": 2,
                 "password": null,
             }),
             json!({ // IDに空白を含む
                 "id": "john doe",
                 "name": "John Doe",
-                "role": 2, // Doctor
+                "role": 2,
                 "password": null,
             }),
             json!({ // 名前のフィールドがない
                 "id": "john",
-                "role": 2, // Doctor
+                "role": 2,
                 "password": null,
             }),
             json!({ // 名前が空文字
                 "id": "john",
                 "name": "",
-                "role": 2, // Doctor
+                "role": 2,
                 "password": null,
             }),
             json!({ // 名前が空白のみ
                 "id": "john",
                 "name": " ",
-                "role": 2, // Doctor
+                "role": 2,
                 "password": null,
             }),
             json!({ // ロールのフィールドがない
@@ -664,10 +792,11 @@ mod tests {
             json!({ // パスワードが空文字
                 "id": "john",
                 "name": "John Doe",
-                "role": 2, // Doctor
+                "role": 2,
                 "password": "",
             }),
         ];
+
         let requests = bodies.iter().map(|body| {
             Request::builder()
                 .method("PUT")
@@ -675,19 +804,16 @@ mod tests {
                 .header("content-type", "application/json")
                 .header("cookie", format!("session_id={session_id}"))
                 .header("x-csrf-token", &csrf_token)
-                .body(Body::from(serde_json::to_string(body).unwrap()))
+                .body(Body::from(serde_json::to_string(&body).unwrap()))
                 .unwrap()
         });
 
         // Act
-        let responses = requests
-            .map(async |request| router.clone().oneshot(request).await.unwrap())
-            .collect::<JoinAll<_>>()
-            .await;
+        let responses = join_all(requests.map(|req| router.clone().oneshot(req))).await;
 
         // Assert
-        responses.iter().for_each(|response| {
-            assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        responses.into_iter().for_each(|res| {
+            assert_eq!(res.unwrap().status(), StatusCode::UNPROCESSABLE_ENTITY);
         });
     }
 }

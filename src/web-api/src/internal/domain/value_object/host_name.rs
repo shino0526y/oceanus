@@ -31,7 +31,7 @@ impl HostName {
     /// ホスト名がRFC 1123形式に準拠しているかチェックする
     fn is_valid_hostname(hostname: &str) -> bool {
         // ホスト名全体の長さチェック (1〜253文字)
-        if hostname.len() < 1 || hostname.len() > 253 {
+        if hostname.is_empty() || hostname.len() > 253 {
             return false;
         }
 

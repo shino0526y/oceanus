@@ -56,6 +56,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
         let request = Request::builder()
             .method("GET")
@@ -67,21 +68,26 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
+        // ステータスコードの確認
         assert_eq!(response.status(), StatusCode::OK);
+
+        // レスポンスボディの確認
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
         let body: Value = serde_json::from_slice(&bytes).unwrap();
         let entities = body.as_array().unwrap();
         assert_eq!(entities.len(), 1);
+
         let entity = &entities[0];
         assert_eq!(entity["title"], "DCMTK");
         assert_eq!(entity["host"], "localhost");
         assert_eq!(entity["port"], 11112);
         assert_eq!(entity["comment"], "開発＆デバッグ用");
+
         let created_at = DateTime::<Utc>::from_str(entity["createdAt"].as_str().unwrap()).unwrap();
         assert_eq!(
             created_at,
@@ -100,6 +106,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
         let request = Request::builder()
             .method("GET")
@@ -111,15 +118,17 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
+        // ステータスコードの確認
         assert_eq!(response.status(), StatusCode::OK);
+
+        // レスポンスボディの件数確認
         let bytes = body::to_bytes(response.into_body(), usize::MAX)
             .await
             .unwrap();
         let body: Value = serde_json::from_slice(&bytes).unwrap();
-        // `管理者はアプリケーションエンティティ一覧を取得できる`でレスポンスボディの中身は確認しているのでここでは件数のみ確認
         assert_eq!(body.as_array().unwrap().len(), 1);
     }
 
@@ -129,6 +138,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, csrf_token) =
             test_helpers::login(&router, "technician", "Password#1234").await;
         let request = Request::builder()
@@ -141,9 +151,10 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
+        // ステータスコードの確認
         assert_eq!(response.status(), StatusCode::FORBIDDEN);
     }
 }

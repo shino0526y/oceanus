@@ -103,7 +103,10 @@ impl IntoResponse for MeError {
 #[cfg(test)]
 mod tests {
     use super::super::prepare_test_data;
-    use crate::{internal::domain::entity::Session, startup};
+    use crate::{
+        internal::{domain::entity::Session, presentation::util::test_helpers},
+        startup,
+    };
     use axum::{
         body::{self, Body},
         http::{Request, StatusCode},
@@ -120,12 +123,10 @@ mod tests {
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
 
-        // 事前にセッションを作成してリポジトリに保存しておく
+        // ログインしてセッションを取得
+        let (session_id, csrf_token) =
+            test_helpers::login(&router, "doctor", "Password#1234").await;
         let user_uuid = Uuid::parse_str("492236d4-2f18-76ab-a82f-84e29fcf92f8").unwrap();
-        let session = Session::create(user_uuid);
-        let session_id = session.session_id().to_string();
-        let csrf_token = session.csrf_token().to_string();
-        repos.session_repository.save(session).await;
 
         let request = Request::builder()
             .method("GET")
@@ -150,7 +151,7 @@ mod tests {
         assert_eq!(body["csrfToken"], csrf_token);
         assert_eq!(body["role"], 2); // Doctor
 
-        // セッションが延長されたことを確認
+        // リポジトリに反映されていることの確認（セッションが延長されたことの確認）
         let updated_session = repos
             .session_repository
             .find_by_session_id(&session_id)

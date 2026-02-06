@@ -54,6 +54,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, _csrf) = test_helpers::login(&router, "admin", "Password#1234").await;
         let request = Request::builder()
             .method("GET")
@@ -75,7 +76,7 @@ mod tests {
         ];
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
         assert_eq!(response.status(), StatusCode::OK);
@@ -101,6 +102,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, _csrf) = test_helpers::login(&router, "it", "Password#1234").await;
         let request = Request::builder()
             .method("GET")
@@ -111,7 +113,7 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
         assert_eq!(response.status(), StatusCode::OK);
@@ -119,7 +121,7 @@ mod tests {
             .await
             .unwrap();
         let body: Value = serde_json::from_slice(&bytes).unwrap();
-        // `管理者はユーザー一覧を取得できる`でレスポンスボディの中身は確認しているのでここでは件数のみ確認
+        // ここでは件数のみ確認
         assert_eq!(body.as_array().unwrap().len(), 4);
     }
 
@@ -129,6 +131,7 @@ mod tests {
         let repos = prepare_test_data().await;
         let state = startup::make_state(&repos);
         let router = startup::make_router(state, &repos);
+
         let (session_id, _csrf) = test_helpers::login(&router, "technician", "Password#1234").await;
         let request = Request::builder()
             .method("GET")
@@ -139,7 +142,7 @@ mod tests {
             .unwrap();
 
         // Act
-        let response = router.clone().oneshot(request).await.unwrap();
+        let response = router.oneshot(request).await.unwrap();
 
         // Assert
         assert_eq!(response.status(), StatusCode::FORBIDDEN);
