@@ -23,14 +23,14 @@
 		isRestoring = false;
 	});
 
-	async function handleLogout() {
+	const handleLogout = async () => {
 		isLoggingOut = true;
 		await logout();
 		authStore.logout();
 		goto(resolve('/login'));
-	}
+	};
 
-	function navItems() {
+	const navItems = () => {
 		const base: { href: '/' | '/users' | '/application-entities' | '/login'; label: string }[] = [
 			{ href: '/', label: 'ホーム' }
 		];
@@ -39,7 +39,7 @@
 			base.push({ href: '/application-entities', label: 'Application Entity' });
 		}
 		return base;
-	}
+	};
 </script>
 
 {#if isRestoring}

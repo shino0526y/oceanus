@@ -9,9 +9,9 @@
 	let isLoading = $state(true);
 	let error = $state('');
 
-	function canManage() {
+	const canManage = () => {
 		return authStore.isManager;
-	}
+	};
 
 	onMount(() => {
 		if (!canManage()) {
@@ -22,7 +22,7 @@
 		loadData();
 	});
 
-	async function loadData() {
+	const loadData = async () => {
 		isLoading = true;
 		error = '';
 
@@ -40,7 +40,7 @@
 		}
 
 		isLoading = false;
-	}
+	};
 </script>
 
 <svelte:head>

@@ -144,62 +144,65 @@ export interface UpdateApplicationEntityRequestBody {
 }
 
 // API関数
-export async function login(body: LoginRequestBody) {
+export const login = async (body: LoginRequestBody) => {
 	const result = await api.post<LoginResponseBody>('/login', body);
 	if (result.ok) {
 		api.setCsrfToken(result.data.csrfToken);
 	}
 	return result;
-}
+};
 
-export async function logout() {
+export const logout = async () => {
 	const result = await api.post<null>('/logout');
 	if (result.ok) {
 		api.clearCsrfToken();
 	}
 	return result;
-}
+};
 
-export async function getMe() {
+export const getMe = async () => {
 	const result = await api.get<MeResponseBody>('/me');
 	if (result.ok) {
 		api.setCsrfToken(result.data.csrfToken);
 	}
 	return result;
-}
+};
 
-export function listUsers() {
+export const listUsers = () => {
 	return api.get<User[]>('/users');
-}
+};
 
-export function createUser(body: CreateUserRequestBody) {
+export const createUser = (body: CreateUserRequestBody) => {
 	return api.post<User>('/users', body);
-}
+};
 
-export function updateUser(id: string, body: UpdateUserRequestBody) {
+export const updateUser = (id: string, body: UpdateUserRequestBody) => {
 	return api.put<User>(`/users/${encodeURIComponent(id)}`, body);
-}
+};
 
-export function deleteUser(id: string) {
+export const deleteUser = (id: string) => {
 	return api.delete<null>(`/users/${encodeURIComponent(id)}`);
-}
+};
 
-export function resetLoginFailure(id: string) {
+export const resetLoginFailure = (id: string) => {
 	return api.delete<null>(`/users/${encodeURIComponent(id)}/login-failure-count`);
-}
+};
 
-export function listApplicationEntities() {
+export const listApplicationEntities = () => {
 	return api.get<ApplicationEntity[]>('/application-entities');
-}
+};
 
-export function createApplicationEntity(body: CreateApplicationEntityRequestBody) {
+export const createApplicationEntity = (body: CreateApplicationEntityRequestBody) => {
 	return api.post<ApplicationEntity>('/application-entities', body);
-}
+};
 
-export function updateApplicationEntity(aeTitle: string, body: UpdateApplicationEntityRequestBody) {
+export const updateApplicationEntity = (
+	aeTitle: string,
+	body: UpdateApplicationEntityRequestBody
+) => {
 	return api.put<ApplicationEntity>(`/application-entities/${encodeURIComponent(aeTitle)}`, body);
-}
+};
 
-export function deleteApplicationEntity(aeTitle: string) {
+export const deleteApplicationEntity = (aeTitle: string) => {
 	return api.delete<null>(`/application-entities/${encodeURIComponent(aeTitle)}`);
-}
+};

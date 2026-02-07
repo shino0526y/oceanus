@@ -45,9 +45,9 @@
 	let deleteError = $state('');
 	let isDeleting = $state(false);
 
-	function canManage() {
+	const canManage = () => {
 		return authStore.isManager;
-	}
+	};
 
 	onMount(() => {
 		(async () => {
@@ -62,7 +62,7 @@
 		})();
 	});
 
-	async function loadEntities() {
+	const loadEntities = async () => {
 		isLoading = true;
 		error = '';
 		const result = await listApplicationEntities();
@@ -72,19 +72,19 @@
 			error = result.error;
 		}
 		isLoading = false;
-	}
+	};
 
-	function openCreateModal() {
+	const openCreateModal = () => {
 		createForm = { title: '', host: '', port: 104, comment: '' };
 		createError = '';
 		showCreateModal = true;
-	}
+	};
 
-	function closeCreateModal() {
+	const closeCreateModal = () => {
 		showCreateModal = false;
-	}
+	};
 
-	async function handleCreate(e: Event) {
+	const handleCreate = async (e: Event) => {
 		e.preventDefault();
 		isCreating = true;
 		createError = '';
@@ -97,9 +97,9 @@
 			createError = result.error;
 		}
 		isCreating = false;
-	}
+	};
 
-	function openEditModal(entity: ApplicationEntity) {
+	const openEditModal = (entity: ApplicationEntity) => {
 		editingEntity = entity;
 		editForm = {
 			title: entity.title,
@@ -108,13 +108,13 @@
 			comment: entity.comment
 		};
 		editError = '';
-	}
+	};
 
-	function closeEditModal() {
+	const closeEditModal = () => {
 		editingEntity = null;
-	}
+	};
 
-	async function handleEdit(e: Event) {
+	const handleEdit = async (e: Event) => {
 		e.preventDefault();
 		if (!editingEntity) return;
 
@@ -144,18 +144,18 @@
 			editError = result.error;
 		}
 		isEditing = false;
-	}
+	};
 
-	function openDeleteModal(entity: ApplicationEntity) {
+	const openDeleteModal = (entity: ApplicationEntity) => {
 		deletingEntity = entity;
 		deleteError = '';
-	}
+	};
 
-	function closeDeleteModal() {
+	const closeDeleteModal = () => {
 		deletingEntity = null;
-	}
+	};
 
-	async function handleDelete() {
+	const handleDelete = async () => {
 		if (!deletingEntity) return;
 
 		isDeleting = true;
@@ -169,7 +169,7 @@
 			deleteError = result.error;
 		}
 		isDeleting = false;
-	}
+	};
 </script>
 
 <svelte:head>

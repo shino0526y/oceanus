@@ -20,23 +20,23 @@
 	let isLoading = $state(true);
 	let error = $state('');
 
-	function canManage() {
+	const canManage = () => {
 		return authStore.isManager;
-	}
+	};
 
 	// 利用可能なロール選択肢（情シスの場合は管理者を除外）
-	function getAvailableRoleOptions() {
+	const getAvailableRoleOptions = () => {
 		return authStore.role === ROLES.IT_STAFF
 			? ROLE_OPTIONS.filter((o) => o.value !== ROLES.ADMIN)
 			: ROLE_OPTIONS;
-	}
+	};
 
-	function canManageUser(user: User) {
+	const canManageUser = (user: User) => {
 		if (!authStore.isManager) return false;
 		// 情シスは管理者を編集/削除できない
 		if (authStore.role === ROLES.IT_STAFF && user.role === ROLES.ADMIN) return false;
 		return true;
-	}
+	};
 
 	// 新規作成用
 	let showCreateModal = $state(false);
@@ -78,7 +78,7 @@
 		})();
 	});
 
-	async function loadUsers() {
+	const loadUsers = async () => {
 		isLoading = true;
 		error = '';
 		const result = await listUsers();
@@ -88,9 +88,9 @@
 			error = result.error;
 		}
 		isLoading = false;
-	}
+	};
 
-	function openCreateModal() {
+	const openCreateModal = () => {
 		const opts = getAvailableRoleOptions();
 		createForm = {
 			id: '',
@@ -100,13 +100,13 @@
 		};
 		createError = '';
 		showCreateModal = true;
-	}
+	};
 
-	function closeCreateModal() {
+	const closeCreateModal = () => {
 		showCreateModal = false;
-	}
+	};
 
-	async function handleCreate(e: Event) {
+	const handleCreate = async (e: Event) => {
 		e.preventDefault();
 		isCreating = true;
 		createError = '';
@@ -119,19 +119,19 @@
 			createError = result.error;
 		}
 		isCreating = false;
-	}
+	};
 
-	function openEditModal(user: User) {
+	const openEditModal = (user: User) => {
 		editingUser = user;
 		editForm = { id: user.id, name: user.name, password: '', role: user.role };
 		editError = '';
-	}
+	};
 
-	function closeEditModal() {
+	const closeEditModal = () => {
 		editingUser = null;
-	}
+	};
 
-	async function handleEdit(e: Event) {
+	const handleEdit = async (e: Event) => {
 		e.preventDefault();
 		if (!editingUser) return;
 
@@ -161,27 +161,27 @@
 			editError = result.error;
 		}
 		isEditing = false;
-	}
+	};
 
-	function getRoleBadgeClass(role: number): string {
+	const getRoleBadgeClass = (role: number): string => {
 		if (role === ROLES.ADMIN) {
 			return 'bg-red-100 text-red-800';
 		} else if (role === ROLES.IT_STAFF) {
 			return 'bg-purple-100 text-purple-800';
 		}
 		return 'bg-gray-100 text-gray-800';
-	}
+	};
 
-	function openDeleteModal(user: User) {
+	const openDeleteModal = (user: User) => {
 		deletingUser = user;
 		deleteError = '';
-	}
+	};
 
-	function closeDeleteModal() {
+	const closeDeleteModal = () => {
 		deletingUser = null;
-	}
+	};
 
-	async function handleDelete() {
+	const handleDelete = async () => {
 		if (!deletingUser) return;
 
 		isDeleting = true;
@@ -195,9 +195,9 @@
 			deleteError = result.error;
 		}
 		isDeleting = false;
-	}
+	};
 
-	async function handleResetLoginFailure(user: User) {
+	const handleResetLoginFailure = async (user: User) => {
 		const confirmed = confirm(
 			`「${user.name}」のログイン失敗回数をリセットし、ロックを解除しますか？`
 		);
@@ -209,7 +209,7 @@
 		} else {
 			alert(result.error);
 		}
-	}
+	};
 </script>
 
 <svelte:head>

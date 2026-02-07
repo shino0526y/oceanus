@@ -9,7 +9,7 @@
 	let error = $state('');
 	let isLoading = $state(false);
 
-	async function handleSubmit(e: Event) {
+	const handleSubmit = async (e: Event) => {
 		e.preventDefault();
 		error = '';
 		isLoading = true;
@@ -24,7 +24,7 @@
 		}
 
 		isLoading = false;
-	}
+	};
 </script>
 
 <svelte:head>
