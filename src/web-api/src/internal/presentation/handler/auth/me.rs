@@ -58,8 +58,7 @@ pub async fn me(
     let user = user_repository
         .find_by_uuid(&user_uuid)
         .await
-        .ok()
-        .flatten()
+        .map_err(|e| PresentationError::InternalServerError(e.to_string()))?
         .ok_or(PresentationError::Unauthorized(
             "認証されていません".to_string(),
         ))?;
