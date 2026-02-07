@@ -1,0 +1,3 @@
+# クローリングを無効化
+User-agent: *
+Disallow: /

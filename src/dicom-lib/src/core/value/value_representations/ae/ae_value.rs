@@ -4,7 +4,7 @@ use std::{
 };
 use thiserror::Error;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct AeValue(String);
 
 impl AeValue {

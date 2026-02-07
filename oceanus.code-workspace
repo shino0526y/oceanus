@@ -1,21 +1,28 @@
 {
   "folders": [
     {
-      "path": "."
+      "path": ".",
     },
     {
-      "path": "./src/dicom-lib"
+      "path": "./src/dicom-lib",
     },
     {
-      "path": "./src/dicom-server"
-    }
+      "path": "./src/dicom-server",
+    },
+    {
+      "path": "./src/web-api",
+    },
+    {
+      "path": "./src/web-ui",
+    },
   ],
   "extensions": {
     "recommendations": [
       "rust-lang.rust-analyzer",
       "vadimcn.vscode-lldb",
-      "bradymholt.pgformatter"
-    ]
+      "bradymholt.pgformatter",
+      "svelte.svelte-vscode",
+    ],
   },
   "settings": {
     "editor.formatOnSave": true,
@@ -23,28 +30,81 @@
     "files.trimTrailingWhitespace": true,
     "cSpell.words": ["dotenv", "dotenvy", "sqlx"],
     "[rust]": {
-      "editor.defaultFormatter": "rust-lang.rust-analyzer"
+      "editor.defaultFormatter": "rust-lang.rust-analyzer",
     },
     "[sql]": {
-      "editor.defaultFormatter": "bradymholt.pgformatter"
-    }
+      "editor.defaultFormatter": "bradymholt.pgformatter",
+    },
+    "[html]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+    },
+    "[javascript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+    },
+    "[typescript]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+    },
+    "[svelte]": {
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+    },
   },
   "tasks": {
     "version": "2.0.0",
     "tasks": [
       {
-        "label": "rust: cargo build",
+        "label": "rust: cargo build dicom-server",
         "type": "shell",
         "command": "cargo",
         "args": [
           "build",
           "--manifest-path",
-          "${workspaceFolder:oceanus}/src/Cargo.toml"
+          "${workspaceFolder:oceanus}/src/Cargo.toml",
+          "-p",
+          "dicom-server",
         ],
         "group": "build",
-        "problemMatcher": ["$rustc"]
-      }
-    ]
+        "problemMatcher": ["$rustc"],
+      },
+      {
+        "label": "rust: cargo build web-api",
+        "type": "shell",
+        "command": "cargo",
+        "args": [
+          "build",
+          "--manifest-path",
+          "${workspaceFolder:oceanus}/src/Cargo.toml",
+          "-p",
+          "web-api",
+        ],
+        "group": "build",
+        "problemMatcher": ["$rustc"],
+      },
+      {
+        "label": "web-ui: dev",
+        "type": "shell",
+        "command": "npm",
+        "args": ["run", "dev"],
+        "options": {
+          "cwd": "${workspaceFolder:oceanus}/src/web-ui",
+        },
+        "isBackground": true,
+        "problemMatcher": {
+          "owner": "vite",
+          "pattern": {
+            "regexp": "^$",
+          },
+          "background": {
+            "activeOnStart": true,
+            "beginsPattern": "^.*VITE.*$",
+            "endsPattern": "^.*Local:.*http.*$",
+          },
+        },
+        "presentation": {
+          "reveal": "silent",
+          "panel": "dedicated",
+        },
+      },
+    ],
   },
   "launch": {
     "configurations": [
@@ -52,12 +112,33 @@
         "type": "lldb",
         "request": "launch",
         "name": "dicom-server",
-        "preLaunchTask": "rust: cargo build",
+        "preLaunchTask": "rust: cargo build dicom-server",
         "program": "${workspaceFolder:oceanus}/src/target/debug/dicom-server",
         "args": ["--log-level", "debug"],
         "cwd": "${workspaceFolder:oceanus}/src/dicom-server",
-        "sourceLanguages": ["rust"]
-      }
-    ]
-  }
+        "sourceLanguages": ["rust"],
+      },
+      {
+        "type": "lldb",
+        "request": "launch",
+        "name": "web-api",
+        "preLaunchTask": "rust: cargo build web-api",
+        "program": "${workspaceFolder:oceanus}/src/target/debug/web-api",
+        "args": ["--log-level", "debug"],
+        "cwd": "${workspaceFolder:oceanus}/src/web-api",
+        "sourceLanguages": ["rust"],
+      },
+      {
+        "type": "chrome",
+        "request": "launch",
+        "name": "web-ui: Chrome",
+        "url": "http://localhost:5173",
+        "webRoot": "${workspaceFolder:web-ui}",
+        "preLaunchTask": "web-ui: dev",
+        "sourceMapPathOverrides": {
+          "webpack:///./src/*": "${webRoot}/src/*",
+        },
+      },
+    ],
+  },
 }

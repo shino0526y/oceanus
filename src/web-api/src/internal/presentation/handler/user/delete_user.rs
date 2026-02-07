@@ -1,0 +1,292 @@
+use crate::{
+    internal::{
+        application::user::delete_user_use_case::{DeleteUserCommand, DeleteUserError},
+        domain::value_object::Id,
+        presentation::{
+            error::{ErrorResponseBody, PresentationError},
+            middleware::AuthenticatedUser,
+        },
+    },
+    startup::AppState,
+};
+use axum::{
+    Extension,
+    extract::{Path, State},
+    http::StatusCode,
+};
+use chrono::Utc;
+
+#[utoipa::path(
+    delete,
+    path = "/users/{id}",
+    params(
+        ("id" = String, Path, description = "ユーザーID")
+    ),
+    responses(
+        (status = 204, description = "ユーザーの削除に成功"),
+        (status = 400, description = "リクエストの形式が無効", body = ErrorResponseBody),
+        (status = 401, description = "セッションが確立されていないか期限が切れている", body = ErrorResponseBody),
+        (status = 403, description = "CSRFトークンが無効または権限がない", body = ErrorResponseBody),
+        (status = 404, description = "対象のユーザーが見つからない", body = ErrorResponseBody),
+        (status = 422, description = "バリデーションに失敗、または自分自身を削除しようとした", body = ErrorResponseBody),
+    ),
+    security(
+        ("session_cookie" = []),
+        ("csrf_token" = [])
+    ),
+    tag = "users"
+)]
+pub async fn delete_user(
+    State(state): State<AppState>,
+    Extension(user): Extension<AuthenticatedUser>,
+    Path(id): Path<String>,
+) -> Result<StatusCode, PresentationError> {
+    // バリデーション
+    let id = Id::new(id)
+        .map_err(|e| PresentationError::UnprocessableContent(format!("無効なID: {e}")))?;
+
+    // 削除処理
+    let deleted_at = Utc::now();
+    let command = DeleteUserCommand {
+        id,
+        deleted_by: user.uuid(),
+        deleted_at,
+    };
+    state
+        .delete_user_use_case
+        .execute(command)
+        .await
+        .map_err(|e| match e {
+            DeleteUserError::CannotDeleteSelf => {
+                PresentationError::UnprocessableContent(e.to_string())
+            }
+            DeleteUserError::Forbidden => PresentationError::Forbidden(e.to_string()),
+            DeleteUserError::Repository(repo_err) => PresentationError::from(repo_err),
+        })?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[allow(non_snake_case)]
+#[cfg(test)]
+mod tests {
+    use super::super::prepare_test_data;
+    use crate::{
+        internal::{domain::value_object::Id, presentation::util::test_helpers},
+        startup,
+    };
+    use axum::{
+        body::Body,
+        http::{Request, StatusCode},
+    };
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn 管理者は他のユーザーを削除できる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
+
+        let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let request = Request::builder()
+            .method("DELETE")
+            .uri("/users/doctor")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={session_id}"))
+            .header("x-csrf-token", &csrf_token)
+            .body(Body::empty())
+            .unwrap();
+
+        // Act
+        let response = router.oneshot(request).await.unwrap();
+
+        // Assert
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
+
+        // ユーザーが削除されていることの確認
+        let user = repos
+            .user_repository
+            .find_by_id(&Id::new("doctor").unwrap())
+            .await
+            .unwrap();
+        assert!(user.is_none());
+    }
+
+    #[tokio::test]
+    async fn 情シスは他の管理者でないユーザーを削除できる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
+
+        let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
+        let request = Request::builder()
+            .method("DELETE")
+            .uri("/users/doctor")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={session_id}"))
+            .header("x-csrf-token", &csrf_token)
+            .body(Body::empty())
+            .unwrap();
+
+        // Act
+        let response = router.oneshot(request).await.unwrap();
+
+        // Assert
+        assert_eq!(response.status(), StatusCode::NO_CONTENT);
+
+        // ユーザーが削除されていることの確認
+        let user = repos
+            .user_repository
+            .find_by_id(&Id::new("doctor").unwrap())
+            .await
+            .unwrap();
+        assert!(user.is_none());
+    }
+
+    #[tokio::test]
+    async fn 情シスが管理者を削除しようとすると403エラーになる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
+
+        let (session_id, csrf_token) = test_helpers::login(&router, "it", "Password#1234").await;
+        let request = Request::builder()
+            .method("DELETE")
+            .uri("/users/admin")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={session_id}"))
+            .header("x-csrf-token", &csrf_token)
+            .body(Body::empty())
+            .unwrap();
+
+        // Act
+        let response = router.oneshot(request).await.unwrap();
+
+        // Assert
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+
+        // ユーザーが削除されていないことの確認
+        let user = repos
+            .user_repository
+            .find_by_id(&Id::new("admin").unwrap())
+            .await
+            .unwrap();
+        assert!(user.is_some());
+    }
+
+    #[tokio::test]
+    async fn 管理者や情シスでないユーザーがユーザーを削除しようとすると403エラーになる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
+
+        let (session_id, csrf_token) =
+            test_helpers::login(&router, "technician", "Password#1234").await;
+        let request = Request::builder()
+            .method("DELETE")
+            .uri("/users/doctor")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={session_id}"))
+            .header("x-csrf-token", &csrf_token)
+            .body(Body::empty())
+            .unwrap();
+
+        // Act
+        let response = router.oneshot(request).await.unwrap();
+
+        // Assert
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+
+        // ユーザーが削除されていないことの確認
+        let user = repos
+            .user_repository
+            .find_by_id(&Id::new("doctor").unwrap())
+            .await
+            .unwrap();
+        assert!(user.is_some());
+    }
+
+    #[tokio::test]
+    async fn 存在しないユーザーを削除しようとすると404エラーになる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
+
+        let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let request = Request::builder()
+            .method("DELETE")
+            .uri("/users/john_doe")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={session_id}"))
+            .header("x-csrf-token", &csrf_token)
+            .body(Body::empty())
+            .unwrap();
+
+        // Act
+        let response = router.oneshot(request).await.unwrap();
+
+        // Assert
+        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn ユーザーIDを指定せず削除しようとすると405エラーになる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
+
+        let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let request = Request::builder()
+            .method("DELETE")
+            .uri("/users")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={session_id}"))
+            .header("x-csrf-token", &csrf_token)
+            .body(Body::empty())
+            .unwrap();
+
+        // Act
+        let response = router.oneshot(request).await.unwrap();
+
+        // Assert
+        assert_eq!(response.status(), StatusCode::METHOD_NOT_ALLOWED);
+    }
+
+    #[tokio::test]
+    async fn 自分自身を削除しようとすると422エラーになる() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
+
+        let (session_id, csrf_token) = test_helpers::login(&router, "admin", "Password#1234").await;
+        let request = Request::builder()
+            .method("DELETE")
+            .uri("/users/admin")
+            .header("content-type", "application/json")
+            .header("cookie", format!("session_id={session_id}"))
+            .header("x-csrf-token", &csrf_token)
+            .body(Body::empty())
+            .unwrap();
+
+        // Act
+        let response = router.oneshot(request).await.unwrap();
+
+        // Assert
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+        // ユーザーが削除されていないことの確認
+        let user = repos
+            .user_repository
+            .find_by_id(&Id::new("admin").unwrap())
+            .await
+            .unwrap();
+        assert!(user.is_some());
+    }
+}
