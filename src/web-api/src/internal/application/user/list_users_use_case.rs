@@ -3,7 +3,7 @@ use crate::internal::domain::{
     error::RepositoryError,
     repository::{LoginFailureCountRepository, UserRepository},
 };
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 pub struct ListUsersUseCase {
     user_repository: Arc<dyn UserRepository>,
@@ -29,21 +29,28 @@ impl ListUsersUseCase {
 
     pub async fn execute(&self) -> Result<Vec<UserWithLoginFailureCount>, RepositoryError> {
         let users = self.user_repository.find_all().await?;
+        let user_uuid_to_login_failure_count: HashMap<_, _> = self
+            .login_failure_count_repository
+            .find_all()
+            .await?
+            .into_iter()
+            .map(|f| (*f.user_uuid(), f.failure_count()))
+            .collect();
 
-        let mut result = Vec::with_capacity(users.len());
-        for user in users {
-            let login_failure_count = self
-                .login_failure_count_repository
-                .find_by_user_uuid(user.uuid())
-                .await?
-                .map(|lf| lf.failure_count())
-                .unwrap_or(0);
+        let result = users
+            .into_iter()
+            .map(|user| {
+                let login_failure_count = user_uuid_to_login_failure_count
+                    .get(user.uuid())
+                    .copied()
+                    .unwrap_or(0);
 
-            result.push(UserWithLoginFailureCount {
-                user,
-                login_failure_count,
-            });
-        }
+                UserWithLoginFailureCount {
+                    user,
+                    login_failure_count,
+                }
+            })
+            .collect();
 
         Ok(result)
     }

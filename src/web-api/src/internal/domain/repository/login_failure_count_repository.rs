@@ -3,6 +3,9 @@ use uuid::Uuid;
 
 #[async_trait::async_trait]
 pub trait LoginFailureCountRepository: Send + Sync {
+    /// すべてのログイン失敗情報を取得する
+    async fn find_all(&self) -> Result<Vec<LoginFailureCount>, RepositoryError>;
+
     /// ユーザーUUIDでログイン失敗情報を取得する（存在しない場合はNone）
     async fn find_by_user_uuid(
         &self,

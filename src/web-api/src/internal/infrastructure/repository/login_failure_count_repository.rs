@@ -34,6 +34,19 @@ impl PostgresLoginFailureCountRepository {
 
 #[async_trait::async_trait]
 impl LoginFailureCountRepository for PostgresLoginFailureCountRepository {
+    async fn find_all(&self) -> Result<Vec<LoginFailureCount>, RepositoryError> {
+        let records = sqlx::query_as::<_, LoginFailureCountRecord>(
+            "SELECT user_uuid, failure_count, last_failure_at FROM login_failure_counts",
+        )
+        .fetch_all(&self.pool)
+        .await
+        .map_err(|e| RepositoryError::Other {
+            message: format!("データベース処理でエラーが発生しました: {e}"),
+        })?;
+
+        Ok(records.into_iter().map(|r| r.into()).collect())
+    }
+
     async fn find_by_user_uuid(
         &self,
         user_uuid: &Uuid,
@@ -107,6 +120,11 @@ impl TestLoginFailureCountRepository {
 #[cfg(test)]
 #[async_trait::async_trait]
 impl LoginFailureCountRepository for TestLoginFailureCountRepository {
+    async fn find_all(&self) -> Result<Vec<LoginFailureCount>, RepositoryError> {
+        let records = self.inner.read().await;
+        Ok(records.values().cloned().collect())
+    }
+
     async fn find_by_user_uuid(
         &self,
         user_uuid: &Uuid,
