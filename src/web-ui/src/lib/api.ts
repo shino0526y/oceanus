@@ -1,5 +1,7 @@
 // API通信用のユーティリティ
 
+import type { RoleValue } from './constants';
+
 const API_BASE_URL = '/api';
 
 interface ErrorResponseBody {
@@ -85,19 +87,19 @@ export interface LoginRequestBody {
 export interface LoginResponseBody {
 	userId: string;
 	csrfToken: string;
-	role: number;
+	role: RoleValue;
 }
 
 export interface MeResponseBody {
 	userId: string;
 	csrfToken: string;
-	role: number;
+	role: RoleValue;
 }
 
 export interface User {
 	id: string;
 	name: string;
-	role: number;
+	role: RoleValue;
 	loginFailureCount: number;
 	createdAt: string;
 	updatedAt: string;
@@ -107,7 +109,7 @@ export interface CreateUserRequestBody {
 	id: string;
 	name: string;
 	password: string;
-	role: number;
+	role: RoleValue;
 }
 
 export interface UpdateUserRequestBody {
@@ -115,7 +117,7 @@ export interface UpdateUserRequestBody {
 	name: string;
 	/** パスワード（変更しない場合はフィールド自体を送信しない） */
 	password?: string;
-	role: number;
+	role: RoleValue;
 }
 
 export interface ApplicationEntity {

@@ -1,14 +1,15 @@
 // 認証状態を管理するストア
 import { api, getMe } from '$lib/api';
+import { ROLES, type RoleValue } from '$lib/constants';
 
 class AuthStore {
 	isAuthenticated = $state(false);
 	userId = $state<string | null>(null);
 	csrfToken = $state<string | null>(null);
-	role = $state<number | null>(null);
+	role = $state<RoleValue | null>(null);
 
 	// ログイン
-	login(userId: string, csrfToken: string, role: number) {
+	login(userId: string, csrfToken: string, role: RoleValue) {
 		this.isAuthenticated = true;
 		this.userId = userId;
 		this.csrfToken = csrfToken;
@@ -17,15 +18,17 @@ class AuthStore {
 	}
 
 	// 指定したロールを保持しているか（同期チェック）
-	hasRole(role: number) {
+	hasRole(role: RoleValue) {
 		return this.role !== null && this.role === role;
 	}
 
 	// 管理者か
-	isAdmin = $derived(this.role !== null && this.role === 0);
+	isAdmin = $derived(this.role !== null && this.role === ROLES.ADMIN);
 
 	// 管理者または情シスか
-	isManager = $derived(this.role !== null && (this.role === 0 || this.role === 1));
+	isManager = $derived(
+		this.role !== null && (this.role === ROLES.ADMIN || this.role === ROLES.IT_STAFF)
+	);
 
 	// ログアウト
 	logout() {
