@@ -31,7 +31,7 @@ pub async fn logout(
     let session_id = cookies
         .get(CookieHelper::SESSION_COOKIE_NAME)
         .map(|c| c.value().to_string())
-        .ok_or(PresentationError::BadRequest(
+        .ok_or(PresentationError::Unauthorized(
             "セッションが存在しません".to_string(),
         ))?;
 
