@@ -5,7 +5,7 @@ use utoipa::ToSchema;
 
 #[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct ListUsersOutputElement {
+pub struct ListUsersResponseBodyItem {
     pub id: String,
     pub name: String,
     pub role: i16,
@@ -14,7 +14,7 @@ pub struct ListUsersOutputElement {
     pub updated_at: DateTime<Utc>,
 }
 
-impl From<UserWithLoginFailureCount> for ListUsersOutputElement {
+impl From<UserWithLoginFailureCount> for ListUsersResponseBodyItem {
     fn from(data: UserWithLoginFailureCount) -> Self {
         Self {
             id: data.user.id().value().into(),

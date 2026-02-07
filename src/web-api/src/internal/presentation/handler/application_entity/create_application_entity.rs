@@ -1,13 +1,19 @@
-mod input;
-mod output;
+mod request_body;
+mod response_body;
 
-pub use self::{input::CreateApplicationEntityInput, output::CreateApplicationEntityOutput};
+pub use self::{
+    request_body::CreateApplicationEntityRequestBody,
+    response_body::CreateApplicationEntityResponseBody,
+};
 
 use crate::{
     internal::{
         application::application_entity::create_application_entity_use_case::CreateApplicationEntityCommand,
         domain::value_object::{HostName, Port},
-        presentation::{error::PresentationError, middleware::AuthenticatedUser},
+        presentation::{
+            error::{ErrorResponseBody, PresentationError},
+            middleware::AuthenticatedUser,
+        },
     },
     startup::AppState,
 };
@@ -18,12 +24,14 @@ use dicom_lib::core::value::value_representations::ae::AeValue;
 #[utoipa::path(
     post,
     path = "/application-entities",
-    request_body = CreateApplicationEntityInput,
+    request_body = CreateApplicationEntityRequestBody,
     responses(
-        (status = 200, description = "Application Entityの作成に成功", body = CreateApplicationEntityOutput),
-        (status = 401, description = "セッションが確立されていない"),
-        (status = 403, description = "CSRFトークンが無効または権限がありません"),
-        (status = 422, description = "バリデーション失敗"),
+        (status = 200, description = "AEの作成に成功", body = CreateApplicationEntityResponseBody),
+        (status = 400, description = "リクエストの形式が無効", body = ErrorResponseBody),
+        (status = 401, description = "セッションが確立されていないか期限が切れている", body = ErrorResponseBody),
+        (status = 403, description = "CSRFトークンが無効または権限がない", body = ErrorResponseBody),
+        (status = 409, description = "競合するAEが既に存在する", body = ErrorResponseBody),
+        (status = 422, description = "バリデーション失敗", body = ErrorResponseBody),
     ),
     security(
         ("session_cookie" = []),
@@ -34,15 +42,15 @@ use dicom_lib::core::value::value_representations::ae::AeValue;
 pub async fn create_application_entity(
     State(state): State<AppState>,
     Extension(user): Extension<AuthenticatedUser>,
-    Json(input): Json<CreateApplicationEntityInput>,
-) -> Result<Json<CreateApplicationEntityOutput>, PresentationError> {
+    Json(request_body): Json<CreateApplicationEntityRequestBody>,
+) -> Result<Json<CreateApplicationEntityResponseBody>, PresentationError> {
     // バリデーション
-    let title = AeValue::from_string(&input.title).map_err(|e| {
+    let title = AeValue::from_string(&request_body.title).map_err(|e| {
         PresentationError::UnprocessableContent(format!("AEタイトルが不正です: {e}"))
     })?;
-    let host = HostName::new(&input.host)
+    let host = HostName::new(&request_body.host)
         .map_err(|e| PresentationError::UnprocessableContent(format!("ホスト名が不正です: {e}")))?;
-    let port = Port::from_u16(input.port).map_err(|e| {
+    let port = Port::from_u16(request_body.port).map_err(|e| {
         PresentationError::UnprocessableContent(format!("ポート番号が不正です: {e}"))
     })?;
 
@@ -51,7 +59,7 @@ pub async fn create_application_entity(
         title,
         host,
         port,
-        comment: input.comment,
+        comment: request_body.comment,
         created_by: user.uuid(),
         created_at: Utc::now(),
     };
@@ -61,9 +69,9 @@ pub async fn create_application_entity(
         .await
         .map_err(PresentationError::from)?;
 
-    let output = CreateApplicationEntityOutput::from(entity);
+    let response_body = CreateApplicationEntityResponseBody::from(entity);
 
-    Ok(Json(output))
+    Ok(Json(response_body))
 }
 
 #[allow(non_snake_case)]

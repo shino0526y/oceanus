@@ -1,13 +1,16 @@
-mod input;
-mod output;
+mod request_body;
+mod response_body;
 
-pub use self::{input::UpdateUserInput, output::UpdateUserOutput};
+pub use self::{request_body::UpdateUserRequestBody, response_body::UpdateUserResponseBody};
 
 use crate::{
     internal::{
         application::user::update_user_use_case::{UpdateUserCommand, UpdateUserError},
         domain::value_object::{Id, Role, UserName},
-        presentation::{error::PresentationError, middleware::AuthenticatedUser},
+        presentation::{
+            error::{ErrorResponseBody, PresentationError},
+            middleware::AuthenticatedUser,
+        },
     },
     startup::AppState,
 };
@@ -20,15 +23,18 @@ use chrono::Utc;
 #[utoipa::path(
     put,
     path = "/users/{id}",
-    request_body = UpdateUserInput,
+    request_body = UpdateUserRequestBody,
     params(
         ("id" = String, Path, description = "ユーザーID")
     ),
     responses(
-        (status = 200, description = "ユーザーの更新に成功", body = UpdateUserOutput),
-        (status = 401, description = "セッションが確立されていない"),
-        (status = 403, description = "CSRFトークンが無効または権限がありません"),
-        (status = 422, description = "バリデーションに失敗"),
+        (status = 200, description = "ユーザーの更新に成功", body = UpdateUserResponseBody),
+        (status = 400, description = "リクエストの形式が無効", body = ErrorResponseBody),
+        (status = 401, description = "セッションが確立されていないか期限が切れている", body = ErrorResponseBody),
+        (status = 403, description = "CSRFトークンが無効または権限がない", body = ErrorResponseBody),
+        (status = 404, description = "対象のユーザーが見つからない", body = ErrorResponseBody),
+        (status = 409, description = "ユーザーIDが既に存在しています", body = ErrorResponseBody),
+        (status = 422, description = "バリデーションに失敗", body = ErrorResponseBody),
     ),
     security(
         ("session_cookie" = []),
@@ -40,16 +46,16 @@ pub async fn update_user(
     State(state): State<AppState>,
     Extension(user): Extension<AuthenticatedUser>,
     Path(id): Path<String>,
-    Json(input): Json<UpdateUserInput>,
-) -> Result<Json<UpdateUserOutput>, PresentationError> {
+    Json(request_body): Json<UpdateUserRequestBody>,
+) -> Result<Json<UpdateUserResponseBody>, PresentationError> {
     // バリデーション
     let old_id = Id::new(id)
         .map_err(|e| PresentationError::UnprocessableContent(format!("無効なID: {e}")))?;
-    let new_id = Id::new(input.id)
+    let new_id = Id::new(request_body.id)
         .map_err(|e| PresentationError::UnprocessableContent(format!("無効なID: {e}")))?;
-    let name = UserName::new(input.name)
+    let name = UserName::new(request_body.name)
         .map_err(|e| PresentationError::UnprocessableContent(format!("無効な名前: {e}")))?;
-    let role = Role::from_i16(input.role)
+    let role = Role::from_i16(request_body.role)
         .map_err(|e| PresentationError::UnprocessableContent(format!("無効なロール: {e}")))?;
 
     // 更新処理
@@ -58,7 +64,7 @@ pub async fn update_user(
         id: new_id,
         name,
         role,
-        password: input.password,
+        password: request_body.password,
         updated_by: user.uuid(),
         updated_at: Utc::now(),
     };
@@ -77,7 +83,7 @@ pub async fn update_user(
             UpdateUserError::Repository(e) => PresentationError::from(e),
         })?;
 
-    Ok(Json(UpdateUserOutput::from(user)))
+    Ok(Json(UpdateUserResponseBody::from(user)))
 }
 
 #[allow(non_snake_case)]

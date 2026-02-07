@@ -6,8 +6,8 @@
 		deleteUser,
 		resetLoginFailure,
 		type User,
-		type CreateUserInput,
-		type UpdateUserInput
+		type CreateUserRequestBody,
+		type UpdateUserRequestBody
 	} from '$lib/api';
 	import { ROLES, ROLE_LABELS, ROLE_OPTIONS } from '$lib/constants';
 	import { authStore, isManager } from '$lib/stores/auth.svelte';
@@ -43,13 +43,23 @@
 
 	// 新規作成用
 	let showCreateModal = $state(false);
-	let createForm = $state<CreateUserInput>({ id: '', name: '', password: '', role: ROLES.ADMIN });
+	let createForm = $state<CreateUserRequestBody>({
+		id: '',
+		name: '',
+		password: '',
+		role: ROLES.ADMIN
+	});
 	let createError = $state('');
 	let isCreating = $state(false);
 
 	// 編集用
 	let editingUser = $state<User | null>(null);
-	let editForm = $state<UpdateUserInput>({ id: '', name: '', password: '', role: ROLES.ADMIN });
+	let editForm = $state<UpdateUserRequestBody>({
+		id: '',
+		name: '',
+		password: '',
+		role: ROLES.ADMIN
+	});
 	let editError = $state('');
 	let isEditing = $state(false);
 
@@ -139,14 +149,14 @@
 		isEditing = true;
 		editError = '';
 
-		const input: UpdateUserInput = {
+		const body: UpdateUserRequestBody = {
 			id: editForm.id,
 			name: editForm.name,
 			role: editForm.role,
 			password: editForm.password ? editForm.password : undefined
 		};
 
-		const result = await updateUser(editingUser.id, input);
+		const result = await updateUser(editingUser.id, body);
 		if (result.ok) {
 			editingUser = null;
 			await loadUsers();

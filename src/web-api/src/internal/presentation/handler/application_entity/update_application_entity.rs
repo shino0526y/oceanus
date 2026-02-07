@@ -1,13 +1,19 @@
-mod input;
-mod output;
+mod request_body;
+mod response_body;
 
-pub use self::{input::UpdateApplicationEntityInput, output::UpdateApplicationEntityOutput};
+pub use self::{
+    request_body::UpdateApplicationEntityRequestBody,
+    response_body::UpdateApplicationEntityResponseBody,
+};
 
 use crate::{
     internal::{
         application::application_entity::update_application_entity_use_case::UpdateApplicationEntityCommand,
         domain::value_object::{HostName, Port},
-        presentation::{error::PresentationError, middleware::AuthenticatedUser},
+        presentation::{
+            error::{ErrorResponseBody, PresentationError},
+            middleware::AuthenticatedUser,
+        },
     },
     startup::AppState,
 };
@@ -21,15 +27,18 @@ use dicom_lib::core::value::value_representations::ae::AeValue;
 #[utoipa::path(
     put,
     path = "/application-entities/{ae_title}",
-    request_body = UpdateApplicationEntityInput,
+    request_body = UpdateApplicationEntityRequestBody,
     params(
         ("ae_title" = String, Path, description = "AE Title")
     ),
     responses(
-        (status = 200, description = "Application Entityの更新に成功", body = UpdateApplicationEntityOutput),
-        (status = 401, description = "セッションが確立されていない"),
-        (status = 403, description = "CSRFトークンが無効または権限がありません"),
-        (status = 422, description = "バリデーション失敗"),
+        (status = 200, description = "AEの更新に成功", body = UpdateApplicationEntityResponseBody),
+        (status = 400, description = "リクエストの形式が無効", body = ErrorResponseBody),
+        (status = 401, description = "セッションが確立されていないか期限が切れている", body = ErrorResponseBody),
+        (status = 403, description = "CSRFトークンが無効または権限がない", body = ErrorResponseBody),
+        (status = 404, description = "対象のAEが見つからない", body = ErrorResponseBody),
+        (status = 409, description = "競合するAEが既に存在する", body = ErrorResponseBody),
+        (status = 422, description = "バリデーション失敗", body = ErrorResponseBody),
     ),
     security(
         ("session_cookie" = []),
@@ -41,18 +50,18 @@ pub async fn update_application_entity(
     State(state): State<AppState>,
     Extension(user): Extension<AuthenticatedUser>,
     Path(ae_title): Path<String>,
-    Json(input): Json<UpdateApplicationEntityInput>,
-) -> Result<Json<UpdateApplicationEntityOutput>, PresentationError> {
+    Json(request_body): Json<UpdateApplicationEntityRequestBody>,
+) -> Result<Json<UpdateApplicationEntityResponseBody>, PresentationError> {
     // バリデーション
     let old_title = AeValue::from_string(&ae_title).map_err(|e| {
         PresentationError::UnprocessableContent(format!("AEタイトルが不正です: {e}"))
     })?;
-    let title = AeValue::from_string(&input.title).map_err(|e| {
+    let title = AeValue::from_string(&request_body.title).map_err(|e| {
         PresentationError::UnprocessableContent(format!("AEタイトルが不正です: {e}"))
     })?;
-    let host = HostName::new(&input.host)
+    let host = HostName::new(&request_body.host)
         .map_err(|e| PresentationError::UnprocessableContent(format!("ホスト名が不正です: {e}")))?;
-    let port = Port::from_u16(input.port).map_err(|e| {
+    let port = Port::from_u16(request_body.port).map_err(|e| {
         PresentationError::UnprocessableContent(format!("ポート番号が不正です: {e}"))
     })?;
 
@@ -62,7 +71,7 @@ pub async fn update_application_entity(
         title,
         host,
         port,
-        comment: input.comment,
+        comment: request_body.comment,
         updated_by: user.uuid(),
         updated_at: Utc::now(),
     };
@@ -72,9 +81,9 @@ pub async fn update_application_entity(
         .await
         .map_err(PresentationError::from)?;
 
-    let output = UpdateApplicationEntityOutput::from(entity);
+    let response_body = UpdateApplicationEntityResponseBody::from(entity);
 
-    Ok(Json(output))
+    Ok(Json(response_body))
 }
 
 #[allow(non_snake_case)]

@@ -1,13 +1,16 @@
-mod input;
-mod output;
+mod request_body;
+mod response_body;
 
-pub use self::{input::CreateUserInput, output::CreateUserOutput};
+pub use self::{request_body::CreateUserRequestBody, response_body::CreateUserResponseBody};
 
 use crate::{
     internal::{
         application::user::create_user_use_case::{CreateUserCommand, CreateUserError},
         domain::value_object::{Id, Role, UserName},
-        presentation::{error::PresentationError, middleware::AuthenticatedUser},
+        presentation::{
+            error::{ErrorResponseBody, PresentationError},
+            middleware::AuthenticatedUser,
+        },
     },
     startup::AppState,
 };
@@ -17,12 +20,14 @@ use chrono::Utc;
 #[utoipa::path(
     post,
     path = "/users",
-    request_body = CreateUserInput,
+    request_body = CreateUserRequestBody,
     responses(
-        (status = 200, description = "ユーザーの作成に成功", body = CreateUserOutput),
-        (status = 401, description = "セッションが確立されていない"),
-        (status = 403, description = "CSRFトークンが無効または権限がありません"),
-        (status = 422, description = "バリデーションに失敗"),
+        (status = 200, description = "ユーザーの作成に成功", body = CreateUserResponseBody),
+        (status = 400, description = "リクエストの形式が無効", body = ErrorResponseBody),
+        (status = 401, description = "セッションが確立されていないか期限が切れている", body = ErrorResponseBody),
+        (status = 403, description = "CSRFトークンが無効または権限がない", body = ErrorResponseBody),
+        (status = 409, description = "競合するユーザーが既に存在する", body = ErrorResponseBody),
+        (status = 422, description = "バリデーションに失敗", body = ErrorResponseBody),
     ),
     security(
         ("session_cookie" = []),
@@ -33,14 +38,14 @@ use chrono::Utc;
 pub async fn create_user(
     State(state): State<AppState>,
     Extension(user): Extension<AuthenticatedUser>,
-    Json(input): Json<CreateUserInput>,
-) -> Result<Json<CreateUserOutput>, PresentationError> {
+    Json(request_body): Json<CreateUserRequestBody>,
+) -> Result<Json<CreateUserResponseBody>, PresentationError> {
     // バリデーション
-    let id = Id::new(input.id)
+    let id = Id::new(request_body.id)
         .map_err(|e| PresentationError::UnprocessableContent(format!("無効なID: {e}")))?;
-    let name = UserName::new(input.name)
+    let name = UserName::new(request_body.name)
         .map_err(|e| PresentationError::UnprocessableContent(format!("無効な名前: {e}")))?;
-    let role = Role::from_i16(input.role)
+    let role = Role::from_i16(request_body.role)
         .map_err(|e| PresentationError::UnprocessableContent(format!("無効なロール: {e}")))?;
 
     // 登録処理
@@ -48,7 +53,7 @@ pub async fn create_user(
         id,
         name,
         role,
-        password: input.password,
+        password: request_body.password,
         created_by: user.uuid(),
         created_at: Utc::now(),
     };
@@ -67,7 +72,7 @@ pub async fn create_user(
             CreateUserError::Repository(e) => PresentationError::from(e),
         })?;
 
-    Ok(Json(CreateUserOutput::from(user)))
+    Ok(Json(CreateUserResponseBody::from(user)))
 }
 
 #[allow(non_snake_case)]

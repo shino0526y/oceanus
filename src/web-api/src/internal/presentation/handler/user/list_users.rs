@@ -1,17 +1,21 @@
-mod output;
+mod response_body;
 
-pub use output::ListUsersOutputElement;
+pub use response_body::ListUsersResponseBodyItem;
 
-use crate::{internal::presentation::error::PresentationError, startup::AppState};
+use crate::{
+    internal::presentation::error::{ErrorResponseBody, PresentationError},
+    startup::AppState,
+};
 use axum::{Json, extract::State};
 
 #[utoipa::path(
     get,
     path = "/users",
     responses(
-        (status = 200, description = "ユーザーの一覧の取得に成功", body = Vec<ListUsersOutputElement>),
-        (status = 401, description = "セッションが確立されていない"),
-        (status = 403, description = "権限がありません"),
+        (status = 200, description = "ユーザーの一覧の取得に成功", body = Vec<ListUsersResponseBodyItem>),
+        (status = 400, description = "リクエストの形式が無効", body = ErrorResponseBody),
+        (status = 401, description = "セッションが確立されていないか期限が切れている", body = ErrorResponseBody),
+        (status = 403, description = "権限がない", body = ErrorResponseBody),
     ),
     security(
         ("session_cookie" = [])
@@ -20,20 +24,20 @@ use axum::{Json, extract::State};
 )]
 pub async fn list_users(
     State(state): State<AppState>,
-) -> Result<Json<Vec<ListUsersOutputElement>>, PresentationError> {
-    let output = state
+) -> Result<Json<Vec<ListUsersResponseBodyItem>>, PresentationError> {
+    let response_body = state
         .list_users_use_case
         .execute()
         .await
         .map(|users| {
             users
                 .into_iter()
-                .map(ListUsersOutputElement::from)
+                .map(ListUsersResponseBodyItem::from)
                 .collect()
         })
         .map_err(PresentationError::from)?;
 
-    Ok(Json(output))
+    Ok(Json(response_body))
 }
 
 #[allow(non_snake_case)]

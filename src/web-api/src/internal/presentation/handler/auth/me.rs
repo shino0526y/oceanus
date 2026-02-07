@@ -1,35 +1,28 @@
-mod output;
+mod response_body;
 
-pub use self::output::MeOutput;
+pub use self::response_body::MeResponseBody;
 
 use crate::internal::{
     domain::{
         entity::Session,
         repository::{SessionRepository, UserRepository},
     },
-    presentation::util::CookieHelper,
+    presentation::{
+        error::{ErrorResponseBody, PresentationError},
+        util::CookieHelper,
+    },
 };
-use axum::{
-    Json,
-    http::StatusCode,
-    response::{IntoResponse, Response},
-};
-use serde::Serialize;
+use axum::Json;
 use std::sync::Arc;
 use tower_cookies::Cookies;
-use utoipa::ToSchema;
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct ErrorResponse {
-    pub error: String,
-}
 
 #[utoipa::path(
     get,
     path = "/me",
     responses(
-        (status = 200, description = "認証済みユーザー情報を取得", body = MeOutput),
-        (status = 401, description = "未認証またはセッション切れ", body = ErrorResponse),
+        (status = 200, description = "認証済みユーザー情報を取得", body = MeResponseBody),
+        (status = 400, description = "リクエストの形式が無効", body = ErrorResponseBody),
+        (status = 401, description = "セッションが確立されていないか期限が切れている", body = ErrorResponseBody),
     ),
     security(
         ("session_cookie" = [])
@@ -40,18 +33,22 @@ pub async fn me(
     cookies: Cookies,
     session_repository: Arc<dyn SessionRepository>,
     user_repository: Arc<dyn UserRepository>,
-) -> Result<Json<MeOutput>, MeError> {
+) -> Result<Json<MeResponseBody>, PresentationError> {
     // CookieからセッションIDを取得
     let session_id = cookies
         .get(CookieHelper::SESSION_COOKIE_NAME)
         .map(|c| c.value().to_string())
-        .ok_or(MeError::Unauthorized)?;
+        .ok_or(PresentationError::Unauthorized(
+            "認証されていません".to_string(),
+        ))?;
 
     // セッションを取得
     let mut session = session_repository
         .find_by_session_id(&session_id)
         .await
-        .ok_or(MeError::Unauthorized)?;
+        .ok_or(PresentationError::Unauthorized(
+            "認証されていません".to_string(),
+        ))?;
 
     // ユーザーID（UUID）とCSRFトークンを取得
     let user_uuid = *session.user_uuid();
@@ -63,7 +60,9 @@ pub async fn me(
         .await
         .ok()
         .flatten()
-        .ok_or(MeError::Unauthorized)?;
+        .ok_or(PresentationError::Unauthorized(
+            "認証されていません".to_string(),
+        ))?;
     let role_i16 = user.role().as_i16();
 
     // セッションを延長
@@ -74,29 +73,11 @@ pub async fn me(
     let cookie = CookieHelper::create_session_cookie(session_id, Session::DEFAULT_EXPIRY_MINUTES);
     cookies.add(cookie);
 
-    Ok(Json(MeOutput {
+    Ok(Json(MeResponseBody {
         user_id: user_uuid.to_string(),
         csrf_token,
         role: role_i16,
     }))
-}
-
-#[derive(Debug)]
-pub enum MeError {
-    Unauthorized,
-}
-
-impl IntoResponse for MeError {
-    fn into_response(self) -> Response {
-        let (status, message) = match self {
-            MeError::Unauthorized => (StatusCode::UNAUTHORIZED, "認証されていません"),
-        };
-
-        let error_response = ErrorResponse {
-            error: message.to_string(),
-        };
-        (status, Json(error_response)).into_response()
-    }
 }
 
 #[allow(non_snake_case)]

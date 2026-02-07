@@ -5,8 +5,8 @@
 		updateApplicationEntity,
 		deleteApplicationEntity,
 		type ApplicationEntity,
-		type CreateApplicationEntityInput,
-		type UpdateApplicationEntityInput
+		type CreateApplicationEntityRequestBody,
+		type UpdateApplicationEntityRequestBody
 	} from '$lib/api';
 	import { handleOverlayClick, handleKeydown, formatDate } from '$lib/utils';
 	import { onMount } from 'svelte';
@@ -21,7 +21,7 @@
 
 	// 新規作成用
 	let showCreateModal = $state(false);
-	let createForm = $state<CreateApplicationEntityInput>({
+	let createForm = $state<CreateApplicationEntityRequestBody>({
 		title: '',
 		host: '',
 		port: 104,
@@ -32,7 +32,7 @@
 
 	// 編集用
 	let editingEntity = $state<ApplicationEntity | null>(null);
-	let editForm = $state<UpdateApplicationEntityInput>({
+	let editForm = $state<UpdateApplicationEntityRequestBody>({
 		title: '',
 		host: '',
 		port: 104,
@@ -130,14 +130,14 @@
 		isEditing = true;
 		editError = '';
 
-		const input: UpdateApplicationEntityInput = {
+		const body: UpdateApplicationEntityRequestBody = {
 			title: editForm.title,
 			host: editForm.host,
 			port: editForm.port,
 			comment: editForm.comment
 		};
 
-		const result = await updateApplicationEntity(editingEntity.title, input);
+		const result = await updateApplicationEntity(editingEntity.title, body);
 		if (result.ok) {
 			editingEntity = null;
 			await loadEntities();

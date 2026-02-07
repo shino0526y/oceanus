@@ -1,99 +1,73 @@
-mod input;
-mod output;
+mod request_body;
+mod response_body;
 
-pub use self::{input::LoginInput, output::LoginOutput};
+pub use self::{request_body::LoginRequestBody, response_body::LoginResponseBody};
 
 use crate::{
     internal::{
         application::auth::{AuthenticationError, LoginCommand},
         domain::{entity::Session, value_object::Id},
-        presentation::util::CookieHelper,
+        presentation::{
+            error::{ErrorResponseBody, PresentationError},
+            util::CookieHelper,
+        },
     },
     startup::AppState,
 };
-use axum::{
-    Json,
-    extract::State,
-    http::StatusCode,
-    response::{IntoResponse, Response},
-};
-use serde::Serialize;
+use axum::{Json, extract::State};
 use tower_cookies::Cookies;
-use utoipa::ToSchema;
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct ErrorResponse {
-    pub error: String,
-}
 
 #[utoipa::path(
     post,
     path = "/login",
-    request_body = LoginInput,
+    request_body = LoginRequestBody,
     responses(
-        (status = 200, description = "ログインに成功", body = LoginOutput),
-        (status = 401, description = "認証に失敗", body = ErrorResponse),
-        (status = 422, description = "バリデーション失敗", body = ErrorResponse),
+        (status = 200, description = "ログインに成功", body = LoginResponseBody),
+        (status = 400, description = "リクエストの形式が無効", body = ErrorResponseBody),
+        (status = 401, description = "認証に失敗", body = ErrorResponseBody),
+        (status = 403, description = "アカウントがロックされている", body = ErrorResponseBody),
+        (status = 422, description = "バリデーション失敗", body = ErrorResponseBody),
     ),
     tag = "auth"
 )]
 pub async fn login(
     State(state): State<AppState>,
     cookies: Cookies,
-    Json(input): Json<LoginInput>,
-) -> Result<Json<LoginOutput>, LoginError> {
+    Json(request_body): Json<LoginRequestBody>,
+) -> Result<Json<LoginResponseBody>, PresentationError> {
     // バリデーション
-    let user_id = Id::new(&input.user_id).map_err(|e| LoginError::Validation {
-        message: format!("無効なユーザーID: {e}"),
-    })?;
+    let user_id = Id::new(&request_body.user_id)
+        .map_err(|e| PresentationError::UnprocessableContent(format!("無効なユーザーID: {e}")))?;
 
     // ログイン処理
     let command = LoginCommand {
         user_id: user_id.clone(),
-        password: input.password,
+        password: request_body.password,
     };
-    let (session_id, csrf_token, role) = state.login_use_case.execute(command).await?;
+    let (session_id, csrf_token, role) =
+        state
+            .login_use_case
+            .execute(command)
+            .await
+            .map_err(|e| match e {
+                AuthenticationError::InvalidCredentials => {
+                    PresentationError::Unauthorized(e.to_string())
+                }
+                AuthenticationError::Locked => PresentationError::Forbidden(e.to_string()),
+                AuthenticationError::Other { .. } => {
+                    PresentationError::InternalServerError(e.to_string())
+                }
+            })?;
 
     // Cookie設定
     let cookie = CookieHelper::create_session_cookie(session_id, Session::DEFAULT_EXPIRY_MINUTES);
     cookies.add(cookie);
 
-    Ok(Json(LoginOutput {
+    Ok(Json(LoginResponseBody {
         user_id: user_id.value().to_string(),
         csrf_token,
         role,
     }))
-}
-
-#[derive(Debug)]
-pub enum LoginError {
-    Validation { message: String },
-    Authentication(AuthenticationError),
-}
-
-impl From<AuthenticationError> for LoginError {
-    fn from(err: AuthenticationError) -> Self {
-        LoginError::Authentication(err)
-    }
-}
-
-impl IntoResponse for LoginError {
-    fn into_response(self) -> Response {
-        let (status, message) = match self {
-            LoginError::Validation { message } => (StatusCode::UNPROCESSABLE_ENTITY, message),
-            LoginError::Authentication(err) => {
-                let status = match err {
-                    AuthenticationError::InvalidCredentials => StatusCode::UNAUTHORIZED,
-                    AuthenticationError::Locked => StatusCode::FORBIDDEN,
-                    AuthenticationError::Other { .. } => StatusCode::INTERNAL_SERVER_ERROR,
-                };
-                (status, err.to_string())
-            }
-        };
-
-        let error_response = ErrorResponse { error: message };
-        (status, Json(error_response)).into_response()
-    }
 }
 
 #[allow(non_snake_case)]

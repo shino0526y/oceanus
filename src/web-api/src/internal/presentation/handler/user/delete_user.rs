@@ -2,7 +2,10 @@ use crate::{
     internal::{
         application::user::delete_user_use_case::{DeleteUserCommand, DeleteUserError},
         domain::value_object::Id,
-        presentation::{error::PresentationError, middleware::AuthenticatedUser},
+        presentation::{
+            error::{ErrorResponseBody, PresentationError},
+            middleware::AuthenticatedUser,
+        },
     },
     startup::AppState,
 };
@@ -21,10 +24,11 @@ use chrono::Utc;
     ),
     responses(
         (status = 204, description = "ユーザーの削除に成功"),
-        (status = 401, description = "セッションが確立されていない"),
-        (status = 403, description = "CSRFトークンが無効または権限がありません"),
-        (status = 404, description = "ユーザーが見つからない"),
-        (status = 422, description = "バリデーションに失敗、または自分自身を削除しようとした"),
+        (status = 400, description = "リクエストの形式が無効", body = ErrorResponseBody),
+        (status = 401, description = "セッションが確立されていないか期限が切れている", body = ErrorResponseBody),
+        (status = 403, description = "CSRFトークンが無効または権限がない", body = ErrorResponseBody),
+        (status = 404, description = "対象のユーザーが見つからない", body = ErrorResponseBody),
+        (status = 422, description = "バリデーションに失敗、または自分自身を削除しようとした", body = ErrorResponseBody),
     ),
     security(
         ("session_cookie" = []),

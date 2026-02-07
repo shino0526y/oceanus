@@ -2,7 +2,7 @@
 
 const API_BASE_URL = '/api';
 
-interface ApiError {
+interface ErrorResponseBody {
 	error: string;
 }
 
@@ -39,7 +39,9 @@ class ApiClient {
 			});
 
 			if (!response.ok) {
-				const errorData: ApiError = await response.json().catch(() => ({ error: 'Unknown error' }));
+				const errorData: ErrorResponseBody = await response
+					.json()
+					.catch(() => ({ error: 'Unknown error' }));
 				return { ok: false, error: errorData.error, status: response.status };
 			}
 
@@ -75,18 +77,18 @@ class ApiClient {
 export const api = new ApiClient();
 
 // 型定義
-export interface LoginInput {
+export interface LoginRequestBody {
 	userId: string;
 	password: string;
 }
 
-export interface LoginOutput {
+export interface LoginResponseBody {
 	userId: string;
 	csrfToken: string;
 	role: number;
 }
 
-export interface MeOutput {
+export interface MeResponseBody {
 	userId: string;
 	csrfToken: string;
 	role: number;
@@ -101,14 +103,14 @@ export interface User {
 	updatedAt: string;
 }
 
-export interface CreateUserInput {
+export interface CreateUserRequestBody {
 	id: string;
 	name: string;
 	password: string;
 	role: number;
 }
 
-export interface UpdateUserInput {
+export interface UpdateUserRequestBody {
 	id: string;
 	name: string;
 	/** パスワード（変更しない場合はフィールド自体を送信しない） */
@@ -125,14 +127,14 @@ export interface ApplicationEntity {
 	updatedAt: string;
 }
 
-export interface CreateApplicationEntityInput {
+export interface CreateApplicationEntityRequestBody {
 	title: string;
 	host: string;
 	port: number;
 	comment?: string;
 }
 
-export interface UpdateApplicationEntityInput {
+export interface UpdateApplicationEntityRequestBody {
 	title: string;
 	host: string;
 	port: number;
@@ -140,8 +142,8 @@ export interface UpdateApplicationEntityInput {
 }
 
 // API関数
-export async function login(input: LoginInput) {
-	const result = await api.post<LoginOutput>('/login', input);
+export async function login(body: LoginRequestBody) {
+	const result = await api.post<LoginResponseBody>('/login', body);
 	if (result.ok) {
 		api.setCsrfToken(result.data.csrfToken);
 	}
@@ -157,7 +159,7 @@ export async function logout() {
 }
 
 export async function getMe() {
-	const result = await api.get<MeOutput>('/me');
+	const result = await api.get<MeResponseBody>('/me');
 	if (result.ok) {
 		api.setCsrfToken(result.data.csrfToken);
 	}
@@ -168,12 +170,12 @@ export function listUsers() {
 	return api.get<User[]>('/users');
 }
 
-export function createUser(input: CreateUserInput) {
-	return api.post<User>('/users', input);
+export function createUser(body: CreateUserRequestBody) {
+	return api.post<User>('/users', body);
 }
 
-export function updateUser(id: string, input: UpdateUserInput) {
-	return api.put<User>(`/users/${encodeURIComponent(id)}`, input);
+export function updateUser(id: string, body: UpdateUserRequestBody) {
+	return api.put<User>(`/users/${encodeURIComponent(id)}`, body);
 }
 
 export function deleteUser(id: string) {
@@ -188,12 +190,12 @@ export function listApplicationEntities() {
 	return api.get<ApplicationEntity[]>('/application-entities');
 }
 
-export function createApplicationEntity(input: CreateApplicationEntityInput) {
-	return api.post<ApplicationEntity>('/application-entities', input);
+export function createApplicationEntity(body: CreateApplicationEntityRequestBody) {
+	return api.post<ApplicationEntity>('/application-entities', body);
 }
 
-export function updateApplicationEntity(aeTitle: string, input: UpdateApplicationEntityInput) {
-	return api.put<ApplicationEntity>(`/application-entities/${encodeURIComponent(aeTitle)}`, input);
+export function updateApplicationEntity(aeTitle: string, body: UpdateApplicationEntityRequestBody) {
+	return api.put<ApplicationEntity>(`/application-entities/${encodeURIComponent(aeTitle)}`, body);
 }
 
 export function deleteApplicationEntity(aeTitle: string) {

@@ -1,26 +1,21 @@
-use crate::{internal::presentation::util::CookieHelper, startup::AppState};
-use axum::{
-    Json,
-    extract::State,
-    http::StatusCode,
-    response::{IntoResponse, Response},
+use crate::{
+    internal::presentation::{
+        error::{ErrorResponseBody, PresentationError},
+        util::CookieHelper,
+    },
+    startup::AppState,
 };
-use serde::Serialize;
+use axum::{extract::State, http::StatusCode};
 use tower_cookies::{Cookie, Cookies};
-use utoipa::ToSchema;
-
-#[derive(Debug, Serialize, ToSchema)]
-pub struct ErrorResponse {
-    pub error: String,
-}
 
 #[utoipa::path(
     post,
     path = "/logout",
     responses(
         (status = 204, description = "ログアウトに成功"),
-        (status = 401, description = "セッションが確立されていない"),
-        (status = 403, description = "CSRFトークンが無効"),
+        (status = 400, description = "リクエストの形式が無効", body = ErrorResponseBody),
+        (status = 401, description = "セッションが確立されていないか期限が切れている", body = ErrorResponseBody),
+        (status = 403, description = "CSRFトークンが無効", body = ErrorResponseBody),
     ),
     security(
         ("session_cookie" = []),
@@ -31,12 +26,14 @@ pub struct ErrorResponse {
 pub async fn logout(
     State(state): State<AppState>,
     cookies: Cookies,
-) -> Result<StatusCode, LogoutError> {
+) -> Result<StatusCode, PresentationError> {
     // セッションIDを取得
     let session_id = cookies
         .get(CookieHelper::SESSION_COOKIE_NAME)
         .map(|c| c.value().to_string())
-        .ok_or(LogoutError::NoSession)?;
+        .ok_or(PresentationError::BadRequest(
+            "セッションが存在しません".to_string(),
+        ))?;
 
     // ログアウト処理
     state.logout_use_case.execute(&session_id).await;
@@ -45,24 +42,6 @@ pub async fn logout(
     cookies.remove(Cookie::from(CookieHelper::SESSION_COOKIE_NAME));
 
     Ok(StatusCode::NO_CONTENT)
-}
-
-#[derive(Debug)]
-pub enum LogoutError {
-    NoSession,
-}
-
-impl IntoResponse for LogoutError {
-    fn into_response(self) -> Response {
-        let (status, message) = match self {
-            LogoutError::NoSession => (StatusCode::BAD_REQUEST, "セッションが存在しません"),
-        };
-
-        let error_response = ErrorResponse {
-            error: message.to_string(),
-        };
-        (status, Json(error_response)).into_response()
-    }
 }
 
 #[allow(non_snake_case)]

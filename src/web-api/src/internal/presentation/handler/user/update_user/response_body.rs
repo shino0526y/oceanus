@@ -5,7 +5,7 @@ use utoipa::ToSchema;
 
 #[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct UpdateUserOutput {
+pub struct UpdateUserResponseBody {
     pub id: String,
     pub name: String,
     pub role: i16,
@@ -13,7 +13,7 @@ pub struct UpdateUserOutput {
     pub updated_at: DateTime<Utc>,
 }
 
-impl From<User> for UpdateUserOutput {
+impl From<User> for UpdateUserResponseBody {
     fn from(user: User) -> Self {
         Self {
             id: user.id().value().into(),

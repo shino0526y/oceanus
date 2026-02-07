@@ -1,7 +1,10 @@
 use crate::{
     internal::{
         application::application_entity::delete_application_entity_use_case::DeleteApplicationEntityCommand,
-        presentation::{error::PresentationError, middleware::AuthenticatedUser},
+        presentation::{
+            error::{ErrorResponseBody, PresentationError},
+            middleware::AuthenticatedUser,
+        },
     },
     startup::AppState,
 };
@@ -20,11 +23,12 @@ use dicom_lib::core::value::value_representations::ae::AeValue;
         ("ae_title" = String, Path, description = "AE Title")
     ),
     responses(
-        (status = 204, description = "Application Entityの削除に成功"),
-        (status = 401, description = "セッションが確立されていない"),
-        (status = 403, description = "CSRFトークンが無効または権限がありません"),
-        (status = 404, description = "Application Entityが見つからない"),
-        (status = 422, description = "バリデーション失敗"),
+        (status = 204, description = "AEの削除に成功"),
+        (status = 400, description = "リクエストの形式が無効", body = ErrorResponseBody),
+        (status = 401, description = "セッションが確立されていないか期限が切れている", body = ErrorResponseBody),
+        (status = 403, description = "CSRFトークンが無効または権限がない", body = ErrorResponseBody),
+        (status = 404, description = "対象のAEが見つからない", body = ErrorResponseBody),
+        (status = 422, description = "バリデーション失敗", body = ErrorResponseBody),
     ),
     security(
         ("session_cookie" = []),

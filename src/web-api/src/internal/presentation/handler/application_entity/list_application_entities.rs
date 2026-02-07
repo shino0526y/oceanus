@@ -1,17 +1,20 @@
-mod output;
+mod request_body;
 
-pub use self::output::ListApplicationEntitiesOutputElement;
+pub use self::request_body::ListApplicationEntitiesResponseBodyItem;
 
-use crate::{internal::presentation::error::PresentationError, startup::AppState};
+use crate::{
+    internal::presentation::error::{ErrorResponseBody, PresentationError},
+    startup::AppState,
+};
 use axum::{Json, extract::State};
 
 #[utoipa::path(
     get,
     path = "/application-entities",
     responses(
-        (status = 200, description = "Application Entityの一覧の取得に成功", body = Vec<ListApplicationEntitiesOutputElement>),
-        (status = 401, description = "セッションが確立されていない"),
-        (status = 403, description = "権限がありません"),
+        (status = 200, description = "AE一覧の取得に成功", body = Vec<ListApplicationEntitiesResponseBodyItem>),
+        (status = 401, description = "セッションが確立されていないか期限が切れている", body = ErrorResponseBody),
+        (status = 403, description = "権限がない", body = ErrorResponseBody),
     ),
     security(
         ("session_cookie" = [])
@@ -20,20 +23,20 @@ use axum::{Json, extract::State};
 )]
 pub async fn list_application_entities(
     State(state): State<AppState>,
-) -> Result<Json<Vec<ListApplicationEntitiesOutputElement>>, PresentationError> {
-    let output = state
+) -> Result<Json<Vec<ListApplicationEntitiesResponseBodyItem>>, PresentationError> {
+    let response_body = state
         .list_application_entities_use_case
         .execute()
         .await
         .map(|entities| {
             entities
                 .into_iter()
-                .map(ListApplicationEntitiesOutputElement::from)
+                .map(ListApplicationEntitiesResponseBodyItem::from)
                 .collect()
         })
         .map_err(PresentationError::from)?;
 
-    Ok(Json(output))
+    Ok(Json(response_body))
 }
 
 #[allow(non_snake_case)]

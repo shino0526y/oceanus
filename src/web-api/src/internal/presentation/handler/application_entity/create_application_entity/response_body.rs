@@ -5,7 +5,7 @@ use utoipa::ToSchema;
 
 #[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct ListApplicationEntitiesOutputElement {
+pub struct CreateApplicationEntityResponseBody {
     pub title: String,
     pub host: String,
     pub port: u16,
@@ -14,7 +14,7 @@ pub struct ListApplicationEntitiesOutputElement {
     pub updated_at: DateTime<Utc>,
 }
 
-impl From<ApplicationEntity> for ListApplicationEntitiesOutputElement {
+impl From<ApplicationEntity> for CreateApplicationEntityResponseBody {
     fn from(entity: ApplicationEntity) -> Self {
         Self {
             title: entity.title().to_string(),
