@@ -272,17 +272,23 @@ async fn save_instance_to_db(
         .await
         .map_err(|e| format!("トランザクションの開始に失敗しました: {e}"))?;
 
+    // AEのUUIDを取得
+    let ae_uuid = query!(
+        "SELECT uuid FROM application_entities WHERE title = $1",
+        ae_title
+    )
+    .fetch_optional(&mut *transaction)
+    .await
+    .map_err(|e| format!("AEの取得に失敗しました: {e}"))?
+    .map(|r| r.uuid)
+    .ok_or_else(|| format!("送信元AE \"{ae_title}\" が登録されていません"))?;
+
     query!(
         r#"
-        WITH ae AS (
-            SELECT uuid FROM application_entities WHERE title = $1
-        )
         INSERT INTO patients (id, name_alphabet, name_kanji, name_hiragana, birth_date, sex, created_by, created_at, updated_by, updated_at)
-        SELECT $2, $3, $4, $5, $6, $7, ae.uuid, now(), ae.uuid, now()
-        FROM ae
+        VALUES ($1, $2, $3, $4, $5, $6, $7, now(), $7, now())
         ON CONFLICT (id) DO NOTHING
         "#, // 患者についてはもともと登録されていた情報を真とみなす
-        ae_title,
         instance_info.patient.id(),
         instance_info.patient.name_alphabet(),
         instance_info.patient.name_kanji(),
@@ -294,6 +300,7 @@ async fn save_instance_to_db(
             .as_ref()
             .map(|s| s.to_iso_5218())
             .unwrap_or(0), // not known
+        ae_uuid,
     )
     .execute(&mut *transaction)
     .await
@@ -301,12 +308,8 @@ async fn save_instance_to_db(
 
     query!(
         r#"
-        WITH ae AS (
-            SELECT uuid FROM application_entities WHERE title = $1
-        )
         INSERT INTO studies (patient_id, instance_uid, id, study_date, study_time, accession_number, application_entity_uuid, created_by, created_at, updated_by, updated_at)
-        SELECT $2, $3, $4, $5, $6, $7, ae.uuid, ae.uuid, now(), ae.uuid, now()
-        FROM ae
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $7, now(), $7, now())
         ON CONFLICT (instance_uid) DO UPDATE SET
             patient_id = EXCLUDED.patient_id,
             id = EXCLUDED.id,
@@ -323,13 +326,13 @@ async fn save_instance_to_db(
            OR studies.accession_number IS DISTINCT FROM EXCLUDED.accession_number
            OR studies.application_entity_uuid IS DISTINCT FROM EXCLUDED.application_entity_uuid
         "#,
-        ae_title,
         instance_info.patient.id(),
         instance_info.study.instance_uid(),
         instance_info.study.id(),
         instance_info.study.date(),
         instance_info.study.time(),
         instance_info.study.accession_number(),
+        ae_uuid,
     )
     .execute(&mut *transaction)
     .await
@@ -337,12 +340,8 @@ async fn save_instance_to_db(
 
     query!(
         r#"
-        WITH ae AS (
-            SELECT uuid FROM application_entities WHERE title = $1
-        )
         INSERT INTO series (study_instance_uid, instance_uid, modality, series_number, created_by, created_at, updated_by, updated_at)
-        SELECT $2, $3, $4, $5, ae.uuid, now(), ae.uuid, now()
-        FROM ae
+        VALUES ($1, $2, $3, $4, $5, now(), $5, now())
         ON CONFLICT (instance_uid) DO UPDATE SET
             study_instance_uid = EXCLUDED.study_instance_uid,
             modality = EXCLUDED.modality,
@@ -353,11 +352,11 @@ async fn save_instance_to_db(
            OR series.modality IS DISTINCT FROM EXCLUDED.modality
            OR series.series_number IS DISTINCT FROM EXCLUDED.series_number
         "#,
-        ae_title,
         instance_info.study.instance_uid(),
         instance_info.series.instance_uid(),
         instance_info.series.modality(),
         instance_info.series.number(),
+        ae_uuid,
     )
     .execute(&mut *transaction)
     .await
@@ -365,12 +364,8 @@ async fn save_instance_to_db(
 
     query!(
         r#"
-        WITH ae AS (
-            SELECT uuid FROM application_entities WHERE title = $1
-        )
         INSERT INTO sop_instances (series_instance_uid, class_uid, instance_uid, transfer_syntax_uid, size, path, created_by, created_at, updated_by, updated_at)
-        SELECT $2, $3, $4, $5, $6, $7, ae.uuid, now(), ae.uuid, now()
-        FROM ae
+        VALUES ($1, $2, $3, $4, $5, $6, $7, now(), $7, now())
         ON CONFLICT (instance_uid) DO UPDATE SET
             series_instance_uid = EXCLUDED.series_instance_uid,
             class_uid = EXCLUDED.class_uid,
@@ -385,13 +380,13 @@ async fn save_instance_to_db(
            OR sop_instances.size IS DISTINCT FROM EXCLUDED.size
            OR sop_instances.path IS DISTINCT FROM EXCLUDED.path
         "#,
-        ae_title,
         instance_info.series.instance_uid(),
         instance_info.sop_instance.class_uid(),
         instance_info.sop_instance.instance_uid(),
         transfer_syntax_uid,
         size as i32,
         path,
+        ae_uuid,
     )
     .execute(&mut *transaction)
     .await
