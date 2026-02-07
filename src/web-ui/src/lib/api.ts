@@ -131,7 +131,7 @@ export interface CreateApplicationEntityRequestBody {
 	title: string;
 	host: string;
 	port: number;
-	comment?: string;
+	comment: string;
 }
 
 export interface UpdateApplicationEntityRequestBody {
