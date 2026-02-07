@@ -145,9 +145,20 @@ impl UserRepository for PostgresUserRepository {
             if let Some(db_err) = e.as_database_error()
                 && db_err.is_unique_violation()
             {
+                let field = match db_err.constraint() {
+                    Some("users_id_key") => "ID",
+                    Some("users_name_key") => "名前",
+                    _ => "不明な項目",
+                };
+                let value = match field {
+                    "ID" => user.id().value().to_string(),
+                    "名前" => user.name().value().to_string(),
+                    _ => "不明".to_string(),
+                };
                 return RepositoryError::Conflict {
                     resource: "ユーザー".to_string(),
-                    key: user.id().value().to_string(),
+                    field: field.to_string(),
+                    value,
                 };
             }
             RepositoryError::Other {
@@ -181,9 +192,20 @@ impl UserRepository for PostgresUserRepository {
             if let Some(db_err) = e.as_database_error()
                 && db_err.is_unique_violation()
             {
+                let field = match db_err.constraint() {
+                    Some("users_id_key") => "ID",
+                    Some("users_name_key") => "名前",
+                    _ => "不明な項目",
+                };
+                let value = match field {
+                    "ID" => user.id().value().to_string(),
+                    "名前" => user.name().value().to_string(),
+                    _ => "不明".to_string(),
+                };
                 return RepositoryError::Conflict {
                     resource: "ユーザー".to_string(),
-                    key: user.id().value().to_string(),
+                    field: field.to_string(),
+                    value,
                 };
             }
             RepositoryError::Other {
@@ -323,7 +345,8 @@ impl UserRepository for TestUserRepository {
         if self.find_by_id(user.id()).await?.is_some() {
             return Err(RepositoryError::Conflict {
                 resource: "ユーザー".to_string(),
-                key: user.id().value().to_string(),
+                field: "ID".to_string(),
+                value: user.id().value().to_string(),
             });
         }
         // 名前が既存ユーザーと競合する場合はエラー
@@ -336,7 +359,8 @@ impl UserRepository for TestUserRepository {
         {
             return Err(RepositoryError::Conflict {
                 resource: "ユーザー".to_string(),
-                key: user.id().value().to_string(),
+                field: "名前".to_string(),
+                value: user.name().value().to_string(),
             });
         }
 
@@ -357,7 +381,8 @@ impl UserRepository for TestUserRepository {
         if user.id() != existing_user.id() && self.find_by_id(user.id()).await?.is_some() {
             return Err(RepositoryError::Conflict {
                 resource: "ユーザー".to_string(),
-                key: user.id().value().to_string(),
+                field: "ID".to_string(),
+                value: user.id().value().to_string(),
             });
         }
         // 更新後の名前が他のユーザーと競合する場合はエラー
@@ -371,7 +396,8 @@ impl UserRepository for TestUserRepository {
         {
             return Err(RepositoryError::Conflict {
                 resource: "ユーザー".to_string(),
-                key: user.id().value().to_string(),
+                field: "名前".to_string(),
+                value: user.name().value().to_string(),
             });
         }
 

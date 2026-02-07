@@ -126,9 +126,22 @@ impl ApplicationEntityRepository for PostgresApplicationEntityRepository {
             if let Some(db_err) = e.as_database_error()
                 && db_err.is_unique_violation()
             {
+                let field = match db_err.constraint() {
+                    Some("application_entities_title_key") => "タイトル",
+                    Some("application_entities_host_port_key") => "ホスト名とポート番号",
+                    _ => "不明な項目",
+                };
+                let value = match field {
+                    "タイトル" => entity.title().value().to_string(),
+                    "ホスト名とポート番号" => {
+                        format!("{}:{}", entity.host().value(), entity.port().value())
+                    }
+                    _ => "不明".to_string(),
+                };
                 return RepositoryError::Conflict {
                     resource: "AEタイトル".to_string(),
-                    key: entity.title().value().to_string(),
+                    field: field.to_string(),
+                    value,
                 };
             }
             RepositoryError::Other {
@@ -166,9 +179,22 @@ impl ApplicationEntityRepository for PostgresApplicationEntityRepository {
             if let Some(db_err) = e.as_database_error()
                 && db_err.is_unique_violation()
             {
+                let field = match db_err.constraint() {
+                    Some("application_entities_title_key") => "タイトル",
+                    Some("application_entities_host_port_key") => "ホスト名とポート番号",
+                    _ => "不明な項目",
+                };
+                let value = match field {
+                    "タイトル" => entity.title().value().to_string(),
+                    "ホスト名とポート番号" => {
+                        format!("{}:{}", entity.host().value(), entity.port().value())
+                    }
+                    _ => "不明".to_string(),
+                };
                 return RepositoryError::Conflict {
                     resource: "AEタイトル".to_string(),
-                    key: entity.title().value().to_string(),
+                    field: field.to_string(),
+                    value,
                 };
             }
             RepositoryError::Other {
@@ -299,7 +325,8 @@ impl ApplicationEntityRepository for TestApplicationEntityRepository {
         if self.find_by_title(entity.title()).await?.is_some() {
             return Err(RepositoryError::Conflict {
                 resource: "AEタイトル".to_string(),
-                key: entity.title().value().to_string(),
+                field: "タイトル".to_string(),
+                value: entity.title().value().to_string(),
             });
         }
         // ホスト名/IPアドレスとポート番号の組が既存エンティティと競合する場合はエラー
@@ -312,7 +339,8 @@ impl ApplicationEntityRepository for TestApplicationEntityRepository {
         {
             return Err(RepositoryError::Conflict {
                 resource: "AEタイトル".to_string(),
-                key: entity.title().value().to_string(),
+                field: "ホスト名とポート番号".to_string(),
+                value: format!("{}:{}", entity.host().value(), entity.port().value()),
             });
         }
         self.inner
@@ -344,7 +372,8 @@ impl ApplicationEntityRepository for TestApplicationEntityRepository {
         {
             return Err(RepositoryError::Conflict {
                 resource: "AEタイトル".to_string(),
-                key: application_entity.title().value().to_string(),
+                field: "タイトル".to_string(),
+                value: application_entity.title().value().to_string(),
             });
         }
         // 更新後のホスト名/IPアドレスとポート番号の組が他のエンティティと重複する場合はエラー
@@ -355,7 +384,12 @@ impl ApplicationEntityRepository for TestApplicationEntityRepository {
         }) {
             return Err(RepositoryError::Conflict {
                 resource: "AEタイトル".to_string(),
-                key: application_entity.title().value().to_string(),
+                field: "ホスト名とポート番号".to_string(),
+                value: format!(
+                    "{}:{}",
+                    application_entity.host().value(),
+                    application_entity.port().value()
+                ),
             });
         }
         drop(inner);
