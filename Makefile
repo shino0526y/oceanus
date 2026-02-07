@@ -1,6 +1,6 @@
 .PHONY: \
 	up down start stop restart logs ps build pull clean \
-	db-up db-down db-start db-stop db-restart db-logs db-shell db-psql \
+	db-up db-start db-stop db-restart db-logs db-shell db-psql \
 	install lint format test src-build src-clean \
 	help
 
@@ -104,7 +104,6 @@ help:
 	@echo ""
 	@echo "DB 操作:"
 	@echo "  db-up      DBコンテナを起動"
-	@echo "  db-down    DBコンテナを停止・削除"
 	@echo "  db-start   DBコンテナを起動"
 	@echo "  db-stop    DBコンテナを停止"
 	@echo "  db-restart DBコンテナを再起動"
