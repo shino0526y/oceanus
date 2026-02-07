@@ -1,12 +1,12 @@
-use crate::internal::domain::{repository::UserRepository, value_object::Role};
+use crate::internal::{
+    domain::{repository::UserRepository, value_object::Role},
+    presentation::{error::PresentationError, middleware::session_auth::AuthenticatedUser},
+};
 use axum::{
-    body::Body, extract::Request, http::StatusCode, middleware::Next, response::IntoResponse,
-    response::Response,
+    body::Body, extract::Request, middleware::Next, response::IntoResponse, response::Response,
 };
 use std::sync::Arc;
 use uuid::Uuid;
-
-use crate::internal::presentation::middleware::session_auth::AuthenticatedUser;
 
 /// 管理者または情シスでなければ403を返すミドルウェア関数
 pub async fn require_admin_or_it(
@@ -17,7 +17,9 @@ pub async fn require_admin_or_it(
     // 認証済みユーザー情報を取得
     let user_uuid: Uuid = match request.extensions().get::<AuthenticatedUser>() {
         Some(auth) => auth.uuid(),
-        None => return StatusCode::UNAUTHORIZED.into_response(),
+        None => {
+            return PresentationError::Unauthorized("認証が必要です".to_string()).into_response();
+        }
     };
 
     // ユーザーを取得
@@ -27,10 +29,16 @@ pub async fn require_admin_or_it(
             if role == Role::Admin || role == Role::ItStaff {
                 next.run(request).await
             } else {
-                StatusCode::FORBIDDEN.into_response()
+                PresentationError::Forbidden("この操作を行う権限がありません".to_string())
+                    .into_response()
             }
         }
-        Ok(None) => StatusCode::UNAUTHORIZED.into_response(),
-        Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        Ok(None) => {
+            PresentationError::Unauthorized("ユーザーが見つかりません".to_string()).into_response()
+        }
+        Err(e) => PresentationError::InternalServerError(format!(
+            "データベース処理でエラーが発生しました: {e}"
+        ))
+        .into_response(),
     }
 }
