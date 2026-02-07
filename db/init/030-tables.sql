@@ -86,7 +86,6 @@ CREATE TABLE studies(
     study_date date,
     study_time time,
     accession_number varchar(16) NOT NULL,
-    application_entity_uuid uuid NOT NULL,
     created_by uuid NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_by uuid NOT NULL,

@@ -308,15 +308,14 @@ async fn save_instance_to_db(
 
     query!(
         r#"
-        INSERT INTO studies (patient_id, instance_uid, id, study_date, study_time, accession_number, application_entity_uuid, created_by, created_at, updated_by, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $7, now(), $7, now())
+        INSERT INTO studies (patient_id, instance_uid, id, study_date, study_time, accession_number, created_by, created_at, updated_by, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, now(), $7, now())
         ON CONFLICT (instance_uid) DO UPDATE SET
             patient_id = EXCLUDED.patient_id,
             id = EXCLUDED.id,
             study_date = EXCLUDED.study_date,
             study_time = EXCLUDED.study_time,
             accession_number = EXCLUDED.accession_number,
-            application_entity_uuid = EXCLUDED.application_entity_uuid,
             updated_by = EXCLUDED.updated_by,
             updated_at = EXCLUDED.updated_at
         WHERE studies.patient_id IS DISTINCT FROM EXCLUDED.patient_id
@@ -324,7 +323,6 @@ async fn save_instance_to_db(
            OR studies.study_date IS DISTINCT FROM EXCLUDED.study_date
            OR studies.study_time IS DISTINCT FROM EXCLUDED.study_time
            OR studies.accession_number IS DISTINCT FROM EXCLUDED.accession_number
-           OR studies.application_entity_uuid IS DISTINCT FROM EXCLUDED.application_entity_uuid
         "#,
         instance_info.patient.id(),
         instance_info.study.instance_uid(),
