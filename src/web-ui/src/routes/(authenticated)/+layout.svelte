@@ -54,9 +54,10 @@
 				<h1 class="text-xl font-bold">Oceanus</h1>
 				<nav class="flex items-center gap-6">
 					{#each navItems() as item (item.href)}
+						{@const resolvedHref = resolve(item.href)}
 						<a
-							href={resolve(item.href)}
-							class="hover:text-gray-300 {page.url.pathname === item.href
+							href={resolvedHref}
+							class="hover:text-gray-300 {page.url.pathname === resolvedHref
 								? 'text-blue-400'
 								: 'text-white'}"
 						>
