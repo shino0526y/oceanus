@@ -6,7 +6,7 @@ use crate::{
     startup::AppState,
 };
 use axum::{extract::State, http::StatusCode};
-use tower_cookies::{Cookie, Cookies};
+use tower_cookies::Cookies;
 
 #[utoipa::path(
     post,
@@ -39,7 +39,7 @@ pub async fn logout(
     state.logout_use_case.execute(&session_id).await;
 
     // Cookieを削除
-    cookies.remove(Cookie::from(CookieHelper::SESSION_COOKIE_NAME));
+    cookies.remove(CookieHelper::delete_session_cookie());
 
     Ok(StatusCode::NO_CONTENT)
 }

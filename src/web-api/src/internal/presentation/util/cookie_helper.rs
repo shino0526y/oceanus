@@ -18,4 +18,13 @@ impl CookieHelper {
         cookie.set_max_age(Duration::minutes(max_age_minutes));
         cookie
     }
+
+    pub fn delete_session_cookie() -> Cookie<'static> {
+        let mut cookie = Cookie::from(Self::SESSION_COOKIE_NAME);
+        cookie.set_path("/");
+        cookie.set_http_only(true);
+        cookie.set_same_site(SameSite::Strict);
+        cookie.set_secure(false);
+        cookie
+    }
 }
