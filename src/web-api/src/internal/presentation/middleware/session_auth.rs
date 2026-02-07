@@ -1,11 +1,12 @@
 use crate::internal::{
-    application::session::ExtendSessionUseCase, domain::entity::Session,
-    presentation::util::CookieHelper,
+    application::session::ExtendSessionUseCase,
+    domain::entity::Session,
+    presentation::{error::PresentationError, util::CookieHelper},
 };
 use axum::{
     body::Body,
     extract::Request,
-    http::{Method, StatusCode},
+    http::Method,
     middleware::Next,
     response::{IntoResponse, Response},
 };
@@ -37,7 +38,8 @@ pub async fn session_auth_middleware(
         Some(cookie) => cookie.value().to_string(),
         None => {
             // セッションIDがない場合は401
-            return StatusCode::UNAUTHORIZED.into_response();
+            return PresentationError::Unauthorized("セッションが見つかりません".to_string())
+                .into_response();
         }
     };
 
@@ -52,12 +54,14 @@ pub async fn session_auth_middleware(
             Some(header_value) => match header_value.to_str() {
                 Ok(token) => token,
                 Err(_) => {
-                    return StatusCode::BAD_REQUEST.into_response();
+                    return PresentationError::BadRequest("不正なCSRFトークンです".to_string())
+                        .into_response();
                 }
             },
             None => {
                 // CSRFトークンがない場合は403
-                return StatusCode::FORBIDDEN.into_response();
+                return PresentationError::Forbidden("CSRFトークンがありません".to_string())
+                    .into_response();
             }
         };
 
@@ -84,11 +88,12 @@ pub async fn session_auth_middleware(
             }
             Ok(None) => {
                 // セッションが見つからないか期限切れ
-                StatusCode::UNAUTHORIZED.into_response()
+                PresentationError::Unauthorized("セッションが期限切れか見つかりません".to_string())
+                    .into_response()
             }
             Err(_) => {
                 // CSRFトークンが不正
-                StatusCode::FORBIDDEN.into_response()
+                PresentationError::Forbidden("不正なCSRFトークンです".to_string()).into_response()
             }
         }
     } else {
@@ -109,7 +114,8 @@ pub async fn session_auth_middleware(
             next.run(request).await
         } else {
             // セッションが見つからないか期限切れ
-            StatusCode::UNAUTHORIZED.into_response()
+            PresentationError::Unauthorized("セッションが期限切れか見つかりません".to_string())
+                .into_response()
         }
     }
 }
