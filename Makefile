@@ -45,9 +45,6 @@ clean:
 db-up:
 	$(COMPOSE) up -d db
 
-db-down:
-	$(COMPOSE) down db
-
 db-start:
 	$(COMPOSE) start db
 
