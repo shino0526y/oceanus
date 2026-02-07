@@ -62,7 +62,6 @@ pub async fn me(
         .ok_or(PresentationError::Unauthorized(
             "認証されていません".to_string(),
         ))?;
-    let role_i16 = user.role().as_i16();
 
     // セッションを延長
     session.extend();
@@ -73,9 +72,9 @@ pub async fn me(
     cookies.add(cookie);
 
     Ok(Json(MeResponseBody {
-        user_id: user_uuid.to_string(),
+        user_id: user.id().value().to_string(),
         csrf_token,
-        role: role_i16,
+        role: user.role().as_i16(),
     }))
 }
 
@@ -127,7 +126,7 @@ mod tests {
             .await
             .unwrap();
         let body: Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(body["userId"], user_uuid.to_string());
+        assert_eq!(body["userId"], "doctor");
         assert_eq!(body["csrfToken"], csrf_token);
         assert_eq!(body["role"], 2); // Doctor
 
