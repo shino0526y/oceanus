@@ -86,10 +86,9 @@ impl LoginFailureCountRepository for PostgresLoginFailureCountRepository {
 }
 
 #[cfg(test)]
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
-};
+use std::{collections::HashMap, sync::Arc};
+#[cfg(test)]
+use tokio::sync::RwLock;
 
 #[cfg(test)]
 pub struct TestLoginFailureCountRepository {
@@ -112,11 +111,11 @@ impl LoginFailureCountRepository for TestLoginFailureCountRepository {
         &self,
         user_uuid: &Uuid,
     ) -> Result<Option<LoginFailureCount>, RepositoryError> {
-        Ok(self.inner.read().unwrap().get(user_uuid).cloned())
+        Ok(self.inner.read().await.get(user_uuid).cloned())
     }
 
     async fn save(&self, login_failure_count: &LoginFailureCount) -> Result<(), RepositoryError> {
-        self.inner.write().unwrap().insert(
+        self.inner.write().await.insert(
             *login_failure_count.user_uuid(),
             login_failure_count.clone(),
         );
@@ -124,7 +123,7 @@ impl LoginFailureCountRepository for TestLoginFailureCountRepository {
     }
 
     async fn delete(&self, user_uuid: &Uuid) -> Result<(), RepositoryError> {
-        self.inner.write().unwrap().remove(user_uuid);
+        self.inner.write().await.remove(user_uuid);
         Ok(())
     }
 }

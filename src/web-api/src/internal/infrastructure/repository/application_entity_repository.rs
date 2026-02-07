@@ -246,10 +246,9 @@ impl ApplicationEntityRepository for PostgresApplicationEntityRepository {
 }
 
 #[cfg(test)]
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
-};
+use std::{collections::HashMap, sync::Arc};
+#[cfg(test)]
+use tokio::sync::RwLock;
 
 #[cfg(test)]
 pub struct TestApplicationEntityRepository {
@@ -264,10 +263,10 @@ impl TestApplicationEntityRepository {
         }
     }
 
-    fn find_uuid_by_title(&self, title: &AeValue) -> Option<Uuid> {
+    async fn find_uuid_by_title(&self, title: &AeValue) -> Option<Uuid> {
         self.inner
             .read()
-            .unwrap()
+            .await
             .values()
             .find(|e| e.title() == title)
             .cloned()
@@ -279,7 +278,7 @@ impl TestApplicationEntityRepository {
 #[async_trait::async_trait]
 impl ApplicationEntityRepository for TestApplicationEntityRepository {
     async fn find_all(&self) -> Result<Vec<ApplicationEntity>, RepositoryError> {
-        Ok(self.inner.read().unwrap().values().cloned().collect())
+        Ok(self.inner.read().await.values().cloned().collect())
     }
 
     async fn find_by_title(
@@ -289,7 +288,7 @@ impl ApplicationEntityRepository for TestApplicationEntityRepository {
         Ok(self
             .inner
             .read()
-            .unwrap()
+            .await
             .values()
             .find(|e| e.title() == title)
             .cloned())
@@ -307,7 +306,7 @@ impl ApplicationEntityRepository for TestApplicationEntityRepository {
         if self
             .inner
             .read()
-            .unwrap()
+            .await
             .values()
             .any(|e| e.host() == entity.host() && e.port() == entity.port())
         {
@@ -318,7 +317,7 @@ impl ApplicationEntityRepository for TestApplicationEntityRepository {
         }
         self.inner
             .write()
-            .unwrap()
+            .await
             .insert(*entity.uuid(), entity.clone());
         Ok(entity.clone())
     }
@@ -329,7 +328,7 @@ impl ApplicationEntityRepository for TestApplicationEntityRepository {
         application_entity: &ApplicationEntity,
     ) -> Result<ApplicationEntity, RepositoryError> {
         // 更新対象のエンティティが存在しない場合はエラー
-        let Some(existing_uuid) = self.find_uuid_by_title(target_title) else {
+        let Some(existing_uuid) = self.find_uuid_by_title(target_title).await else {
             return Err(RepositoryError::NotFound {
                 resource: "AEタイトル".to_string(),
                 key: target_title.value().to_string(),
@@ -337,7 +336,7 @@ impl ApplicationEntityRepository for TestApplicationEntityRepository {
         };
 
         // 更新後のタイトルが他のエンティティと重複する場合はエラー
-        let inner = self.inner.read().unwrap();
+        let inner = self.inner.read().await;
         if application_entity.title() != target_title
             && inner
                 .values()
@@ -363,7 +362,7 @@ impl ApplicationEntityRepository for TestApplicationEntityRepository {
 
         self.inner
             .write()
-            .unwrap()
+            .await
             .insert(existing_uuid, application_entity.clone());
         Ok(application_entity.clone())
     }
@@ -375,14 +374,14 @@ impl ApplicationEntityRepository for TestApplicationEntityRepository {
         _deleted_at: &DateTime<Utc>,
     ) -> Result<(), RepositoryError> {
         // 削除対象のタイトルを持つエンティティが存在しない場合はエラー
-        let Some(uuid) = self.find_uuid_by_title(target_title) else {
+        let Some(uuid) = self.find_uuid_by_title(target_title).await else {
             return Err(RepositoryError::NotFound {
                 resource: "AEタイトル".to_string(),
                 key: target_title.value().to_string(),
             });
         };
 
-        self.inner.write().unwrap().remove(&uuid);
+        self.inner.write().await.remove(&uuid);
         Ok(())
     }
 }

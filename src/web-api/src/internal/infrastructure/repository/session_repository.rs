@@ -1,6 +1,7 @@
 use crate::internal::domain::{entity::Session, repository::SessionRepository};
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 pub struct InMemorySessionRepository {
     sessions: Arc<RwLock<HashMap<String, Session>>>,
@@ -19,13 +20,13 @@ impl SessionRepository for InMemorySessionRepository {
     async fn save(&self, session: Session) {
         self.sessions
             .write()
-            .unwrap()
+            .await
             .insert(session.session_id().to_string(), session);
     }
 
     async fn find_by_session_id(&self, session_id: &str) -> Option<Session> {
         let (session, is_expired) = {
-            let sessions = self.sessions.read().unwrap();
+            let sessions = self.sessions.read().await;
             match sessions.get(session_id) {
                 Some(session) => (Some(session.clone()), session.is_expired()),
                 None => (None, false),
@@ -33,7 +34,7 @@ impl SessionRepository for InMemorySessionRepository {
         };
 
         if is_expired {
-            self.sessions.write().unwrap().remove(session_id);
+            self.sessions.write().await.remove(session_id);
             return None;
         }
 
@@ -41,11 +42,11 @@ impl SessionRepository for InMemorySessionRepository {
     }
 
     async fn delete(&self, session_id: &str) {
-        self.sessions.write().unwrap().remove(session_id);
+        self.sessions.write().await.remove(session_id);
     }
 
     async fn cleanup_expired_sessions(&self) {
-        let mut sessions = self.sessions.write().unwrap();
+        let mut sessions = self.sessions.write().await;
         sessions.retain(|_, session| !session.is_expired());
     }
 }
@@ -70,13 +71,13 @@ impl SessionRepository for TestSessionRepository {
     async fn save(&self, session: Session) {
         self.inner
             .write()
-            .unwrap()
+            .await
             .insert(session.session_id().to_string(), session);
     }
 
     async fn find_by_session_id(&self, session_id: &str) -> Option<Session> {
         let (session, is_expired) = {
-            let sessions = self.inner.read().unwrap();
+            let sessions = self.inner.read().await;
             match sessions.get(session_id) {
                 Some(session) => (Some(session.clone()), session.is_expired()),
                 None => (None, false),
@@ -84,7 +85,7 @@ impl SessionRepository for TestSessionRepository {
         };
 
         if is_expired {
-            self.inner.write().unwrap().remove(session_id);
+            self.inner.write().await.remove(session_id);
             return None;
         }
 
@@ -92,11 +93,11 @@ impl SessionRepository for TestSessionRepository {
     }
 
     async fn delete(&self, session_id: &str) {
-        self.inner.write().unwrap().remove(session_id);
+        self.inner.write().await.remove(session_id);
     }
 
     async fn cleanup_expired_sessions(&self) {
-        let mut sessions = self.inner.write().unwrap();
+        let mut sessions = self.inner.write().await;
         sessions.retain(|_, session| !session.is_expired());
     }
 }

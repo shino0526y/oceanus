@@ -261,10 +261,9 @@ impl UserRepository for PostgresUserRepository {
 }
 
 #[cfg(test)]
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
-};
+use std::{collections::HashMap, sync::Arc};
+#[cfg(test)]
+use tokio::sync::RwLock;
 
 #[cfg(test)]
 pub struct TestUserRepository {
@@ -279,10 +278,10 @@ impl TestUserRepository {
         }
     }
 
-    fn find_uuid_by_id(&self, id: &Id) -> Option<Uuid> {
+    async fn find_uuid_by_id(&self, id: &Id) -> Option<Uuid> {
         self.inner
             .read()
-            .unwrap()
+            .await
             .values()
             .find(|e| e.id() == id)
             .cloned()
@@ -297,7 +296,7 @@ impl UserRepository for TestUserRepository {
         let mut entities = self
             .inner
             .read()
-            .unwrap()
+            .await
             .values()
             .cloned()
             .collect::<Vec<User>>();
@@ -306,14 +305,14 @@ impl UserRepository for TestUserRepository {
     }
 
     async fn find_by_uuid(&self, uuid: &Uuid) -> Result<Option<User>, RepositoryError> {
-        Ok(self.inner.read().unwrap().get(uuid).cloned())
+        Ok(self.inner.read().await.get(uuid).cloned())
     }
 
     async fn find_by_id(&self, id: &Id) -> Result<Option<User>, RepositoryError> {
         Ok(self
             .inner
             .read()
-            .unwrap()
+            .await
             .values()
             .find(|e| e.id() == id)
             .cloned())
@@ -331,7 +330,7 @@ impl UserRepository for TestUserRepository {
         if self
             .inner
             .read()
-            .unwrap()
+            .await
             .values()
             .any(|e| e.name() == user.name())
         {
@@ -341,10 +340,7 @@ impl UserRepository for TestUserRepository {
             });
         }
 
-        self.inner
-            .write()
-            .unwrap()
-            .insert(*user.uuid(), user.clone());
+        self.inner.write().await.insert(*user.uuid(), user.clone());
         Ok(user.clone())
     }
 
@@ -369,7 +365,7 @@ impl UserRepository for TestUserRepository {
             && self
                 .inner
                 .read()
-                .unwrap()
+                .await
                 .values()
                 .any(|e| e.name() == user.name())
         {
@@ -379,8 +375,8 @@ impl UserRepository for TestUserRepository {
             });
         }
 
-        let uuid = self.find_uuid_by_id(target_id).unwrap();
-        self.inner.write().unwrap().insert(uuid, user.clone());
+        let uuid = self.find_uuid_by_id(target_id).await.unwrap();
+        self.inner.write().await.insert(uuid, user.clone());
         Ok(user.clone())
     }
 
@@ -391,14 +387,14 @@ impl UserRepository for TestUserRepository {
         _deleted_at: &DateTime<Utc>,
     ) -> Result<(), RepositoryError> {
         // 削除対象のユーザーが存在しない場合はエラー
-        let Some(uuid) = self.find_uuid_by_id(target_id) else {
+        let Some(uuid) = self.find_uuid_by_id(target_id).await else {
             return Err(RepositoryError::NotFound {
                 resource: "ユーザー".to_string(),
                 key: target_id.value().to_string(),
             });
         };
 
-        self.inner.write().unwrap().remove(&uuid);
+        self.inner.write().await.remove(&uuid);
         Ok(())
     }
 }
