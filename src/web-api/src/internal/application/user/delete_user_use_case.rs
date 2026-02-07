@@ -1,6 +1,6 @@
 use crate::internal::domain::{
     error::RepositoryError,
-    repository::{LoginFailureCountRepository, UserRepository},
+    repository::{LoginFailureCountRepository, SessionRepository, UserRepository},
     value_object::{Id, Role},
 };
 use chrono::{DateTime, Utc};
@@ -10,6 +10,7 @@ use uuid::Uuid;
 pub struct DeleteUserUseCase {
     user_repository: Arc<dyn UserRepository>,
     login_failure_count_repository: Arc<dyn LoginFailureCountRepository>,
+    session_repository: Arc<dyn SessionRepository>,
 }
 
 pub struct DeleteUserCommand {
@@ -22,10 +23,12 @@ impl DeleteUserUseCase {
     pub fn new(
         user_repository: Arc<dyn UserRepository>,
         login_failure_count_repository: Arc<dyn LoginFailureCountRepository>,
+        session_repository: Arc<dyn SessionRepository>,
     ) -> Self {
         Self {
             user_repository,
             login_failure_count_repository,
+            session_repository,
         }
     }
 
@@ -67,6 +70,11 @@ impl DeleteUserUseCase {
         self.login_failure_count_repository
             .delete(target_user.uuid())
             .await?;
+
+        // 関連セッションを削除
+        self.session_repository
+            .delete_by_user_uuid(target_user.uuid())
+            .await;
 
         // ユーザーを削除
         self.user_repository

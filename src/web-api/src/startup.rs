@@ -107,6 +107,7 @@ pub fn make_state(repos: &Repos) -> AppState {
     let delete_user_use_case = Arc::new(DeleteUserUseCase::new(
         repos.user_repository.clone(),
         repos.login_failure_count_repository.clone(),
+        repos.session_repository.clone(),
     ));
     let reset_login_failure_count_use_case = Arc::new(ResetLoginFailureCountUseCase::new(
         repos.user_repository.clone(),

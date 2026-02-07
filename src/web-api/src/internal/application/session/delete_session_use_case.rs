@@ -12,6 +12,8 @@ impl DeleteSessionUseCase {
 
     /// セッションを削除
     pub async fn execute(&self, session_id: &str) {
-        self.session_repository.delete(session_id).await;
+        self.session_repository
+            .delete_by_session_id(session_id)
+            .await;
     }
 }

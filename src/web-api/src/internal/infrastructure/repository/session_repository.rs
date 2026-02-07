@@ -1,7 +1,7 @@
 use crate::internal::domain::{entity::Session, repository::SessionRepository};
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
+use uuid::Uuid;
 
 pub struct InMemorySessionRepository {
     sessions: Arc<RwLock<HashMap<String, Session>>>,
@@ -41,8 +41,13 @@ impl SessionRepository for InMemorySessionRepository {
         session
     }
 
-    async fn delete(&self, session_id: &str) {
+    async fn delete_by_session_id(&self, session_id: &str) {
         self.sessions.write().await.remove(session_id);
+    }
+
+    async fn delete_by_user_uuid(&self, user_uuid: &Uuid) {
+        let mut sessions = self.sessions.write().await;
+        sessions.retain(|_, session| session.user_uuid() != user_uuid);
     }
 
     async fn cleanup_expired_sessions(&self) {
@@ -92,8 +97,13 @@ impl SessionRepository for TestSessionRepository {
         session
     }
 
-    async fn delete(&self, session_id: &str) {
+    async fn delete_by_session_id(&self, session_id: &str) {
         self.inner.write().await.remove(session_id);
+    }
+
+    async fn delete_by_user_uuid(&self, user_uuid: &Uuid) {
+        let mut sessions = self.inner.write().await;
+        sessions.retain(|_, session| session.user_uuid() != user_uuid);
     }
 
     async fn cleanup_expired_sessions(&self) {
