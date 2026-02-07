@@ -1,6 +1,6 @@
-mod request_body;
+mod response_body;
 
-pub use self::request_body::ListApplicationEntitiesResponseBodyItem;
+pub use self::response_body::ListApplicationEntitiesResponseBodyItem;
 
 use crate::{
     internal::presentation::error::{ErrorResponseBody, PresentationError},
