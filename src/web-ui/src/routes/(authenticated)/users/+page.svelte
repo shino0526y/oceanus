@@ -10,8 +10,7 @@
 		type UpdateUserRequestBody
 	} from '$lib/api';
 	import { ROLES, ROLE_LABELS, ROLE_OPTIONS } from '$lib/constants';
-	import { authStore, isManager } from '$lib/stores/auth.svelte';
-	import { get } from 'svelte/store';
+	import { authStore } from '$lib/stores/auth.svelte';
 	import { handleOverlayClick, handleKeydown, formatDate } from '$lib/utils';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -22,22 +21,20 @@
 	let error = $state('');
 
 	function canManage() {
-		return get(isManager);
+		return authStore.isManager;
 	}
 
 	// 利用可能なロール選択肢（情シスの場合は管理者を除外）
 	function getAvailableRoleOptions() {
-		const s = get(authStore);
-		return s.role === ROLES.IT_STAFF
+		return authStore.role === ROLES.IT_STAFF
 			? ROLE_OPTIONS.filter((o) => o.value !== ROLES.ADMIN)
 			: ROLE_OPTIONS;
 	}
 
 	function canManageUser(user: User) {
-		if (!get(isManager)) return false;
+		if (!authStore.isManager) return false;
 		// 情シスは管理者を編集/削除できない
-		const s = get(authStore);
-		if (s.role === ROLES.IT_STAFF && user.role === ROLES.ADMIN) return false;
+		if (authStore.role === ROLES.IT_STAFF && user.role === ROLES.ADMIN) return false;
 		return true;
 	}
 
@@ -221,7 +218,7 @@
 
 <div class="mb-6 flex items-center justify-between">
 	<h2 class="text-2xl font-bold text-gray-800">ユーザー管理</h2>
-	{#if $isManager}
+	{#if authStore.isManager}
 		<button
 			onclick={openCreateModal}
 			class="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
@@ -326,7 +323,7 @@
 								>
 									編集
 								</button>
-								{#if user.id !== $authStore.userId}
+								{#if user.id !== authStore.userId}
 									<button
 										onclick={() => openDeleteModal(user)}
 										class="ml-3 text-red-600 hover:text-red-900"

@@ -3,8 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import { logout } from '$lib/api';
-	import { authStore, isManager } from '$lib/stores/auth.svelte';
-	import { get } from 'svelte/store';
+	import { authStore } from '$lib/stores/auth.svelte';
 	import { onMount } from 'svelte';
 
 	let { children } = $props();
@@ -13,7 +12,7 @@
 
 	onMount(async () => {
 		// セッションの復元を試みる
-		if (!$authStore.isAuthenticated) {
+		if (!authStore.isAuthenticated) {
 			const restored = await authStore.restore();
 			if (!restored) {
 				// 復元に失敗した場合はログイン画面へリダイレクト
@@ -35,7 +34,7 @@
 		const base: { href: '/' | '/users' | '/application-entities' | '/login'; label: string }[] = [
 			{ href: '/', label: 'ホーム' }
 		];
-		if (get(isManager)) {
+		if (authStore.isManager) {
 			base.push({ href: '/users', label: 'ユーザー管理' });
 			base.push({ href: '/application-entities', label: 'Application Entity' });
 		}
@@ -47,7 +46,7 @@
 	<div class="flex min-h-screen items-center justify-center">
 		<p class="text-gray-500">認証確認中...</p>
 	</div>
-{:else if $authStore.isAuthenticated}
+{:else if authStore.isAuthenticated}
 	<div class="flex min-h-screen flex-col">
 		<!-- ヘッダー -->
 		<header class="bg-gray-800 text-white">

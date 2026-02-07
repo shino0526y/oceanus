@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 	import { listUsers, listApplicationEntities } from '$lib/api';
-	import { isManager } from '$lib/stores/auth.svelte';
-	import { get } from 'svelte/store';
+	import { authStore } from '$lib/stores/auth.svelte';
 	import { onMount } from 'svelte';
 
 	let userCount = $state<number | null>(null);
@@ -11,7 +10,7 @@
 	let error = $state('');
 
 	function canManage() {
-		return get(isManager);
+		return authStore.isManager;
 	}
 
 	onMount(() => {
@@ -66,7 +65,7 @@
 
 {#if isLoading}
 	<p class="text-gray-500">読み込み中...</p>
-{:else if $isManager}
+{:else if authStore.isManager}
 	<div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
 		<!-- ユーザー数カード -->
 		<a

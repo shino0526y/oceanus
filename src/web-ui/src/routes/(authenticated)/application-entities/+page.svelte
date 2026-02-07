@@ -10,8 +10,7 @@
 	} from '$lib/api';
 	import { handleOverlayClick, handleKeydown, formatDate } from '$lib/utils';
 	import { onMount } from 'svelte';
-	import { isManager } from '$lib/stores/auth.svelte';
-	import { get } from 'svelte/store';
+	import { authStore } from '$lib/stores/auth.svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 
@@ -47,7 +46,7 @@
 	let isDeleting = $state(false);
 
 	function canManage() {
-		return get(isManager);
+		return authStore.isManager;
 	}
 
 	onMount(() => {
@@ -179,7 +178,7 @@
 
 <div class="mb-6 flex items-center justify-between">
 	<h2 class="text-2xl font-bold text-gray-800">Application Entity管理</h2>
-	{#if $isManager}
+	{#if authStore.isManager}
 		<button
 			onclick={openCreateModal}
 			class="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
@@ -253,7 +252,7 @@
 							>{formatDate(entity.createdAt)}</td
 						>
 						<td class="px-6 py-4 text-sm whitespace-nowrap">
-							{#if $isManager}
+							{#if authStore.isManager}
 								<button
 									onclick={() => openEditModal(entity)}
 									class="text-blue-600 hover:text-blue-900"
