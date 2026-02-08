@@ -8,3 +8,7 @@
 
 # Rust
 target/
+
+# ビルド
+dist/
+.sqlx/

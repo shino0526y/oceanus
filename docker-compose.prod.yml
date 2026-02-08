@@ -1,0 +1,78 @@
+services:
+  db:
+    container_name: oceanus-db
+    image: oceanus-db:latest
+    build:
+      context: .
+      dockerfile: docker/db/Dockerfile
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-oceanus}
+      POSTGRES_USER: ${POSTGRES_USER:-oceanus}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-oceanus}
+    ports:
+      - "5432:5432"
+    volumes:
+      - oceanus-db-volume:/var/lib/postgresql/data
+    networks:
+      - oceanus-network
+
+  dicom-server:
+    container_name: oceanus-dicom-server
+    image: oceanus-dicom-server:latest
+    build:
+      context: ./src
+      dockerfile: Dockerfile
+      target: dicom-server
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-oceanus}:${POSTGRES_PASSWORD:-oceanus}@db:5432/${POSTGRES_DB:-oceanus}
+      AE_TITLE: ${AE_TITLE:-OCEANUS}
+      PORT: 104
+      HOME_DIR: /app
+      STORAGE_DIR: /data/dicom
+    ports:
+      - "104:104"
+    volumes:
+      - ./data/dicom:/data/dicom
+    depends_on:
+      - db
+    networks:
+      - oceanus-network
+
+  web-api:
+    container_name: oceanus-web-api
+    image: oceanus-web-api:latest
+    build:
+      context: ./src
+      dockerfile: Dockerfile
+      target: web-api
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-oceanus}:${POSTGRES_PASSWORD:-oceanus}@db:5432/${POSTGRES_DB:-oceanus}
+    expose:
+      - "8080"
+    depends_on:
+      - db
+    networks:
+      - oceanus-network
+
+  web-ui:
+    container_name: oceanus-web-ui
+    image: oceanus-web-ui:latest
+    build:
+      context: ./src/web-ui
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - web-api
+    networks:
+      - oceanus-network
+
+volumes:
+  oceanus-db-volume:
+    name: oceanus-db-volume
+
+networks:
+  oceanus-network:
+    name: oceanus-network

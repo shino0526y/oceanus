@@ -11,14 +11,14 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - oceanus-volume:/var/lib/postgresql/data
+      - oceanus-db-volume:/var/lib/postgresql/data
     networks:
-      - default
+      - oceanus-network
 
 volumes:
-  oceanus-volume:
-    name: oceanus-volume
+  oceanus-db-volume:
+    name: oceanus-db-volume
 
 networks:
-  default:
+  oceanus-network:
     name: oceanus-network
