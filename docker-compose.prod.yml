@@ -24,19 +24,16 @@ services:
       dockerfile: Dockerfile
       target: dicom-server
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-oceanus}:${POSTGRES_PASSWORD:-oceanus}@db:5432/${POSTGRES_DB:-oceanus}
+      DATABASE_URL: postgres://${POSTGRES_USER:-oceanus}:${POSTGRES_PASSWORD:-oceanus}@localhost:5432/${POSTGRES_DB:-oceanus}
       AE_TITLE: ${AE_TITLE:-OCEANUS}
       PORT: 104
       HOME_DIR: /app
       STORAGE_DIR: /data/dicom
-    ports:
-      - "104:104"
+    network_mode: host
     volumes:
       - ./data/dicom:/data/dicom
     depends_on:
       - db
-    networks:
-      - oceanus-network
 
   web-api:
     container_name: oceanus-web-api
