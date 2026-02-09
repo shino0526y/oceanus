@@ -1,5 +1,5 @@
 .PHONY: \
-	up down start stop restart logs ps build preview pull clean \
+	up down start stop restart logs ps build preview _preview-run pull clean \
 	prod-up prod-down prod-start prod-stop prod-restart prod-logs prod-ps prod-build \
 	db-up db-start db-stop db-restart db-logs db-shell db-psql \
 	install lint format test src-build src-clean \
@@ -7,7 +7,12 @@
 
 .DEFAULT_GOAL := help
 
+OS := $(shell uname -s)
 COMPOSE := docker compose
+
+# 環境変数の読み込み
+-include .env
+export
 
 # === Docker Compose 操作 ===
 
@@ -33,11 +38,27 @@ ps:
 	$(COMPOSE) ps -a
 
 preview:
-	@echo "本番環境イメージのビルドおよびプレビュー起動..."
+	@if [ ! -f .env ]; then \
+		echo ".env が見つからないため .env.example から作成します..."; \
+		cp .env.example .env; \
+	fi
+	@$(MAKE) _preview-run
+
+_preview-run:
+	@echo "本番環境のプレビューを起動中..."
+ifeq ($(OS),Darwin)
+	@echo "macOS を検出しました。DICOM サーバーはローカルで(cargo run)、その他はコンテナで起動します。"
+	@echo "停止するには Ctrl+C を押してください。"
+	$(COMPOSE) -f docker-compose.prod.yml build db web-api web-ui
+	$(COMPOSE) -f docker-compose.prod.yml up -d db web-api web-ui
+	DATABASE_URL="postgres://oceanus:oceanus@localhost:5432/oceanus" \
+	cargo run --manifest-path src/Cargo.toml --release -p dicom-server
+	$(COMPOSE) -f docker-compose.prod.yml down
+else
 	@echo "停止するには Ctrl+C を押してください。"
 	$(COMPOSE) -f docker-compose.prod.yml build
 	$(COMPOSE) -f docker-compose.prod.yml up
-	@echo "プレビューを停止しました。"
+endif
 
 build:
 	@echo "開発用DBを起動中..."
@@ -48,12 +69,12 @@ build:
 	rm -rf dist
 	mkdir -p dist/docker/nginx
 	mkdir -p dist/data/dicom
-	# dist 用の docker-compose.yml を生成 (オフラインデプロイ用にビルド関連の行を削除)
-	cat docker-compose.prod.yml | grep -vE "build:|context:|dockerfile:|target:" > dist/docker-compose.yml
+# dist 用の docker-compose.yml を生成
+	$(COMPOSE) -f docker-compose.prod.yml config --no-interpolate > dist/docker-compose.yml
 	cp .env.example dist/.env.example
 	cp docker/nginx/default.conf dist/docker/nginx/default.conf
 	@echo "イメージを tarball に保存中 (時間がかかる場合があります)..."
-	# docker-compose.prod.yml からイメージ名を取得して保存
+# docker-compose.prod.yml からイメージ名を取得して保存
 	IMAGES=$$($(COMPOSE) -f docker-compose.prod.yml config | grep "image:" | awk '{print $$2}' | sort | uniq); \
 	docker save -o dist/oceanus-images.tar $$IMAGES
 	@echo "完了。本番環境ファイルは 'dist' ディレクトリにあります。"
