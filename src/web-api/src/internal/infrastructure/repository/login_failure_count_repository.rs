@@ -35,8 +35,9 @@ impl PostgresLoginFailureCountRepository {
 #[async_trait::async_trait]
 impl LoginFailureCountRepository for PostgresLoginFailureCountRepository {
     async fn find_all(&self) -> Result<Vec<LoginFailureCount>, RepositoryError> {
-        let records = sqlx::query_as::<_, LoginFailureCountRecord>(
-            "SELECT user_uuid, failure_count, last_failure_at FROM login_failure_counts",
+        let records = sqlx::query_as!(
+            LoginFailureCountRecord,
+            "SELECT user_uuid, failure_count, last_failure_at FROM login_failure_counts"
         )
         .fetch_all(&self.pool)
         .await
@@ -51,12 +52,13 @@ impl LoginFailureCountRepository for PostgresLoginFailureCountRepository {
         &self,
         user_uuid: &Uuid,
     ) -> Result<Option<LoginFailureCount>, RepositoryError> {
-        let record = sqlx::query_as::<_, LoginFailureCountRecord>(
+        let record = sqlx::query_as!(
+            LoginFailureCountRecord,
             "SELECT user_uuid, failure_count, last_failure_at
              FROM login_failure_counts
              WHERE user_uuid = $1",
+            user_uuid
         )
-        .bind(user_uuid)
         .fetch_optional(&self.pool)
         .await
         .map_err(|e| RepositoryError::Other {

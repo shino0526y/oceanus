@@ -40,6 +40,8 @@ preview:
 	@echo "プレビューを停止しました。"
 
 build:
+	@echo "開発用DBを起動中..."
+	$(COMPOSE) up -d db
 	@echo "本番環境イメージをビルド中..."
 	$(COMPOSE) -f docker-compose.prod.yml build
 	@echo "本番環境向けパッケージング中..."

@@ -1,8 +1,9 @@
 # ビルドステージ
 FROM rust:1.91-slim-bookworm AS builder
 
-# sqlx のコンパイル時チェックを無効化 (DB接続が必要なため)
-ENV SQLX_OFFLINE=true
+# データベース接続情報の引数
+ARG DATABASE_URL
+ENV DATABASE_URL=$DATABASE_URL
 
 # ビルド依存関係のインストール
 RUN apt-get update && apt-get install -y \

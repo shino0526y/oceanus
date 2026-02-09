@@ -23,6 +23,9 @@ services:
       context: ./src
       dockerfile: Dockerfile
       target: dicom-server
+      network: host
+      args:
+        DATABASE_URL: postgres://${POSTGRES_USER:-oceanus}:${POSTGRES_PASSWORD:-oceanus}@localhost:5432/${POSTGRES_DB:-oceanus}
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-oceanus}:${POSTGRES_PASSWORD:-oceanus}@localhost:5432/${POSTGRES_DB:-oceanus}
       AE_TITLE: ${AE_TITLE:-OCEANUS}
@@ -42,6 +45,9 @@ services:
       context: ./src
       dockerfile: Dockerfile
       target: web-api
+      network: host
+      args:
+        DATABASE_URL: postgres://${POSTGRES_USER:-oceanus}:${POSTGRES_PASSWORD:-oceanus}@localhost:5432/${POSTGRES_DB:-oceanus}
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-oceanus}:${POSTGRES_PASSWORD:-oceanus}@db:5432/${POSTGRES_DB:-oceanus}
     expose:
