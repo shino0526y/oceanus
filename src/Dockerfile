@@ -26,10 +26,7 @@ COPY . .
 RUN cargo build --release -p dicom-server -p web-api
 
 # 実行ステージのベース
-FROM debian:bookworm-slim AS runtime
-RUN apt-get update && apt-get install -y \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+FROM gcr.io/distroless/cc-debian12 AS runtime
 
 # DICOM サーバー ステージ
 FROM runtime AS dicom-server

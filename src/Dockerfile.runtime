@@ -1,14 +1,12 @@
 # DICOM サーバー実行環境
-FROM debian:bookworm-slim AS dicom-server
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+FROM gcr.io/distroless/cc-debian12 AS dicom-server
 WORKDIR /app
 COPY dicom-server /usr/local/bin/
 EXPOSE 104
 CMD ["dicom-server"]
 
 # Web API 実行環境
-FROM debian:bookworm-slim AS web-api
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+FROM gcr.io/distroless/cc-debian12 AS web-api
 WORKDIR /app
 COPY web-api /usr/local/bin/
 EXPOSE 8080
