@@ -4,7 +4,8 @@
 .DEFAULT_GOAL := help
 
 OS := $(shell uname -s)
-COMPOSE := docker compose
+CONTAINER_ENGINE ?= podman
+COMPOSE := $(CONTAINER_ENGINE) compose
 COMPOSE_PROD := $(COMPOSE) -f docker-compose.prod.yml
 
 # 環境変数の読み込み
@@ -41,7 +42,7 @@ build:
 	cp docker/nginx/default.conf dist/docker/nginx/default.conf
 # イメージを保存
 	IMAGES=$$($(COMPOSE_PROD) config | grep "image:" | awk '{print $$2}' | sort | uniq); \
-	docker save -o dist/oceanus-images.tar $$IMAGES
+	$(CONTAINER_ENGINE) save -o dist/oceanus-images.tar $$IMAGES
 	@echo "完了: dist ディレクトリを確認してください。"
 
 preview:
