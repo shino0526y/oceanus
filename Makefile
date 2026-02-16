@@ -31,13 +31,28 @@ format:
 
 # === 本番準備・プレビュー ===
 
+# ビルド引数
+DB_USER ?= oceanus
+DB_PASS ?= oceanus
+DB_NAME ?= oceanus
+
 build:
 # 本番環境イメージをビルド
-	$(COMPOSE_PROD) build
+	$(CONTAINER_ENGINE) build --platform linux/amd64 -t oceanus-db:latest -f docker/db/Dockerfile .
+	$(CONTAINER_ENGINE) build --platform linux/amd64 -t oceanus-web-ui:latest -f src/web-ui/Dockerfile src/web-ui
+	$(CONTAINER_ENGINE) build --platform linux/amd64 --network=host --build-arg DATABASE_URL="postgres://$(DB_USER):$(DB_PASS)@localhost:5432/$(DB_NAME)" -t oceanus-dicom-server:latest --target dicom-server -f src/Dockerfile src
+	$(CONTAINER_ENGINE) build --platform linux/amd64 --network=host --build-arg DATABASE_URL="postgres://$(DB_USER):$(DB_PASS)@localhost:5432/$(DB_NAME)" -t oceanus-web-api:latest --target web-api -f src/Dockerfile src
 # 本番環境向けパッケージング
 	rm -rf dist
 	mkdir -p dist/docker/nginx dist/data/dicom
 	$(COMPOSE_PROD) config --no-interpolate > dist/docker-compose.yml
+# 生成された docker-compose.yml から build セクションを完全に削除し、絶対パスを相対パスに変換
+	python3 -c "import re; p = 'dist/docker-compose.yml'; c = open(p).read(); c = re.sub(r' {4}build:[\s\S]+?(?=\n {4}\S)', '', c); open(p, 'w').write(c)"
+ifeq ($(OS),Darwin)
+	sed -i '' 's|$(PWD)|.|g' dist/docker-compose.yml
+else
+	sed -i 's|$(PWD)|.|g' dist/docker-compose.yml
+endif
 	cp .env.example dist/.env.example
 	cp docker/nginx/default.conf dist/docker/nginx/default.conf
 # イメージを保存
