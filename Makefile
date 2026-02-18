@@ -4,7 +4,7 @@
 .DEFAULT_GOAL := help
 
 OS := $(shell uname -s)
-CONTAINER_ENGINE ?= podman
+CONTAINER_ENGINE ?= docker
 COMPOSE := $(CONTAINER_ENGINE) compose
 COMPOSE_PROD := $(COMPOSE) -f docker-compose.prod.yml
 
