@@ -7,7 +7,10 @@ use clap::Parser;
 use dotenvy::dotenv;
 use sqlx::postgres::PgPoolOptions;
 use std::{io::IsTerminal, net::Ipv4Addr, process::exit};
-use tokio::net::TcpListener;
+use tokio::{
+    net::TcpListener,
+    signal::unix::{SignalKind, signal},
+};
 use tracing::{debug, error, info, level_filters::LevelFilter};
 use tracing_subscriber::fmt::time::LocalTime;
 
@@ -168,7 +171,16 @@ async fn main() {
         }
     };
     info!("サーバーが起動しました (ポート={port})");
-    if let Err(e) = axum::serve(listener, router).await {
+
+    let mut sigterm = signal(SignalKind::terminate()).unwrap();
+
+    if let Err(e) = axum::serve(listener, router)
+        .with_graceful_shutdown(async move {
+            sigterm.recv().await;
+            info!("SIGTERMを受信したのでサーバーを停止します");
+        })
+        .await
+    {
         error!("HTTPサービスの実行に失敗しました: {e}");
         exit(1);
     }

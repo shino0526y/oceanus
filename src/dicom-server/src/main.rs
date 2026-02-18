@@ -52,6 +52,7 @@ use std::{
 use tokio::{
     io::BufReader,
     net::{TcpListener, TcpStream, lookup_host},
+    signal::unix::{SignalKind, signal},
     spawn,
 };
 use tracing::{Instrument, Level, debug, error, info, level_filters::LevelFilter, span, warn};
@@ -135,13 +136,21 @@ async fn main() {
         args.port
     );
 
+    let mut sigterm = signal(SignalKind::terminate()).unwrap();
+
     loop {
-        let (socket, addr) = {
-            match listener.accept().await {
-                Ok(val) => val,
-                Err(e) => {
-                    error!("接続の受け入れに失敗しました: {e}");
-                    continue;
+        let (socket, addr) = tokio::select! {
+            _ = sigterm.recv() => {
+                info!("SIGTERMを受信したのでサーバーを停止します");
+                break;
+            }
+            res = listener.accept() => {
+                match res {
+                    Ok(val) => val,
+                    Err(e) => {
+                        error!("接続の受け入れに失敗しました: {e}");
+                        continue;
+                    }
                 }
             }
         };
