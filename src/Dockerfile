@@ -32,7 +32,7 @@ ENV DATABASE_URL=$DATABASE_URL
 RUN cargo build --release --target x86_64-unknown-linux-gnu -p dicom-server -p web-api
 
 # 実行ステージのベース
-FROM --platform=linux/amd64 gcr.io/distroless/cc-debian12 AS runtime
+FROM gcr.io/distroless/cc-debian12 AS runtime
 
 # DICOM サーバー ステージ
 FROM runtime AS dicom-server

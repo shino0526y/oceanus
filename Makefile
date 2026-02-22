@@ -36,12 +36,15 @@ DB_USER ?= oceanus
 DB_PASS ?= oceanus
 DB_NAME ?= oceanus
 
+# 本番用プラットフォーム
+PLATFORM ?= linux/amd64
+
 build:
 # 本番環境イメージをビルド
-	$(CONTAINER_ENGINE) build --platform linux/amd64 -t oceanus-db:latest -f docker/db/Dockerfile .
-	$(CONTAINER_ENGINE) build --platform linux/amd64 -t oceanus-web-ui:latest -f src/web-ui/Dockerfile src/web-ui
-	$(CONTAINER_ENGINE) build --platform linux/amd64 --network=host --build-arg DATABASE_URL="postgres://$(DB_USER):$(DB_PASS)@localhost:5432/$(DB_NAME)" -t oceanus-dicom-server:latest --target dicom-server -f src/Dockerfile src
-	$(CONTAINER_ENGINE) build --platform linux/amd64 --network=host --build-arg DATABASE_URL="postgres://$(DB_USER):$(DB_PASS)@localhost:5432/$(DB_NAME)" -t oceanus-web-api:latest --target web-api -f src/Dockerfile src
+	$(CONTAINER_ENGINE) build --platform $(PLATFORM) -t oceanus-db:latest -f docker/db/Dockerfile .
+	$(CONTAINER_ENGINE) build --platform $(PLATFORM) -t oceanus-web-ui:latest -f src/web-ui/Dockerfile src/web-ui
+	$(CONTAINER_ENGINE) build --platform $(PLATFORM) --network=host --build-arg DATABASE_URL="postgres://$(DB_USER):$(DB_PASS)@localhost:5432/$(DB_NAME)" -t oceanus-dicom-server:latest --target dicom-server -f src/Dockerfile src
+	$(CONTAINER_ENGINE) build --platform $(PLATFORM) --network=host --build-arg DATABASE_URL="postgres://$(DB_USER):$(DB_PASS)@localhost:5432/$(DB_NAME)" -t oceanus-web-api:latest --target web-api -f src/Dockerfile src
 # 本番環境向けパッケージング
 	rm -rf dist
 	mkdir -p dist/docker/nginx dist/data/dicom

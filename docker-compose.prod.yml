@@ -3,7 +3,6 @@ services:
     container_name: oceanus-db
     image: oceanus-db:latest
     pull_policy: never
-    platform: linux/amd64
     build:
       context: .
       dockerfile: docker/db/Dockerfile
@@ -22,7 +21,6 @@ services:
     container_name: oceanus-dicom-server
     image: oceanus-dicom-server:latest
     pull_policy: never
-    platform: linux/amd64
     build:
       context: ./src
       dockerfile: Dockerfile
@@ -46,7 +44,6 @@ services:
     container_name: oceanus-web-api
     image: oceanus-web-api:latest
     pull_policy: never
-    platform: linux/amd64
     build:
       context: ./src
       dockerfile: Dockerfile
@@ -67,7 +64,6 @@ services:
     container_name: oceanus-web-ui
     image: oceanus-web-ui:latest
     pull_policy: never
-    platform: linux/amd64
     build:
       context: ./src/web-ui
       dockerfile: Dockerfile
