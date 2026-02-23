@@ -28,6 +28,7 @@ ENV CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=x86_64-linux-gnu-gcc
 
 ARG DATABASE_URL
 ENV DATABASE_URL=$DATABASE_URL
+ENV SQLX_OFFLINE=true
 
 RUN cargo build --release --target x86_64-unknown-linux-gnu -p dicom-server -p web-api
 

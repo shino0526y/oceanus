@@ -1,5 +1,5 @@
 .PHONY: \
-	up down logs preview _preview-run build psql test format clean help
+	up down logs preview _preview-run build psql sqlx-prepare test format clean help
 
 .DEFAULT_GOAL := help
 
@@ -28,6 +28,11 @@ test:
 
 format:
 	$(MAKE) -C src format
+
+# === SQLx オフライン用準備 ===
+
+sqlx-prepare:
+	cd src && DATABASE_URL="postgres://$(DB_USER):$(DB_PASS)@localhost:5432/$(DB_NAME)" cargo sqlx prepare --workspace -- --all-targets --all-features
 
 # === 本番準備・プレビュー ===
 
@@ -110,7 +115,8 @@ help:
 	@echo "  preview 本番構成での動作確認"
 	@echo ""
 	@echo "メンテナンス:"
-	@echo "  psql    データベースへの接続"
-	@echo "  clean   環境の完全初期化"
+	@echo "  psql          データベースへの接続"
+	@echo "  sqlx-prepare  SQLx オフライン用メタデータの生成"
+	@echo "  clean         環境の完全初期化"
 	@echo ""
 	@echo "  help    このヘルプを表示"

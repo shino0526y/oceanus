@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO studies (patient_id, instance_uid, id, study_date, study_time, accession_number, created_by, created_at, updated_by, updated_at)\n        VALUES ($1, $2, $3, $4, $5, $6, $7, now(), $7, now())\n        ON CONFLICT (instance_uid) DO UPDATE SET\n            patient_id = EXCLUDED.patient_id,\n            id = EXCLUDED.id,\n            study_date = EXCLUDED.study_date,\n            study_time = EXCLUDED.study_time,\n            accession_number = EXCLUDED.accession_number,\n            updated_by = EXCLUDED.updated_by,\n            updated_at = EXCLUDED.updated_at\n        WHERE studies.patient_id IS DISTINCT FROM EXCLUDED.patient_id\n           OR studies.id IS DISTINCT FROM EXCLUDED.id\n           OR studies.study_date IS DISTINCT FROM EXCLUDED.study_date\n           OR studies.study_time IS DISTINCT FROM EXCLUDED.study_time\n           OR studies.accession_number IS DISTINCT FROM EXCLUDED.accession_number\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Date",
+        "Time",
+        "Varchar",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cc91b22e7d033e24ab128fc4e1abad16eae15511e797301778d308b64f7b042f"
+}
