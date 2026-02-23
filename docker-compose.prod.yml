@@ -25,18 +25,15 @@ services:
       context: ./src
       dockerfile: Dockerfile
       target: dicom-server
-      network: host
-      args:
-        DATABASE_URL: postgres://${POSTGRES_USER:-oceanus}:${POSTGRES_PASSWORD:-oceanus}@localhost:5432/${POSTGRES_DB:-oceanus}
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-oceanus}:${POSTGRES_PASSWORD:-oceanus}@localhost:5432/${POSTGRES_DB:-oceanus}
+      DATABASE_URL: ${DICOM_SERVER_DATABASE_URL}
       AE_TITLE: ${AE_TITLE:-OCEANUS}
-      PORT: 104
-      HOME_DIR: /app
-      STORAGE_DIR: /data/dicom
+      PORT: ${DICOM_PORT:-104}
+      HOME_DIR: ${HOME_DIR:-/app}
+      STORAGE_DIR: ${STORAGE_DIR:-/var/lib/oceanus/dicom}
     network_mode: host
     volumes:
-      - ./data/dicom:/data/dicom:Z
+      - ./data/dicom:${STORAGE_DIR:-/var/lib/oceanus/dicom}:Z
     depends_on:
       - db
 
@@ -48,11 +45,8 @@ services:
       context: ./src
       dockerfile: Dockerfile
       target: web-api
-      network: host
-      args:
-        DATABASE_URL: postgres://${POSTGRES_USER:-oceanus}:${POSTGRES_PASSWORD:-oceanus}@localhost:5432/${POSTGRES_DB:-oceanus}
     environment:
-      DATABASE_URL: postgres://${POSTGRES_USER:-oceanus}:${POSTGRES_PASSWORD:-oceanus}@db:5432/${POSTGRES_DB:-oceanus}
+      DATABASE_URL: ${DATABASE_URL}
     expose:
       - "8080"
     depends_on:

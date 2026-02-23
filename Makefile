@@ -70,17 +70,14 @@ sqlx-prepare: # SQLxメタデータの生成
 build: # 配布用パッケージ(dist)の作成
 	$(CONTAINER_ENGINE) build --platform $(PLATFORM) -t $(IMG_DB) -f docker/db/Dockerfile .
 	$(CONTAINER_ENGINE) build --platform $(PLATFORM) -t $(IMG_WEB_UI) -f src/web-ui/Dockerfile src/web-ui
-	$(CONTAINER_ENGINE) build --platform $(PLATFORM) --network=host --build-arg DATABASE_URL="$(DATABASE_URL)" -t $(IMG_DICOM_SERVER) --target dicom-server -f src/Dockerfile src
-	$(CONTAINER_ENGINE) build --platform $(PLATFORM) --network=host --build-arg DATABASE_URL="$(DATABASE_URL)" -t $(IMG_WEB_API) --target web-api -f src/Dockerfile src
+	$(CONTAINER_ENGINE) build --platform $(PLATFORM) -t $(IMG_DICOM_SERVER) --target dicom-server -f src/Dockerfile src
+	$(CONTAINER_ENGINE) build --platform $(PLATFORM) -t $(IMG_WEB_API) --target web-api -f src/Dockerfile src
 	rm -rf $(DIST_DIR)
 	mkdir -p $(DIST_DIR)/docker/nginx $(DIST_DIR)/data/dicom
-	$(COMPOSE_PROD) config --no-interpolate > $(DIST_DIR)/docker-compose.yml
-	python3 -c "import re; p = '$(DIST_DIR)/docker-compose.yml'; c = open(p).read(); c = re.sub(r' {4}build:[\s\S]+?(?=\n {4}\S)', '', c); open(p, 'w').write(c)"
-ifeq ($(OS),Darwin)
-	sed -i '' 's|$(PWD)|.|g' $(DIST_DIR)/docker-compose.yml
-else
-	sed -i 's|$(PWD)|.|g' $(DIST_DIR)/docker-compose.yml
-endif
+	$(COMPOSE_PROD) config --no-interpolate \
+	  | awk '/^    build:/{skip=1;next} skip && /^    [^ ]/{skip=0} skip{next} {print}' \
+	  | sed 's|$(PWD)|.|g' \
+	  > $(DIST_DIR)/docker-compose.yml
 	cp .env.example $(DIST_DIR)/.env.example
 	cp docker/nginx/default.conf $(DIST_DIR)/docker/nginx/default.conf
 	@IMAGES=$$($(COMPOSE_PROD) config | grep "image:" | awk '{print $$2}' | sort | uniq); \
@@ -95,14 +92,13 @@ ifeq ($(OS),Darwin)
 # しかしながら、macOSのDocker Desktopはホストネットワークをサポートしていない。
 # そのため、dicom-serverについてはコンテナではなくローカルで直接実行する構成とする。
 
-# dicom-server以外のコンテナを起動
+# dicom-server以外のコンテナを起動し、終了時に必ず停止するようにtrapで設定する。
+# dicom-serverについてはローカルで直接実行する。
+# なお、dicom-serverはlocalhostの5432ポートでDBに接続する必要があるため、DATABASE_URLのホスト名を@db:からlocalhost:に置換し、起動する。
 	$(COMPOSE_PROD) up -d db web-api web-ui
-# dicom-serverをローカルで直接実行
-# dicom-serverはlocalhostの5432ポートでDBに接続する必要があるため、DATABASE_URLのホスト名を@db:からlocalhost:に置換し、起動する
+	trap '$(COMPOSE_PROD) down' EXIT; \
 	DATABASE_URL="$(subst @db:,@localhost:,$(DATABASE_URL))" \
 	cargo run --manifest-path src/Cargo.toml --release -p dicom-server
-# プレビュー終了後、起動したコンテナを停止する
-	$(COMPOSE_PROD) down
 else
 	$(COMPOSE_PROD) up
 endif
