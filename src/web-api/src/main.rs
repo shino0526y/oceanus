@@ -172,12 +172,16 @@ async fn main() {
     };
     info!("サーバーが起動しました (ポート={port})");
 
-    let mut sigterm = signal(SignalKind::terminate()).unwrap();
+    let mut sigterm = signal(SignalKind::terminate()).expect("SIGTERMハンドラの登録に失敗しました");
+    let mut sigint = signal(SignalKind::interrupt()).expect("SIGINTハンドラの登録に失敗しました");
 
     if let Err(e) = axum::serve(listener, router)
         .with_graceful_shutdown(async move {
-            sigterm.recv().await;
-            info!("SIGTERMを受信したのでサーバーを停止します");
+            tokio::select! {
+                _ = sigterm.recv() => info!("SIGTERMを受信しました"),
+                _ = sigint.recv() => info!("SIGINTを受信しました"),
+            }
+            info!("サーバーを停止します");
         })
         .await
     {

@@ -136,12 +136,17 @@ async fn main() {
         args.port
     );
 
-    let mut sigterm = signal(SignalKind::terminate()).unwrap();
+    let mut sigterm = signal(SignalKind::terminate()).expect("SIGTERMハンドラの登録に失敗しました");
+    let mut sigint = signal(SignalKind::interrupt()).expect("SIGINTハンドラの登録に失敗しました");
 
     loop {
         let (socket, addr) = tokio::select! {
             _ = sigterm.recv() => {
-                info!("SIGTERMを受信したのでサーバーを停止します");
+                info!("SIGTERMを受信しました");
+                break;
+            }
+            _ = sigint.recv() => {
+                info!("SIGINTを受信しました");
                 break;
             }
             res = listener.accept() => {
@@ -169,6 +174,8 @@ async fn main() {
                 .await;
         });
     }
+
+    info!("サーバーを停止します");
 }
 
 async fn handle_association(mut socket: TcpStream) {
