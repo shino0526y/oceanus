@@ -8,7 +8,8 @@ DB_PASS      ?= oceanus
 DB_NAME      ?= oceanus
 DATABASE_URL ?= postgres://$(DB_USER):$(DB_PASS)@localhost:5432/$(DB_NAME)
 
-PLATFORM     ?= linux/amd64
+ARCH         ?= $(shell uname -m | sed -e 's/x86_64/amd64/' -e 's/arm64/arm64/' -e 's/aarch64/arm64/')
+PLATFORM     ?= linux/$(ARCH)
 DIST_DIR     := dist
 IMG_PREFIX   := oceanus
 IMG_DB           := $(IMG_PREFIX)-db:latest
@@ -31,7 +32,7 @@ help: # このヘルプを表示
 	@echo "  format         コードの整形"
 	@echo ""
 	@echo "本番準備:"
-	@echo "  build          配布用パッケージ(dist)の作成"
+	@echo "  build          配布用パッケージ(dist)の作成 (オプション: ARCH=amd64|arm64)"
 	@echo "  preview        本番構成での動作確認"
 	@echo ""
 	@echo "メンテナンス:"
