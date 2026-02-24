@@ -327,13 +327,14 @@ async fn handle_association_establishment(
     let a_associate_rq = match receive_a_associate_rq(buf_reader).await {
         Ok(val) => val,
         Err(e) => {
-            if let PduReadError::IoError(io_err) = &e {
-                if io_err.kind() == ErrorKind::UnexpectedEof {
-                    // `nc -z`等のヘルスチェックによる接続終了を想定し、debugログにとどめる
-                    debug!("TCP接続がデータ受信前に閉じられました");
-                    return None;
-                }
+            if let PduReadError::IoError(io_err) = &e
+                && io_err.kind() == ErrorKind::UnexpectedEof
+            {
+                // `nc -z`等のヘルスチェックによる接続終了を想定し、debugログにとどめる
+                debug!("TCP接続がデータ受信前に閉じられました");
+                return None;
             }
+
             error!("A-ASSOCIATE-RQの受信に失敗しました: {e}");
             return None;
         }
