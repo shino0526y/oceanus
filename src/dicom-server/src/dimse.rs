@@ -1,7 +1,7 @@
 pub mod c_echo;
 pub mod c_store;
 
-use crate::HOME_DIR;
+use crate::STORAGE_DIR;
 use dicom_lib::{
     constants::{
         sop_class_uids::{
@@ -147,7 +147,7 @@ async fn dump(buf: Vec<u8>, ae_title: &str, dump_type: DumpType) -> Result<PathB
         DumpType::DataSet => "dataset",
     };
 
-    let path_buf = Path::new(HOME_DIR.get().unwrap())
+    let path_buf = Path::new(STORAGE_DIR.get().unwrap())
         .join("dump")
         .join(format!("{now}_{ae_title}_{dump_type}.dump"));
 

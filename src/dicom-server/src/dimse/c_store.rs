@@ -22,10 +22,7 @@ use dicom_lib::{
     },
 };
 use sqlx::query;
-use std::{
-    io::ErrorKind,
-    path::{Path, PathBuf},
-};
+use std::{io::ErrorKind, path::PathBuf};
 use tracing::{error, info};
 
 pub async fn handle_c_store(
@@ -90,7 +87,7 @@ async fn handle_c_store_rq(
 
                 // データセットをファイルとして保存
                 let file = File::new(file_meta_info, data_set);
-                let path_buf = generate_failure_path(affected_sop_instance_uid);
+                let path_buf = generate_error_path(affected_sop_instance_uid);
                 if let Err(e) = save_file(file.into(), &path_buf).await {
                     error!(
                         "インスタンス情報の抽出に失敗したデータセットをファイルとして保存できませんでした: {e}"
@@ -231,25 +228,27 @@ fn generate_file_meta_info(
 }
 
 fn generate_success_path(info: &InstanceInfo) -> PathBuf {
-    match info.study.date() {
-        Some(date) => Path::new(STORAGE_DIR.get().unwrap())
+    let mut path = STORAGE_DIR.get().unwrap().join("success");
+    path = match info.study.date() {
+        Some(date) => path
             .join(format!("{:04}", date.year()))
             .join(format!("{:02}", date.month()))
-            .join(format!("{:02}", date.day()))
-            .join(info.study.instance_uid())
-            .join(info.series.instance_uid())
-            .join(format!("{}.dcm", info.sop_instance.instance_uid())),
-        None => Path::new(STORAGE_DIR.get().unwrap())
-            .join("unknown_date")
-            .join(info.study.instance_uid())
-            .join(info.series.instance_uid())
-            .join(format!("{}.dcm", info.sop_instance.instance_uid())),
-    }
+            .join(format!("{:02}", date.day())),
+        None => path.join("unknown_date"),
+    };
+    path = path
+        .join(info.study.instance_uid())
+        .join(info.series.instance_uid())
+        .join(format!("{}.dcm", info.sop_instance.instance_uid()));
+
+    path
 }
 
-fn generate_failure_path(affected_sop_instance_uid: &str) -> PathBuf {
-    Path::new(STORAGE_DIR.get().unwrap())
-        .join("failures")
+fn generate_error_path(affected_sop_instance_uid: &str) -> PathBuf {
+    STORAGE_DIR
+        .get()
+        .unwrap()
+        .join("error")
         .join(format!("{affected_sop_instance_uid}.dcm"))
 }
 

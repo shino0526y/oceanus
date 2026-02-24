@@ -35,8 +35,7 @@ services:
       DATABASE_URL: ${DICOM_SERVER_DATABASE_URL}
       AE_TITLE: ${AE_TITLE:-OCEANUS}
       PORT: ${DICOM_PORT:-104}
-      HOME_DIR: ${HOME_DIR:-/app}
-      STORAGE_DIR: ${STORAGE_DIR:-/var/lib/oceanus/dicom}
+      DATA_DIR: ${DATA_DIR:-/var/lib/oceanus}
     healthcheck:
       test: [ "CMD", "/bin/busybox", "nc", "-z", "localhost", "104" ]
       interval: 15s
@@ -45,7 +44,7 @@ services:
       start_period: 5s
     network_mode: host
     volumes:
-      - ${STORAGE_DIR:-/var/lib/oceanus/dicom}:${STORAGE_DIR:-/var/lib/oceanus/dicom}:Z
+      - ${DATA_DIR:-/var/lib/oceanus}:${DATA_DIR:-/var/lib/oceanus}:Z
     depends_on:
       db:
         condition: service_healthy

@@ -42,6 +42,7 @@ use std::{
     collections::{HashMap, HashSet},
     io::{ErrorKind, IsTerminal},
     net::Ipv4Addr,
+    path::{Path, PathBuf},
     process::exit,
     sync::{
         OnceLock,
@@ -61,8 +62,7 @@ use tracing_subscriber::fmt::time::LocalTime;
 static CONNECTION_COUNTER: AtomicU64 = AtomicU64::new(1);
 static SERVER_AE_TITLE: OnceLock<String> = OnceLock::new();
 static DB_POOL: OnceLock<Pool<Postgres>> = OnceLock::new();
-static HOME_DIR: OnceLock<String> = OnceLock::new();
-static STORAGE_DIR: OnceLock<String> = OnceLock::new();
+static STORAGE_DIR: OnceLock<PathBuf> = OnceLock::new();
 
 #[tokio::main]
 async fn main() {
@@ -71,8 +71,9 @@ async fn main() {
     // コマンドライン引数の解析
     let args = Args::parse();
     SERVER_AE_TITLE.set(args.ae_title).unwrap();
-    HOME_DIR.set(args.home_dir).unwrap();
-    STORAGE_DIR.set(args.storage_dir).unwrap();
+    STORAGE_DIR // ストレージ先ディレクトリはデータディレクトリの直下の`dicom`ディレクトリとする
+        .set(Path::new(&args.data_dir).join("dicom"))
+        .unwrap();
 
     print!(
         r"
