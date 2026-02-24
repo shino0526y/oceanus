@@ -101,6 +101,7 @@ ifeq ($(OS),Darwin)
 	cargo run --manifest-path src/Cargo.toml --release -p dicom-server
 else
 	$(COMPOSE_PROD) up
+	$(COMPOSE_PROD) down
 endif
 
 .PHONY: psql
