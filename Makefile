@@ -73,7 +73,7 @@ build: # 配布用パッケージ(dist)の作成
 	$(CONTAINER_ENGINE) build --platform $(PLATFORM) -t $(IMG_DICOM_SERVER) --target dicom-server -f src/Dockerfile src
 	$(CONTAINER_ENGINE) build --platform $(PLATFORM) -t $(IMG_WEB_API) --target web-api -f src/Dockerfile src
 	rm -rf $(DIST_DIR)
-	mkdir -p $(DIST_DIR)/docker/nginx $(DIST_DIR)/data/dicom
+	mkdir -p $(DIST_DIR)/docker/nginx
 	$(COMPOSE_PROD) config --no-interpolate \
 	  | awk '/^    build:/{skip=1;next} skip && /^    [^ ]/{skip=0} skip{next} {print}' \
 	  | sed 's|$(PWD)|.|g' \
