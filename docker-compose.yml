@@ -12,6 +12,12 @@ services:
       - "5432:5432"
     volumes:
       - oceanus-db-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-oceanus} -d $${POSTGRES_DB:-oceanus}"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
     networks:
       - oceanus-network
 

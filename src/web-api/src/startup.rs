@@ -158,6 +158,7 @@ pub fn make_router(state: AppState, repos: &Repos) -> Router {
 
     Router::new()
         // 認証不要なエンドポイント
+        .route("/health", get(handler::health::respond_if_healthy))
         .route("/login", post(handler::auth::login))
         .route(
             "/me",

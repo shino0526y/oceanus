@@ -42,6 +42,7 @@ RUN case "$TARGETARCH" in \
 
 # 実行ステージのベース
 FROM gcr.io/distroless/cc-debian12 AS runtime
+COPY --from=busybox:1.37.0-musl /bin/busybox /bin/busybox
 
 # DICOM サーバー ステージ
 FROM runtime AS dicom-server

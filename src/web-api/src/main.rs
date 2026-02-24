@@ -25,6 +25,7 @@ use utoipa::{
 #[derive(OpenApi)]
 #[openapi(
     paths(
+        internal::presentation::handler::health::respond_if_healthy::respond_if_healthy,
         internal::presentation::handler::auth::login::login,
         internal::presentation::handler::auth::logout::logout,
         internal::presentation::handler::auth::me::me,
@@ -55,6 +56,7 @@ use utoipa::{
         internal::presentation::handler::application_entity::update_application_entity::UpdateApplicationEntityResponseBody,
     )),
     tags(
+        (name = "health", description = "ヘルスチェックAPI"),
         (name = "auth", description = "認証API"),
         (name = "users", description = "ユーザー管理API"),
         (name = "application-entities", description = "Application Entity管理API")

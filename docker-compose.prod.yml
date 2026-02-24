@@ -14,6 +14,12 @@ services:
       - "5432:5432"
     volumes:
       - oceanus-db-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-oceanus} -d $${POSTGRES_DB:-oceanus}"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
     networks:
       - oceanus-network
 
@@ -31,11 +37,18 @@ services:
       PORT: ${DICOM_PORT:-104}
       HOME_DIR: ${HOME_DIR:-/app}
       STORAGE_DIR: ${STORAGE_DIR:-/var/lib/oceanus/dicom}
+    healthcheck:
+      test: ["CMD", "/bin/busybox", "nc", "-z", "localhost", "104"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
     network_mode: host
     volumes:
       - ./data/dicom:${STORAGE_DIR:-/var/lib/oceanus/dicom}:Z
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   web-api:
     container_name: oceanus-web-api
@@ -49,8 +62,15 @@ services:
       DATABASE_URL: ${DATABASE_URL}
     expose:
       - "8080"
+    healthcheck:
+      test: ["CMD", "/bin/busybox", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - oceanus-network
 
@@ -63,10 +83,17 @@ services:
       dockerfile: Dockerfile
     ports:
       - "80:80"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
     volumes:
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro,Z
     depends_on:
-      - web-api
+      web-api:
+        condition: service_healthy
     networks:
       - oceanus-network
 
