@@ -74,10 +74,7 @@ build: # 配布用パッケージ(dist)の作成
 	$(CONTAINER_ENGINE) build --platform $(PLATFORM) -t $(IMG_WEB_API) --target web-api -f src/Dockerfile src
 	rm -rf $(DIST_DIR)
 	mkdir -p $(DIST_DIR)/docker/nginx
-	$(COMPOSE_PROD) config --no-interpolate \
-	  | awk '/^    build:/{skip=1;next} skip && /^    [^ ]/{skip=0} skip{next} {print}' \
-	  | sed 's|$(PWD)|.|g' \
-	  > $(DIST_DIR)/docker-compose.yml
+	awk '/^    build:/{skip=1;next} skip && /^    [^ ]/{skip=0} skip{next} {print}' docker-compose.prod.yml > $(DIST_DIR)/docker-compose.yml
 	cp .env.example $(DIST_DIR)/.env.example
 	cp docker/nginx/default.conf $(DIST_DIR)/docker/nginx/default.conf
 	@IMAGES=$$($(COMPOSE_PROD) config | grep "image:" | awk '{print $$2}' | sort | uniq); \
