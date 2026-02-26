@@ -3,10 +3,10 @@ COMPOSE          := $(CONTAINER_ENGINE) compose
 COMPOSE_PROD     := $(COMPOSE) -f docker-compose.prod.yml
 OS               := $(shell uname -s)
 
-DB_USER      ?= oceanus
-DB_PASS      ?= oceanus
-DB_NAME      ?= oceanus
-DATABASE_URL := postgres://$(DB_USER):$(DB_PASS)@localhost:5432/$(DB_NAME)
+POSTGRES_USER     ?= oceanus
+POSTGRES_PASSWORD ?= oceanus
+POSTGRES_DB       ?= oceanus
+DATABASE_URL      := postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@localhost:5432/$(POSTGRES_DB)
 
 ARCH         ?= $(shell uname -m | sed -e 's/x86_64/amd64/' -e 's/arm64/arm64/' -e 's/aarch64/arm64/')
 PLATFORM     ?= linux/$(ARCH)
@@ -102,7 +102,7 @@ endif
 
 .PHONY: psql
 psql: # データベース接続
-	$(COMPOSE) exec db psql -U $(DB_USER) -d $(DB_NAME)
+	$(COMPOSE) exec db psql -U $(POSTGRES_USER) -d $(POSTGRES_DB)
 
 .PHONY: clean
 clean: # 環境のクリーンアップ
