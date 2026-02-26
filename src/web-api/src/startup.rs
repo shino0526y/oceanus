@@ -29,7 +29,7 @@ use axum::{
 use sqlx::{Pool, Postgres};
 use std::sync::Arc;
 use tower_cookies::CookieManagerLayer;
-use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tower_http::trace::TraceLayer;
 
 pub struct Repos {
     pub application_entity_repository: Arc<dyn ApplicationEntityRepository>,
@@ -158,6 +158,7 @@ pub fn make_router(state: AppState, repos: &Repos) -> Router {
 
     Router::new()
         // 認証不要なエンドポイント
+        .route("/health", get(handler::health::respond_if_healthy))
         .route("/login", post(handler::auth::login))
         .route(
             "/me",
@@ -217,7 +218,6 @@ pub fn make_router(state: AppState, repos: &Repos) -> Router {
                     )
                 }))
         })
-        .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())
         .layer(CookieManagerLayer::new())
         .with_state(state)

@@ -4,6 +4,8 @@ services:
     build:
       context: .
       dockerfile: docker/db/Dockerfile
+      args:
+        INCLUDE_DEV_DATA: "true"
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-oceanus}
       POSTGRES_USER: ${POSTGRES_USER:-oceanus}
@@ -11,14 +13,20 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - oceanus-volume:/var/lib/postgresql/data
+      - oceanus-db-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-oceanus} -d $${POSTGRES_DB:-oceanus}" ]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
     networks:
-      - default
+      - oceanus-network
 
 volumes:
-  oceanus-volume:
-    name: oceanus-volume
+  oceanus-db-volume:
+    name: oceanus-db-volume
 
 networks:
-  default:
+  oceanus-network:
     name: oceanus-network

@@ -40,8 +40,9 @@ use dotenvy::dotenv;
 use sqlx::{Pool, Postgres, postgres::PgPoolOptions, query};
 use std::{
     collections::{HashMap, HashSet},
-    io::IsTerminal,
+    io::{ErrorKind, IsTerminal},
     net::Ipv4Addr,
+    path::{Path, PathBuf},
     process::exit,
     sync::{
         OnceLock,
@@ -60,8 +61,7 @@ use tracing_subscriber::fmt::time::LocalTime;
 static CONNECTION_COUNTER: AtomicU64 = AtomicU64::new(1);
 static SERVER_AE_TITLE: OnceLock<String> = OnceLock::new();
 static DB_POOL: OnceLock<Pool<Postgres>> = OnceLock::new();
-static HOME_DIR: OnceLock<String> = OnceLock::new();
-static STORAGE_DIR: OnceLock<String> = OnceLock::new();
+static STORAGE_DIR: OnceLock<PathBuf> = OnceLock::new();
 
 #[tokio::main]
 async fn main() {
@@ -70,8 +70,9 @@ async fn main() {
     // コマンドライン引数の解析
     let args = Args::parse();
     SERVER_AE_TITLE.set(args.ae_title).unwrap();
-    HOME_DIR.set(args.home_dir).unwrap();
-    STORAGE_DIR.set(args.storage_dir).unwrap();
+    STORAGE_DIR // ストレージ先ディレクトリはデータディレクトリの直下の`dicom`ディレクトリとする
+        .set(Path::new(&args.data_dir).join("dicom"))
+        .unwrap();
 
     print!(
         r"
@@ -135,13 +136,21 @@ async fn main() {
         args.port
     );
 
+    let shutdown = shutdown_signal();
+    tokio::pin!(shutdown);
+
     loop {
-        let (socket, addr) = {
-            match listener.accept().await {
-                Ok(val) => val,
-                Err(e) => {
-                    error!("接続の受け入れに失敗しました: {e}");
-                    continue;
+        let (socket, addr) = tokio::select! {
+            _ = &mut shutdown => {
+                break;
+            }
+            res = listener.accept() => {
+                match res {
+                    Ok(val) => val,
+                    Err(e) => {
+                        error!("接続の受け入れに失敗しました: {e}");
+                        continue;
+                    }
                 }
             }
         };
@@ -310,6 +319,14 @@ async fn handle_association_establishment(
     let a_associate_rq = match receive_a_associate_rq(buf_reader).await {
         Ok(val) => val,
         Err(e) => {
+            if let PduReadError::IoError(io_err) = &e
+                && io_err.kind() == ErrorKind::UnexpectedEof
+            {
+                // `nc -z`等のヘルスチェックによる接続終了を想定し、debugログにとどめる
+                debug!("TCP接続がデータ受信前に閉じられました");
+                return None;
+            }
+
             error!("A-ASSOCIATE-RQの受信に失敗しました: {e}");
             return None;
         }
@@ -576,4 +593,31 @@ async fn abort(buf_reader: &mut BufReader<&mut TcpStream>, reason: a_abort::Reas
         Ok(()) => debug!("A-ABORTを送信しました"),
         Err(e) => error!("A-ABORTの送信に失敗しました: {e}"),
     }
+}
+
+async fn shutdown_signal() {
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{SignalKind, signal};
+
+        let mut sigterm =
+            signal(SignalKind::terminate()).expect("SIGTERMハンドラの登録に失敗しました");
+        let mut sigint =
+            signal(SignalKind::interrupt()).expect("SIGINTハンドラの登録に失敗しました");
+
+        tokio::select! {
+            _ = sigterm.recv() => info!("SIGTERMを受信しました"),
+            _ = sigint.recv() => info!("SIGINTを受信しました"),
+        }
+    }
+
+    #[cfg(not(unix))]
+    {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("Ctrl+Cハンドラの登録に失敗しました");
+        info!("Ctrl+Cを受信しました");
+    }
+
+    info!("サーバーを停止します");
 }

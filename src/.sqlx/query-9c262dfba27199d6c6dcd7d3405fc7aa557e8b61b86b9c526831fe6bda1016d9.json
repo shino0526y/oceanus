@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT user_uuid, failure_count, last_failure_at\n             FROM login_failure_counts\n             WHERE user_uuid = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "failure_count",
+        "type_info": "Int2"
+      },
+      {
+        "ordinal": 2,
+        "name": "last_failure_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "9c262dfba27199d6c6dcd7d3405fc7aa557e8b61b86b9c526831fe6bda1016d9"
+}

@@ -1,122 +1,110 @@
-.PHONY: \
-	up down start stop restart logs ps build pull clean \
-	db-up db-start db-stop db-restart db-logs db-shell db-psql \
-	install lint format test src-build src-clean \
-	help
+CONTAINER_ENGINE ?= docker
+COMPOSE          := $(CONTAINER_ENGINE) compose
+COMPOSE_PROD     := $(COMPOSE) -f docker-compose.prod.yml
+OS               := $(shell uname -s)
+
+POSTGRES_USER     ?= oceanus
+POSTGRES_PASSWORD ?= oceanus
+POSTGRES_DB       ?= oceanus
+DATABASE_URL      := postgres://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@localhost:5432/$(POSTGRES_DB)
+
+ARCH         ?= $(shell uname -m | sed -e 's/x86_64/amd64/' -e 's/arm64/arm64/' -e 's/aarch64/arm64/')
+PLATFORM     ?= linux/$(ARCH)
+DIST_DIR     := dist
+IMG_PREFIX   := oceanus
+IMG_DB           := $(IMG_PREFIX)-db:latest
+IMG_WEB_UI       := $(IMG_PREFIX)-web-ui:latest
+IMG_DICOM_SERVER := $(IMG_PREFIX)-dicom-server:latest
+IMG_WEB_API      := $(IMG_PREFIX)-web-api:latest
+
+-include .env
+export
+
+.PHONY: help
+help: # このヘルプを表示
+	@echo "oceanus Makefile コマンド一覧"
+	@echo ""
+	@echo "開発:"
+	@echo "  up             開発環境の起動"
+	@echo "  down           開発環境の停止"
+	@echo "  logs           ログの表示"
+	@echo "  test           テストの実行"
+	@echo "  format         コードの整形"
+	@echo ""
+	@echo "本番準備:"
+	@echo "  build          配布用パッケージ(dist)の作成 (オプション: ARCH=amd64|arm64)"
+	@echo "  preview        本番構成での動作確認"
+	@echo ""
+	@echo "メンテナンス:"
+	@echo "  psql           データベース接続"
+	@echo "  sqlx-prepare   SQLx メタデータの生成"
+	@echo "  clean          環境のクリーンアップ"
 
 .DEFAULT_GOAL := help
 
-COMPOSE := docker compose
-
-# === Docker Compose 操作 ===
-
-up:
+.PHONY: up
+up: # 開発環境の起動
 	$(COMPOSE) up -d
 
-down:
+.PHONY: down
+down: # 開発環境の停止
 	$(COMPOSE) down
 
-start:
-	$(COMPOSE) start
-
-stop:
-	$(COMPOSE) stop
-
-restart:
-	$(COMPOSE) restart
-
-logs:
+.PHONY: logs
+logs: # ログの表示
 	$(COMPOSE) logs -f
 
-ps:
-	$(COMPOSE) ps -a
-
-build:
-	$(COMPOSE) build
-
-pull:
-	$(COMPOSE) pull
-
-clean:
-	$(COMPOSE) down -v --rmi local
-
-# === DB 個別操作 ===
-
-db-up:
-	$(COMPOSE) up -d db
-
-db-start:
-	$(COMPOSE) start db
-
-db-stop:
-	$(COMPOSE) stop db
-
-db-restart:
-	$(COMPOSE) restart db
-
-db-logs:
-	$(COMPOSE) logs -f db
-
-db-shell:
-	$(COMPOSE) exec db bash
-
-db-psql:
-	$(COMPOSE) exec db psql -U $${POSTGRES_USER:-oceanus} -d $${POSTGRES_DB:-oceanus}
-
-# === src 配下のプロジェクト操作 ===
-
-install:
-	$(MAKE) -C src install
-
-lint:
-	$(MAKE) -C src lint
-
-format:
-	$(MAKE) -C src format
-
-test:
+.PHONY: test
+test: # テストの実行
 	$(MAKE) -C src test
 
-src-build:
-	$(MAKE) -C src build
+.PHONY: format
+format: # コードの整形
+	$(MAKE) -C src format
 
-src-clean:
-	$(MAKE) -C src clean
+.PHONY: sqlx-prepare
+sqlx-prepare: # SQLxメタデータの生成
+	cd src && DATABASE_URL="$(DATABASE_URL)" cargo sqlx prepare --workspace -- --all-targets --all-features
 
-# === ヘルプ ===
+.PHONY: build
+build: # 配布用パッケージ(dist)の作成
+	$(CONTAINER_ENGINE) build --platform $(PLATFORM) -t $(IMG_DB) -f docker/db/Dockerfile .
+	$(CONTAINER_ENGINE) build --platform $(PLATFORM) -t $(IMG_WEB_UI) -f src/web-ui/Dockerfile src/web-ui
+	$(CONTAINER_ENGINE) build --platform $(PLATFORM) -t $(IMG_DICOM_SERVER) --target dicom-server -f src/Dockerfile src
+	$(CONTAINER_ENGINE) build --platform $(PLATFORM) -t $(IMG_WEB_API) --target web-api -f src/Dockerfile src
+	rm -rf $(DIST_DIR)
+	mkdir -p $(DIST_DIR)/docker/nginx
+	awk '/^    build:/{skip=1;next} skip && /^    [^ ]/{skip=0} skip{next} {print}' docker-compose.prod.yml > $(DIST_DIR)/docker-compose.yml
+	cp .env.example $(DIST_DIR)/.env.example
+	cp docker/nginx/default.conf $(DIST_DIR)/docker/nginx/default.conf
+	cp docker/nginx/security_headers.conf $(DIST_DIR)/docker/nginx/security_headers.conf
+	@IMAGES=$$($(COMPOSE_PROD) config | grep "image:" | awk '{print $$2}' | sort | uniq); \
+	$(CONTAINER_ENGINE) save -o $(DIST_DIR)/oceanus-images.tar $$IMAGES
 
-help:
-	@echo "oceanus Makefile"
-	@echo ""
-	@echo "使用方法: make [target]"
-	@echo ""
-	@echo "Docker Compose:"
-	@echo "  up        コンテナをバックグラウンドで起動"
-	@echo "  down      コンテナを停止・削除"
-	@echo "  start     停止中のコンテナを起動"
-	@echo "  stop      コンテナを停止"
-	@echo "  restart   コンテナを再起動"
-	@echo "  logs      ログを表示 (follow)"
-	@echo "  ps        コンテナ一覧を表示"
-	@echo "  build     イメージをビルド"
-	@echo "  pull      イメージをプル"
-	@echo "  clean     コンテナ・ボリューム・イメージを削除"
-	@echo ""
-	@echo "DB 操作:"
-	@echo "  db-up      DBコンテナを起動"
-	@echo "  db-start   DBコンテナを起動"
-	@echo "  db-stop    DBコンテナを停止"
-	@echo "  db-restart DBコンテナを再起動"
-	@echo "  db-logs    DBコンテナのログを表示"
-	@echo "  db-shell   DBコンテナにシェルで接続"
-	@echo "  db-psql    DBコンテナにpsqlで接続"
-	@echo ""
-	@echo "ソースコード (src/):"
-	@echo "  install    全プロジェクトの依存関係をインストール"
-	@echo "  lint       全プロジェクトでリンターを実行"
-	@echo "  format     全プロジェクトでフォーマッターを実行"
-	@echo "  test       全プロジェクトでテストを実行"
-	@echo "  src-build  全プロジェクトをビルド"
-	@echo "  src-clean  全プロジェクトのビルド成果物を削除"
-	@echo ""
-	@echo "  help       このヘルプを表示"
+.PHONY: preview
+preview: # 本番構成での動作確認
+	@if [ ! -f .env ]; then cp .env.example .env; fi
+ifeq ($(OS),Darwin)
+# dicom-serverがDICOM通信を行うにあたり、通信先のホスト名(IPアドレス)とポートが事前に登録されているものと一致している必要があるため、
+# dicom-serverコンテナはホストネットワークを使用する構成となっている。
+# しかしながら、macOSのDocker Desktopはホストネットワークをサポートしていない。
+# そのため、dicom-serverについてはコンテナではなくローカルで直接実行する構成とする。
+
+# dicom-server以外のコンテナを起動し、終了時に必ず停止するようにtrapで設定する。
+# dicom-serverについてはローカルで直接実行する。
+	$(COMPOSE_PROD) up -d db web-api web-ui
+	trap '$(COMPOSE_PROD) down' EXIT; \
+	cargo run --manifest-path src/Cargo.toml --release -p dicom-server
+else
+	$(COMPOSE_PROD) up
+	$(COMPOSE_PROD) down
+endif
+
+.PHONY: psql
+psql: # データベース接続
+	$(COMPOSE) exec db psql -U $(POSTGRES_USER) -d $(POSTGRES_DB)
+
+.PHONY: clean
+clean: # 環境のクリーンアップ
+	$(COMPOSE) down -v --rmi local
+	rm -rf $(DIST_DIR) src/target

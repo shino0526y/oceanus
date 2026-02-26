@@ -5749,7 +5749,7 @@ const VARIABLE_COEFFICIENTS_SDDN: DictionaryItem = DictionaryItem {
 };
 
 pub fn search(tag: Tag) -> Option<&'static DictionaryItem> {
-    if tag.group() % 2 != 0 {
+    if !tag.group().is_multiple_of(2) {
         // タググループが奇数である場合はプライベートデータ
         return None;
     }

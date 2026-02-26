@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO sop_instances (series_instance_uid, class_uid, instance_uid, transfer_syntax_uid, size, path, created_by, created_at, updated_by, updated_at)\n        VALUES ($1, $2, $3, $4, $5, $6, $7, now(), $7, now())\n        ON CONFLICT (instance_uid) DO UPDATE SET\n            series_instance_uid = EXCLUDED.series_instance_uid,\n            class_uid = EXCLUDED.class_uid,\n            transfer_syntax_uid = EXCLUDED.transfer_syntax_uid,\n            size = EXCLUDED.size,\n            path = EXCLUDED.path,\n            updated_by = EXCLUDED.updated_by,\n            updated_at = EXCLUDED.updated_at\n        WHERE sop_instances.series_instance_uid IS DISTINCT FROM EXCLUDED.series_instance_uid\n           OR sop_instances.class_uid IS DISTINCT FROM EXCLUDED.class_uid\n           OR sop_instances.transfer_syntax_uid IS DISTINCT FROM EXCLUDED.transfer_syntax_uid\n           OR sop_instances.size IS DISTINCT FROM EXCLUDED.size\n           OR sop_instances.path IS DISTINCT FROM EXCLUDED.path\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Int4",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0513f703ec3bce37582d4e2e2b088dc2e577ab04bd7cb64e7076f8e21d87536c"
+}

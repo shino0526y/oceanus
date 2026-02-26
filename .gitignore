@@ -8,3 +8,6 @@
 
 # Rust
 target/
+
+# ビルド
+dist/

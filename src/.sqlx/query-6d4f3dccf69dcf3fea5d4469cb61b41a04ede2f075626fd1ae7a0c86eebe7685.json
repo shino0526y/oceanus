@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO series (study_instance_uid, instance_uid, modality, series_number, created_by, created_at, updated_by, updated_at)\n        VALUES ($1, $2, $3, $4, $5, now(), $5, now())\n        ON CONFLICT (instance_uid) DO UPDATE SET\n            study_instance_uid = EXCLUDED.study_instance_uid,\n            modality = EXCLUDED.modality,\n            series_number = EXCLUDED.series_number,\n            updated_by = EXCLUDED.updated_by,\n            updated_at = EXCLUDED.updated_at\n        WHERE series.study_instance_uid IS DISTINCT FROM EXCLUDED.study_instance_uid\n           OR series.modality IS DISTINCT FROM EXCLUDED.modality\n           OR series.series_number IS DISTINCT FROM EXCLUDED.series_number\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Int4",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6d4f3dccf69dcf3fea5d4469cb61b41a04ede2f075626fd1ae7a0c86eebe7685"
+}

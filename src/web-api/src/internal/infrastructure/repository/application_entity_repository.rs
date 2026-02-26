@@ -57,7 +57,8 @@ impl PostgresApplicationEntityRepository {
 #[async_trait::async_trait]
 impl ApplicationEntityRepository for PostgresApplicationEntityRepository {
     async fn find_all(&self) -> Result<Vec<ApplicationEntity>, RepositoryError> {
-        let records = sqlx::query_as::<_, ApplicationEntityRecord>(
+        let records = sqlx::query_as!(
+            ApplicationEntityRecord,
             "SELECT uuid, title, host, port, comment, created_by, created_at, updated_by, updated_at
              FROM application_entities
              ORDER BY created_at DESC",
@@ -82,12 +83,13 @@ impl ApplicationEntityRepository for PostgresApplicationEntityRepository {
         &self,
         title: &AeValue,
     ) -> Result<Option<ApplicationEntity>, RepositoryError> {
-        let record = sqlx::query_as::<_, ApplicationEntityRecord>(
+        let record = sqlx::query_as!(
+            ApplicationEntityRecord,
             "SELECT uuid, title, host, port, comment, created_by, created_at, updated_by, updated_at
              FROM application_entities
              WHERE title = $1",
+            title.value()
         )
-        .bind(title.value())
         .fetch_optional(&self.pool)
         .await
         .map_err(|e| RepositoryError::Other {
@@ -106,20 +108,21 @@ impl ApplicationEntityRepository for PostgresApplicationEntityRepository {
     }
 
     async fn add(&self, entity: &ApplicationEntity) -> Result<ApplicationEntity, RepositoryError> {
-        let record = sqlx::query_as::<_, ApplicationEntityRecord>(
+        let record = sqlx::query_as!(
+            ApplicationEntityRecord,
             "INSERT INTO application_entities (uuid, title, host, port, comment, created_by, created_at, updated_by, updated_at)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
              RETURNING uuid, title, host, port, comment, created_by, created_at, updated_by, updated_at",
+            entity.uuid(),
+            entity.title().value(),
+            entity.host().value(),
+            entity.port().value() as i32,
+            entity.comment(),
+            entity.created_by(),
+            entity.created_at(),
+            entity.updated_by(),
+            entity.updated_at()
         )
-        .bind(entity.uuid())
-        .bind(entity.title().value())
-        .bind(entity.host().value())
-        .bind(entity.port().value() as i32)
-        .bind(entity.comment())
-        .bind(entity.created_by())
-        .bind(entity.created_at())
-        .bind(entity.updated_by())
-        .bind(entity.updated_at())
         .fetch_one(&self.pool)
         .await
         .map_err(|e| {
@@ -160,19 +163,20 @@ impl ApplicationEntityRepository for PostgresApplicationEntityRepository {
         old_title: &AeValue,
         entity: &ApplicationEntity,
     ) -> Result<ApplicationEntity, RepositoryError> {
-        let record = sqlx::query_as::<_, ApplicationEntityRecord>(
+        let record = sqlx::query_as!(
+            ApplicationEntityRecord,
             "UPDATE application_entities
              SET title = $1, host = $2, port = $3, comment = $4, updated_by = $5, updated_at = $6
              WHERE title = $7
              RETURNING uuid, title, host, port, comment, created_by, created_at, updated_by, updated_at",
+            entity.title().value(),
+            entity.host().value(),
+            entity.port().value() as i32,
+            entity.comment(),
+            entity.updated_by(),
+            entity.updated_at(),
+            old_title.value()
         )
-        .bind(entity.title().value())
-        .bind(entity.host().value())
-        .bind(entity.port().value() as i32)
-        .bind(entity.comment())
-        .bind(entity.updated_by())
-        .bind(entity.updated_at())
-        .bind(old_title.value())
         .fetch_optional(&self.pool)
         .await
         .map_err(|e| {

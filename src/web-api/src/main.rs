@@ -22,6 +22,7 @@ use utoipa::{
 #[derive(OpenApi)]
 #[openapi(
     paths(
+        internal::presentation::handler::health::respond_if_healthy::respond_if_healthy,
         internal::presentation::handler::auth::login::login,
         internal::presentation::handler::auth::logout::logout,
         internal::presentation::handler::auth::me::me,
@@ -52,6 +53,7 @@ use utoipa::{
         internal::presentation::handler::application_entity::update_application_entity::UpdateApplicationEntityResponseBody,
     )),
     tags(
+        (name = "health", description = "ヘルスチェックAPI"),
         (name = "auth", description = "認証API"),
         (name = "users", description = "ユーザー管理API"),
         (name = "application-entities", description = "Application Entity管理API")
@@ -168,8 +170,39 @@ async fn main() {
         }
     };
     info!("サーバーが起動しました (ポート={port})");
-    if let Err(e) = axum::serve(listener, router).await {
+
+    if let Err(e) = axum::serve(listener, router)
+        .with_graceful_shutdown(shutdown_signal())
+        .await
+    {
         error!("HTTPサービスの実行に失敗しました: {e}");
         exit(1);
     }
+}
+
+async fn shutdown_signal() {
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{SignalKind, signal};
+
+        let mut sigterm =
+            signal(SignalKind::terminate()).expect("SIGTERMハンドラの登録に失敗しました");
+        let mut sigint =
+            signal(SignalKind::interrupt()).expect("SIGINTハンドラの登録に失敗しました");
+
+        tokio::select! {
+            _ = sigterm.recv() => info!("SIGTERMを受信しました"),
+            _ = sigint.recv() => info!("SIGINTを受信しました"),
+        }
+    }
+
+    #[cfg(not(unix))]
+    {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("Ctrl+Cハンドラの登録に失敗しました");
+        info!("Ctrl+Cを受信しました");
+    }
+
+    info!("サーバーを停止します");
 }
