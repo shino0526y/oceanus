@@ -77,6 +77,7 @@ build: # 配布用パッケージ(dist)の作成
 	awk '/^    build:/{skip=1;next} skip && /^    [^ ]/{skip=0} skip{next} {print}' docker-compose.prod.yml > $(DIST_DIR)/docker-compose.yml
 	cp .env.example $(DIST_DIR)/.env.example
 	cp docker/nginx/default.conf $(DIST_DIR)/docker/nginx/default.conf
+	cp docker/nginx/security_headers.conf $(DIST_DIR)/docker/nginx/security_headers.conf
 	@IMAGES=$$($(COMPOSE_PROD) config | grep "image:" | awk '{print $$2}' | sort | uniq); \
 	$(CONTAINER_ENGINE) save -o $(DIST_DIR)/oceanus-images.tar $$IMAGES
 
