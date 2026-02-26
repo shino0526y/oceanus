@@ -53,7 +53,6 @@ use std::{
 use tokio::{
     io::BufReader,
     net::{TcpListener, TcpStream, lookup_host},
-    signal::unix::{SignalKind, signal},
     spawn,
 };
 use tracing::{Instrument, Level, debug, error, info, level_filters::LevelFilter, span, warn};
@@ -137,17 +136,12 @@ async fn main() {
         args.port
     );
 
-    let mut sigterm = signal(SignalKind::terminate()).expect("SIGTERMハンドラの登録に失敗しました");
-    let mut sigint = signal(SignalKind::interrupt()).expect("SIGINTハンドラの登録に失敗しました");
+    let shutdown = shutdown_signal();
+    tokio::pin!(shutdown);
 
     loop {
         let (socket, addr) = tokio::select! {
-            _ = sigterm.recv() => {
-                info!("SIGTERMを受信しました");
-                break;
-            }
-            _ = sigint.recv() => {
-                info!("SIGINTを受信しました");
+            _ = &mut shutdown => {
                 break;
             }
             res = listener.accept() => {
@@ -175,8 +169,6 @@ async fn main() {
                 .await;
         });
     }
-
-    info!("サーバーを停止します");
 }
 
 async fn handle_association(mut socket: TcpStream) {
@@ -601,4 +593,31 @@ async fn abort(buf_reader: &mut BufReader<&mut TcpStream>, reason: a_abort::Reas
         Ok(()) => debug!("A-ABORTを送信しました"),
         Err(e) => error!("A-ABORTの送信に失敗しました: {e}"),
     }
+}
+
+async fn shutdown_signal() {
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{SignalKind, signal};
+
+        let mut sigterm =
+            signal(SignalKind::terminate()).expect("SIGTERMハンドラの登録に失敗しました");
+        let mut sigint =
+            signal(SignalKind::interrupt()).expect("SIGINTハンドラの登録に失敗しました");
+
+        tokio::select! {
+            _ = sigterm.recv() => info!("SIGTERMを受信しました"),
+            _ = sigint.recv() => info!("SIGINTを受信しました"),
+        }
+    }
+
+    #[cfg(not(unix))]
+    {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("Ctrl+Cハンドラの登録に失敗しました");
+        info!("Ctrl+Cを受信しました");
+    }
+
+    info!("サーバーを停止します");
 }

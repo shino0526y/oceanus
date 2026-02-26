@@ -7,10 +7,7 @@ use clap::Parser;
 use dotenvy::dotenv;
 use sqlx::postgres::PgPoolOptions;
 use std::{io::IsTerminal, net::Ipv4Addr, process::exit};
-use tokio::{
-    net::TcpListener,
-    signal::unix::{SignalKind, signal},
-};
+use tokio::net::TcpListener;
 use tracing::{debug, error, info, level_filters::LevelFilter};
 use tracing_subscriber::fmt::time::LocalTime;
 
@@ -174,20 +171,38 @@ async fn main() {
     };
     info!("サーバーが起動しました (ポート={port})");
 
-    let mut sigterm = signal(SignalKind::terminate()).expect("SIGTERMハンドラの登録に失敗しました");
-    let mut sigint = signal(SignalKind::interrupt()).expect("SIGINTハンドラの登録に失敗しました");
-
     if let Err(e) = axum::serve(listener, router)
-        .with_graceful_shutdown(async move {
-            tokio::select! {
-                _ = sigterm.recv() => info!("SIGTERMを受信しました"),
-                _ = sigint.recv() => info!("SIGINTを受信しました"),
-            }
-            info!("サーバーを停止します");
-        })
+        .with_graceful_shutdown(shutdown_signal())
         .await
     {
         error!("HTTPサービスの実行に失敗しました: {e}");
         exit(1);
     }
+}
+
+async fn shutdown_signal() {
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{SignalKind, signal};
+
+        let mut sigterm =
+            signal(SignalKind::terminate()).expect("SIGTERMハンドラの登録に失敗しました");
+        let mut sigint =
+            signal(SignalKind::interrupt()).expect("SIGINTハンドラの登録に失敗しました");
+
+        tokio::select! {
+            _ = sigterm.recv() => info!("SIGTERMを受信しました"),
+            _ = sigint.recv() => info!("SIGINTを受信しました"),
+        }
+    }
+
+    #[cfg(not(unix))]
+    {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("Ctrl+Cハンドラの登録に失敗しました");
+        info!("Ctrl+Cを受信しました");
+    }
+
+    info!("サーバーを停止します");
 }
