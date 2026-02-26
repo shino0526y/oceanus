@@ -37,7 +37,7 @@ services:
       PORT: ${DICOM_PORT:-104}
       DATA_DIR: /var/lib/oceanus
     healthcheck:
-      test: [ "CMD", "/bin/busybox", "nc", "-z", "localhost", "104" ]
+      test: [ "CMD-SHELL", "/bin/busybox nc -z localhost $${PORT:-104}" ]
       interval: 15s
       timeout: 3s
       retries: 3
