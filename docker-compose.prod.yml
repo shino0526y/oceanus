@@ -32,7 +32,7 @@ services:
       dockerfile: Dockerfile
       target: dicom-server
     environment:
-      DATABASE_URL: ${DICOM_SERVER_DATABASE_URL}
+      DATABASE_URL: postgres://${POSTGRES_USER:-oceanus}:${POSTGRES_PASSWORD:-oceanus}@localhost:5432/${POSTGRES_DB:-oceanus}
       AE_TITLE: ${AE_TITLE:-OCEANUS}
       PORT: ${DICOM_PORT:-104}
       DATA_DIR: /var/lib/oceanus
@@ -58,7 +58,7 @@ services:
       dockerfile: Dockerfile
       target: web-api
     environment:
-      DATABASE_URL: ${DATABASE_URL}
+      DATABASE_URL: postgres://${POSTGRES_USER:-oceanus}:${POSTGRES_PASSWORD:-oceanus}@db:5432/${POSTGRES_DB:-oceanus}
     expose:
       - "8080"
     healthcheck:

@@ -83,18 +83,16 @@ make preview
 
 ### 環境変数
 
-| 変数名                      | 説明                                | デフォルト値                                        |
-| --------------------------- | ----------------------------------- | --------------------------------------------------- |
-| `POSTGRES_DB`               | データベース名                      | `oceanus`                                           |
-| `POSTGRES_USER`             | データベースユーザー                | `oceanus`                                           |
-| `POSTGRES_PASSWORD`         | データベースパスワード              | `oceanus`                                           |
-| `AE_TITLE`                  | DICOM AE タイトル                   | `OCEANUS`                                           |
-| `DICOM_PORT`                | DICOM サーバーポート                | `104`                                               |
-| `DATA_DIR`                  | データディレクトリ                  | `/var/lib/oceanus`                                  |
-| `DATABASE_URL`              | データベース接続 URL                | `postgres://oceanus:oceanus@db:5432/oceanus`        |
-| `DICOM_SERVER_DATABASE_URL` | dicom-server 用データベース接続 URL | `postgres://oceanus:oceanus@localhost:5432/oceanus` |
+| 変数名              | 説明                   | デフォルト値       |
+| ------------------- | ---------------------- | ------------------ |
+| `POSTGRES_DB`       | データベース名         | `oceanus`          |
+| `POSTGRES_USER`     | データベースユーザー   | `oceanus`          |
+| `POSTGRES_PASSWORD` | データベースパスワード | `oceanus`          |
+| `AE_TITLE`          | DICOM AE タイトル      | `OCEANUS`          |
+| `DICOM_PORT`        | DICOM サーバーポート   | `104`              |
+| `DATA_DIR`          | データディレクトリ     | `/var/lib/oceanus` |
 
-> `dicom-server` は `network_mode: host` で動作するため、DB への接続先が `localhost` になります。
+> 各コンポーネントのデータベース接続 URL は `POSTGRES_*` 変数から自動的に組み立てられます。
 
 ## DICOM Server
 

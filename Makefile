@@ -6,7 +6,7 @@ OS               := $(shell uname -s)
 DB_USER      ?= oceanus
 DB_PASS      ?= oceanus
 DB_NAME      ?= oceanus
-DATABASE_URL ?= postgres://$(DB_USER):$(DB_PASS)@localhost:5432/$(DB_NAME)
+DATABASE_URL := postgres://$(DB_USER):$(DB_PASS)@localhost:5432/$(DB_NAME)
 
 ARCH         ?= $(shell uname -m | sed -e 's/x86_64/amd64/' -e 's/arm64/arm64/' -e 's/aarch64/arm64/')
 PLATFORM     ?= linux/$(ARCH)
@@ -92,10 +92,8 @@ ifeq ($(OS),Darwin)
 
 # dicom-server以外のコンテナを起動し、終了時に必ず停止するようにtrapで設定する。
 # dicom-serverについてはローカルで直接実行する。
-# なお、dicom-serverはlocalhostの5432ポートでDBに接続する必要があるため、DATABASE_URLのホスト名を@db:からlocalhost:に置換し、起動する。
 	$(COMPOSE_PROD) up -d db web-api web-ui
 	trap '$(COMPOSE_PROD) down' EXIT; \
-	DATABASE_URL="$(subst @db:,@localhost:,$(DATABASE_URL))" \
 	cargo run --manifest-path src/Cargo.toml --release -p dicom-server
 else
 	$(COMPOSE_PROD) up
