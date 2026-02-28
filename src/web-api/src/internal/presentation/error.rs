@@ -1,16 +1,22 @@
 use crate::internal::domain::error::RepositoryError;
 use axum::{
     Json,
-    http::StatusCode,
+    http::{StatusCode, header},
     response::{IntoResponse, Response},
 };
 use serde::Serialize;
 use thiserror::Error;
 use utoipa::ToSchema;
 
+const DEFAULT_PROBLEM_TYPE: &str = "about:blank";
+
 #[derive(Debug, Serialize, ToSchema)]
 pub struct ErrorResponseBody {
-    pub error: String,
+    #[serde(rename = "type")]
+    pub problem_type: String,
+    pub title: String,
+    pub status: u16,
+    pub detail: String,
 }
 
 #[derive(Debug, Error)]
@@ -33,7 +39,7 @@ pub enum PresentationError {
 
 impl IntoResponse for PresentationError {
     fn into_response(self) -> Response {
-        let (status, message) = match self {
+        let (status, detail) = match self {
             PresentationError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
             PresentationError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg),
             PresentationError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
@@ -43,7 +49,22 @@ impl IntoResponse for PresentationError {
             PresentationError::Forbidden(msg) => (StatusCode::FORBIDDEN, msg),
         };
 
-        (status, Json(ErrorResponseBody { error: message })).into_response()
+        let body = ErrorResponseBody {
+            problem_type: DEFAULT_PROBLEM_TYPE.to_string(),
+            title: status
+                .canonical_reason()
+                .unwrap_or("Unknown")
+                .to_string(),
+            status: status.as_u16(),
+            detail,
+        };
+
+        (
+            status,
+            [(header::CONTENT_TYPE, "application/problem+json")],
+            Json(body),
+        )
+            .into_response()
     }
 }
 
