@@ -44,10 +44,15 @@ class ApiClient {
 			});
 
 			if (!response.ok) {
-				const errorData: ErrorResponseBody = await response
-					.json()
-					.catch(() => ({ type: 'about:blank', title: 'Unknown', status: response.status, detail: 'Unknown error' }));
-				return { ok: false, error: errorData.detail, status: response.status };
+				const errorData: unknown = await response.json().catch(() => null);
+				const detail =
+					errorData !== null &&
+					typeof errorData === 'object' &&
+					'detail' in errorData &&
+					typeof (errorData as ErrorResponseBody).detail === 'string'
+						? (errorData as ErrorResponseBody).detail
+						: response.statusText || 'Unknown error';
+				return { ok: false, error: detail, status: response.status };
 			}
 
 			// 204 No Contentの場合はnullを返す

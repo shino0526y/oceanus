@@ -305,4 +305,50 @@ mod tests {
             assert_eq!(res.unwrap().status(), StatusCode::UNPROCESSABLE_ENTITY);
         });
     }
+
+    #[tokio::test]
+    async fn エラーレスポンスがRFC9457形式で返される() {
+        // Arrange
+        let repos = prepare_test_data().await;
+        let state = startup::make_state(&repos);
+        let router = startup::make_router(state, &repos);
+
+        let body = json!({
+            "userId": "notfound",
+            "password": "Password#1234"
+        });
+        let request = Request::builder()
+            .method("POST")
+            .uri("/login")
+            .header("content-type", "application/json")
+            .body(Body::from(serde_json::to_string(&body).unwrap()))
+            .unwrap();
+
+        // Act
+        let response = router.oneshot(request).await.unwrap();
+
+        // Assert
+        // ステータスコードの確認
+        assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+
+        // Content-Typeの確認
+        let content_type = response
+            .headers()
+            .get("content-type")
+            .unwrap()
+            .to_str()
+            .unwrap();
+        assert!(content_type.contains("application/problem+json"));
+
+        // レスポンスボディのRFC 9457形式確認
+        let bytes = body::to_bytes(response.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        let body: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(body["type"], "about:blank");
+        assert_eq!(body["title"], "Unauthorized");
+        assert_eq!(body["status"], 401);
+        assert!(body["detail"].is_string());
+        assert!(!body["detail"].as_str().unwrap().is_empty());
+    }
 }
