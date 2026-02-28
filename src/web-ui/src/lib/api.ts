@@ -5,7 +5,10 @@ import type { RoleValue } from './constants';
 const API_BASE_URL = '/api';
 
 interface ErrorResponseBody {
-	error: string;
+	type: string;
+	title: string;
+	status: number;
+	detail: string;
 }
 
 class ApiClient {
@@ -43,8 +46,8 @@ class ApiClient {
 			if (!response.ok) {
 				const errorData: ErrorResponseBody = await response
 					.json()
-					.catch(() => ({ error: 'Unknown error' }));
-				return { ok: false, error: errorData.error, status: response.status };
+					.catch(() => ({ type: 'about:blank', title: 'Unknown', status: response.status, detail: 'Unknown error' }));
+				return { ok: false, error: errorData.detail, status: response.status };
 			}
 
 			// 204 No Contentの場合はnullを返す
