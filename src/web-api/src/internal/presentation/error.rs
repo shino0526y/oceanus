@@ -51,10 +51,7 @@ impl IntoResponse for PresentationError {
 
         let body = ErrorResponseBody {
             problem_type: DEFAULT_PROBLEM_TYPE.to_string(),
-            title: status
-                .canonical_reason()
-                .unwrap_or("Unknown")
-                .to_string(),
+            title: status.canonical_reason().unwrap_or("Unknown").to_string(),
             status: status.as_u16(),
             detail,
         };
