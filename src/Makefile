@@ -3,7 +3,7 @@
 
 .DEFAULT_GOAL := help
 
-PROJECTS := dicom-lib dicom-server web-api web-ui
+PROJECTS := dicom-lib dicom-server web-api web-ui proto grpc-server study-search
 
 # 全プロジェクトに対して実行
 install-all:
@@ -111,6 +111,6 @@ help:
 	@echo "  clean-<project>    ビルド成果物を削除"
 	@echo ""
 	@echo "プロジェクト一覧:"
-	@echo "  dicom-lib, dicom-server, web-api, web-ui"
+	@echo "  dicom-lib, dicom-server, web-api, web-ui, proto, grpc-server, study-search"
 	@echo ""
 	@echo "  help         このヘルプを表示"

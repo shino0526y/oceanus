@@ -1,0 +1,18 @@
+[package]
+name = "study-search"
+version.workspace = true
+authors.workspace = true
+description = "Study search GUI client for Oceanus"
+edition.workspace = true
+
+[dependencies]
+clap = { version = "4", features = ["derive", "env"] }
+dotenvy = "0.15"
+gpui = "0.2"
+gpui-component = "0.5"
+prost = { workspace = true }
+tokio = { workspace = true }
+tonic = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { version = "0.3", features = ["local-time"] }
+proto = { workspace = true }

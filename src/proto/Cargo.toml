@@ -1,0 +1,13 @@
+[package]
+name = "proto"
+version.workspace = true
+authors.workspace = true
+description = "Protocol Buffers definitions for Oceanus gRPC services"
+edition.workspace = true
+
+[dependencies]
+prost = { workspace = true }
+tonic = { workspace = true }
+
+[build-dependencies]
+tonic-build = "0.12"

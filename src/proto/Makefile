@@ -1,0 +1,45 @@
+.PHONY: install run preview lint format test build clean help
+
+.DEFAULT_GOAL := help
+
+install:
+	cargo fetch
+
+run:
+	@echo "proto はライブラリのため、単体では実行できません。"
+	@echo "grpc-server または study-search から使用してください。"
+
+preview:
+	@echo "proto はライブラリのため、単体では実行できません。"
+	@echo "grpc-server または study-search から使用してください。"
+
+lint:
+	cargo clippy -- -D warnings
+
+format:
+	cargo fmt
+
+test:
+	cargo test -q
+
+build:
+	cargo build --release
+
+clean:
+	cargo clean
+
+help:
+	@echo "proto Makefile"
+	@echo ""
+	@echo "使用方法: make [target]"
+	@echo ""
+	@echo "ターゲット:"
+	@echo "  install  依存関係をインストール"
+	@echo "  run      デバッグモードで起動（ライブラリのため実行不可）"
+	@echo "  preview  リリースモードで起動（ライブラリのため実行不可）"
+	@echo "  lint     リンターを実行"
+	@echo "  format   フォーマッターを実行"
+	@echo "  test     テストを実行"
+	@echo "  build    リリースモードでビルド"
+	@echo "  clean    ビルド成果物を削除"
+	@echo "  help     このヘルプを表示"

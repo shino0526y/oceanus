@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package oceanus.v1;
+
+// 検査検索サービス
+service StudySearchService {
+  // 検査を検索する
+  rpc SearchStudies(SearchStudiesRequest) returns (SearchStudiesResponse);
+}
+
+// 検査検索リクエスト
+// 各フィールドは空文字列の場合、その条件を無視する。
+message SearchStudiesRequest {
+  // 患者ID（部分一致）
+  string patient_id = 1;
+  // 患者名（部分一致、alphabet/kanji/hiraganaのいずれかにマッチ）
+  string patient_name = 2;
+  // 検査日の開始日（YYYY-MM-DD形式、空の場合は制限なし）
+  string study_date_from = 3;
+  // 検査日の終了日（YYYY-MM-DD形式、空の場合は制限なし）
+  string study_date_to = 4;
+  // Accession Number（部分一致）
+  string accession_number = 5;
+  // モダリティ（部分一致）
+  string modality = 6;
+  // 検査ID（部分一致）
+  string study_id = 7;
+  // 取得件数の上限
+  int32 limit = 8;
+  // 取得開始位置（オフセット）
+  int32 offset = 9;
+}
+
+// 検査検索レスポンス
+message SearchStudiesResponse {
+  // 検査レコードのリスト
+  repeated StudyRecord studies = 1;
+  // 検索条件に一致する総件数（ページネーション用）
+  int32 total_count = 2;
+}
+
+// 検査レコード（患者情報 + 検査情報 + モダリティ集約）
+message StudyRecord {
+  // 患者ID
+  string patient_id = 1;
+  // 患者名（アルファベット）
+  string patient_name_alphabet = 2;
+  // 患者名（漢字）
+  string patient_name_kanji = 3;
+  // 患者名（ひらがな）
+  string patient_name_hiragana = 4;
+  // 患者の性別（ISO 5218: 0=不明, 1=男性, 2=女性, 9=適用不能）
+  int32 patient_sex = 5;
+  // 患者の生年月日（YYYY-MM-DD形式、不明の場合は空文字列）
+  string patient_birth_date = 6;
+  // Study Instance UID
+  string study_instance_uid = 7;
+  // 検査ID
+  string study_id = 8;
+  // 検査日（YYYY-MM-DD形式、不明の場合は空文字列）
+  string study_date = 9;
+  // 検査時刻（HH:MM:SS形式、不明の場合は空文字列）
+  string study_time = 10;
+  // Accession Number
+  string accession_number = 11;
+  // この検査に含まれるモダリティのリスト（重複なし）
+  repeated string modalities = 12;
+}
