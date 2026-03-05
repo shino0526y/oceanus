@@ -29,12 +29,13 @@ oceanus/
 ```
 web-api/src/internal/
 ├── presentation/    # ハンドラー、ミドルウェア、エラーレスポンス
-├── application/     # ユースケース (ビジネスロジックの調整)
+├── application/     # ユースケース、クエリー
 ├── domain/          # エンティティ、値オブジェクト、リポジトリトレイト、ドメインエラー
-└── infrastructure/  # リポジトリ実装 (PostgreSQL、インメモリ)
+└── infrastructure/  # リポジトリ・クエリー実装 (PostgreSQL、インメモリ)
 ```
 
-**依存方向**: presentation → application → domain ← infrastructure
+- エンティティの汎用CRUD処理はリポジトリに定義する
+- 特定のユースケースに特化したREAD処理はクエリーに定義する
 
 ## 開発環境
 
