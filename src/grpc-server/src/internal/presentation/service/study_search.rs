@@ -1,17 +1,13 @@
-use std::sync::Arc;
-
+use crate::internal::application::study::{
+    SearchStudiesError, SearchStudiesUseCase, study_search::SearchStudiesCommand,
+};
 use chrono::NaiveDate;
-use tonic::{Request, Response, Status};
-
 use proto::oceanus::v1::{
     SearchStudiesRequest, SearchStudiesResponse, StudyRecord as ProtoStudyRecord,
     study_search_service_server::StudySearchService,
 };
-
-use crate::internal::{
-    application::study_search::{SearchStudiesError, SearchStudiesUseCase},
-    domain::value_object::search_criteria::SearchCriteria,
-};
+use std::sync::Arc;
+use tonic::{Request, Response, Status};
 
 /// gRPC StudySearchService のサーバー実装
 pub struct StudySearchServiceImpl {
@@ -32,16 +28,25 @@ impl StudySearchService for StudySearchServiceImpl {
     ) -> Result<Response<SearchStudiesResponse>, Status> {
         let req = request.into_inner();
 
-        // Proto型 → ドメイン型への変換
-        let criteria = convert_to_criteria(&req)?;
+        // リクエストをコマンドに変換
+        let command = convert_to_command(&req)?;
 
+        // ユースケースの実行
         let (studies, total_count) = self
             .use_case
-            .execute(criteria, req.limit, req.offset)
+            .execute(command, req.limit, req.offset)
             .await
-            .map_err(to_status)?;
+            .map_err(|e| match &e {
+                SearchStudiesError::InvalidDateRange { .. } => {
+                    Status::invalid_argument(e.to_string())
+                }
+                SearchStudiesError::Query(_) => {
+                    tracing::error!("{e}");
+                    Status::internal(e.to_string())
+                }
+            })?;
 
-        // ドメイン型 → Proto型への変換
+        // レスポンスの組み立て
         let proto_studies = studies
             .into_iter()
             .map(|s| ProtoStudyRecord {
@@ -49,7 +54,7 @@ impl StudySearchService for StudySearchServiceImpl {
                 patient_name_alphabet: s.patient_name_alphabet,
                 patient_name_kanji: s.patient_name_kanji,
                 patient_name_hiragana: s.patient_name_hiragana,
-                patient_sex: s.patient_sex as i32,
+                patient_sex: s.patient_sex,
                 patient_birth_date: s
                     .patient_birth_date
                     .map(|d| d.format("%Y-%m-%d").to_string())
@@ -76,13 +81,13 @@ impl StudySearchService for StudySearchServiceImpl {
     }
 }
 
-/// Proto のリクエストを SearchCriteria に変換する
+/// リクエストを SearchStudiesCommand に変換する
 #[allow(clippy::result_large_err)]
-fn convert_to_criteria(req: &SearchStudiesRequest) -> Result<SearchCriteria, Status> {
+fn convert_to_command(req: &SearchStudiesRequest) -> Result<SearchStudiesCommand, Status> {
     let study_date_from = parse_optional_date(&req.study_date_from, "study_date_from")?;
     let study_date_to = parse_optional_date(&req.study_date_to, "study_date_to")?;
 
-    Ok(SearchCriteria {
+    Ok(SearchStudiesCommand {
         patient_id: non_empty(&req.patient_id),
         patient_name: non_empty(&req.patient_name),
         study_date_from,
@@ -115,12 +120,4 @@ fn parse_optional_date(s: &str, field_name: &str) -> Result<Option<NaiveDate>, S
                 "文字列から日付へのパースに失敗しました (フィールド=\"{field_name}\", 文字列=\"{s}\"): {e}"
             ))
         })
-}
-
-/// SearchStudiesError を tonic::Status に変換する
-fn to_status(err: SearchStudiesError) -> Status {
-    match err {
-        SearchStudiesError::InvalidCriteria(e) => Status::invalid_argument(e.to_string()),
-        SearchStudiesError::Repository(e) => Status::internal(e.to_string()),
-    }
 }

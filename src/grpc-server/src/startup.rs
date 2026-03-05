@@ -1,23 +1,20 @@
+use crate::internal::{
+    application::study::{SearchStudiesUseCase, study_search::SearchStudiesQuery},
+    infrastructure::query::study_search::PostgresSearchStudiesQuery,
+    presentation::service::StudySearchServiceImpl,
+};
+use sqlx::{Pool, Postgres};
 use std::sync::Arc;
 
-use sqlx::{Pool, Postgres};
-
-use crate::internal::{
-    application::study_search::SearchStudiesUseCase,
-    domain::repository::study_search::StudySearchRepository,
-    infrastructure::repository::PostgresStudySearchRepository,
-    presentation::study_search::StudySearchServiceImpl,
-};
-
-/// リポジトリの集約
-pub struct Repos {
-    pub study_search_repository: Arc<dyn StudySearchRepository>,
+/// クエリの集約
+pub struct Queries {
+    pub search_studies_query: Arc<dyn SearchStudiesQuery>,
 }
 
-impl Repos {
+impl Queries {
     pub fn new(pool: Pool<Postgres>) -> Self {
         Self {
-            study_search_repository: Arc::new(PostgresStudySearchRepository::new(pool)),
+            search_studies_query: Arc::new(PostgresSearchStudiesQuery::new(pool)),
         }
     }
 }
@@ -27,10 +24,10 @@ pub struct GrpcServices {
     pub study_search: StudySearchServiceImpl,
 }
 
-/// リポジトリ群からgRPCサービス群を組み立てる
-pub fn make_services(repos: &Repos) -> GrpcServices {
+/// クエリ群からgRPCサービス群を組み立てる
+pub fn make_services(queries: &Queries) -> GrpcServices {
     let search_studies_use_case = Arc::new(SearchStudiesUseCase::new(
-        repos.study_search_repository.clone(),
+        queries.search_studies_query.clone(),
     ));
 
     GrpcServices {

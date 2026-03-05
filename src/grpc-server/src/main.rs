@@ -50,7 +50,7 @@ async fn main() {
     };
 
     // リポジトリとサービスの初期化
-    let repos = startup::Repos::new(pool);
+    let repos = startup::Queries::new(pool);
     let services = startup::make_services(&repos);
 
     // gRPCサーバー起動

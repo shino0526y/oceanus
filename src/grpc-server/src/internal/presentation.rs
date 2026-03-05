@@ -1,1 +1,1 @@
-pub mod study_search;
+pub mod service;
